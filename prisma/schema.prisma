@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  LAKI_LAKI
+  PEREMPUAN
+}
+
+enum AsalUnit {
+  KSR_MARKAS
+  KSR_UNSUR
+  KSR_UNPI
+}
+
+enum Divisi {
+  KOMANDAN
+  KETUA_PELAKSANA
+  WAKIL_KETUA
+  BENDAHARA
+  WAKIL_BENDAHARA_1
+  WAKIL_BENDAHARA_2
+  SEKRETARIS
+  WAKIL_SEKRETARIS
+  KESEKRETARIATAN
+  ACARA
+  HUMAS_DAN_DOKUMENTASI
+  GIAT
+  KEAMANAN_DAN_EVAKUASI
+  SANITASI
+  TRANSPORTASI
+  PERKEMAHAN
+  DAPUR_UMUM
+  PERALATAN
+  YANKES
+}
+
+enum StatusPanitia {
+  TERDAFTAR
+  HADIR
+}
+
+model Panitia {
+  id              String        @id @default(cuid())
+  nomorRegistrasi String        @unique
+  nama            String
+  gender          Gender
+  noWhatsapp      String
+  alamat          String        @db.Text
+  asalUnit        AsalUnit
+  divisi          Divisi
+
+  fotoUrl         String        @db.Text
+  qrCodeUrl       String?       @db.Text
+  idCardUrl       String?       @db.Text
+  qrToken         String        @unique
+
+  status          StatusPanitia @default(TERDAFTAR)
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  absensiLogs AbsensiLog[]
+
+  @@map("panitia")
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  nama         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("admin")
+}
+
+model AbsensiSesi {
+  id         String   @id @default(cuid())
+  nama       String
+  tanggal    DateTime @db.Date
+  jamMulai   String   // format "HH:mm", contoh: "07:00"
+  jamSelesai String   // format "HH:mm", contoh: "09:00"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  logs AbsensiLog[]
+
+  @@map("absensi_sesi")
+}
+
+model AbsensiLog {
+  id        String   @id @default(cuid())
+  panitiaId String
+  sesiId    String
+  scannedAt DateTime @default(now())
+
+  panitia Panitia     @relation(fields: [panitiaId], references: [id], onDelete: Cascade)
+  sesi    AbsensiSesi @relation(fields: [sesiId], references: [id], onDelete: Cascade)
+
+  @@unique([panitiaId, sesiId])
+  @@map("absensi_log")
+}

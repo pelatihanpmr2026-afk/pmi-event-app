@@ -1,0 +1,22 @@
+-- CreateTable
+CREATE TABLE `panitia` (
+    `id` VARCHAR(191) NOT NULL,
+    `nomorRegistrasi` VARCHAR(191) NOT NULL,
+    `nama` VARCHAR(191) NOT NULL,
+    `gender` ENUM('LAKI_LAKI', 'PEREMPUAN') NOT NULL,
+    `noWhatsapp` VARCHAR(191) NOT NULL,
+    `alamat` TEXT NOT NULL,
+    `asalUnit` ENUM('KSR_MARKAS', 'KSR_UNSUR', 'KSR_UNPI') NOT NULL,
+    `divisi` ENUM('KOMANDAN', 'KETUA_PELAKSANA', 'WAKIL_KETUA', 'BENDAHARA', 'WAKIL_BENDAHARA_1', 'WAKIL_BENDAHARA_2', 'SEKRETARIS', 'WAKIL_SEKRETARIS', 'KESEKRETARIATAN', 'ACARA', 'HUMAS_DAN_DOKUMENTASI', 'GIAT', 'KEAMANAN_DAN_EVAKUASI', 'SANITASI', 'TRANSPORTASI', 'PERKEMAHAN', 'DAPUR_UMUM', 'PERALATAN', 'YANKES') NOT NULL,
+    `fotoUrl` TEXT NOT NULL,
+    `qrCodeUrl` TEXT NULL,
+    `idCardUrl` TEXT NULL,
+    `qrToken` VARCHAR(191) NOT NULL,
+    `status` ENUM('TERDAFTAR', 'HADIR') NOT NULL DEFAULT 'TERDAFTAR',
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    UNIQUE INDEX `panitia_nomorRegistrasi_key`(`nomorRegistrasi`),
+    UNIQUE INDEX `panitia_qrToken_key`(`qrToken`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

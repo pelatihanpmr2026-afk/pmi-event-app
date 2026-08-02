@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+@theme {
+  --color-pmi-red: #ED1C24;
+
+  --color-event-blue: #1898D5;
+  --color-event-blue-dark: #146FA3;
+  --color-event-pink: #EC3E96;
+  --color-event-pink-dark: #C22A78;
+  --color-event-yellow: #FDC20F;
+  --color-event-yellow-dark: #D6A00A;
+  --color-event-navy: #3653A5;
+  --color-event-navy-dark: #28407D;
+  --color-event-cream: #FFF8E7;
+
+  --shadow-pixel: 4px 4px 0px 0px rgba(54,83,165,1);
+  --shadow-pixel-sm: 2px 2px 0px 0px rgba(54,83,165,1);
+  --shadow-pixel-lg: 6px 6px 0px 0px rgba(54,83,165,1);
+  --shadow-pixel-pink: 4px 4px 0px 0px rgba(194,42,120,1);
+  --shadow-pixel-blue: 4px 4px 0px 0px rgba(20,111,163,1);
+  --shadow-pixel-yellow: 4px 4px 0px 0px rgba(214,160,10,1);
+
+  --border-width-3: 3px;
+  --border-width-5: 5px;
+
+  --animate-pixel-pop: pixel-pop 0.25s steps(4, end);
+  --animate-blink: blink 1s steps(2, start) infinite;
+}
+
+@keyframes pixel-pop {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.font-heading {
+  font-family: var(--font-pixel-heading), monospace;
+}
+
+.font-body {
+  font-family: var(--font-pixel-body), sans-serif;
+}
+
+* {
+  image-rendering: pixelated;
+}
+
+body {
+  background-color: #FBF6EA;
+  background-image:
+    linear-gradient(rgba(54, 83, 165, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(54, 83, 165, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  color: #3653A5;
+}
+
+::selection {
+  background-color: #FDC20F;
+  color: #3653A5;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+::-webkit-scrollbar-track {
+  background: #FFF8E7;
+  border-left: 3px solid #3653A5;
+}
+::-webkit-scrollbar-thumb {
+  background: #1898D5;
+  border: 2px solid #3653A5;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #EC3E96;
+}
+
+@layer components {
+  .pixel-border {
+    @apply border-3 border-event-navy;
+  }
+
+  .pixel-corners {
+    clip-path: polygon(
+      0px 8px, 8px 8px, 8px 0px,
+      calc(100% - 8px) 0px, calc(100% - 8px) 8px, 100% 8px,
+      100% calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) 100%,
+      8px 100%, 8px calc(100% - 8px), 0px calc(100% - 8px)
+    );
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
