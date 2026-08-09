@@ -107,3 +107,275 @@ model AbsensiLog {
   @@unique([panitiaId, sesiId])
   @@map("absensi_log")
 }
+
+enum Jenjang {
+  SMP
+  MTS
+  SMA
+  SMK
+  MA
+}
+
+enum StatusSekolah {
+  NEGERI
+  SWASTA
+}
+
+enum KategoriSekolah {
+  WIRA
+  MADYA
+}
+
+enum TipePeserta {
+  PESERTA
+  PENDAMPING
+}
+
+enum Agama {
+  ISLAM
+  KRISTEN
+  KATOLIK
+  HINDU
+  BUDDHA
+  KONGHUCU
+  LAINNYA
+}
+
+enum GolonganDarah {
+  A
+  B
+  AB
+  O
+  TIDAK_TAHU
+}
+
+
+model Sekolah {
+  id                String   @id @default(cuid())
+
+  jenjang           Jenjang
+  statusSekolah     StatusSekolah
+  namaInput         String
+  namaLengkap       String   @unique
+  kategori          KategoriSekolah
+
+  nomorPendaftaran  Int
+  tahunPendaftaran  Int
+  kodePendaftaran   String   @unique
+
+  namaPembina       String
+  noWhatsappPembina String
+
+  estimasiPesertaPendamping Int?
+
+  excelUrl          String?  @db.Text
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  peserta           Peserta[]
+  tendaSewa         TendaSewa[]
+  pembayaran        Pembayaran[]
+
+  @@map("sekolah")
+}
+
+model Peserta {
+  id                  String   @id @default(cuid())
+  sekolahId           String
+  tipe                TipePeserta
+
+  namaLengkap         String
+  tempatLahir         String
+  tanggalLahir        DateTime @db.Date
+  alamat              String   @db.Text
+  agama               Agama
+  golonganDarah       GolonganDarah
+  tahunMasuk          Int
+  noHp                String?
+  gender              Gender
+
+  riwayatPenyakit     RiwayatPenyakit?
+
+  fotoUrl             String?  @db.Text
+
+  createdAt           DateTime @default(now())
+
+  sekolah             Sekolah  @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
+
+  @@map("peserta")
+}
+
+model TendaJenis {
+  id           String   @id @default(cuid())
+  nama         String
+  kapasitasMin Int
+  kapasitasMax Int
+  harga        Int
+  hargaVendor  Int      @default(0)
+  stokTotal    Int
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  tendaSewa    TendaSewa[]
+
+  @@map("tenda_jenis")
+}
+
+model TendaSewa {
+  id                  String   @id @default(cuid())
+  sekolahId           String
+  tendaJenisId        String
+  jumlah              Int
+  hargaSatuanSaatSewa Int // snapshot harga saat disewa, jaga-jaga kalau harga berubah nanti
+
+  createdAt           DateTime @default(now())
+
+  sekolah             Sekolah    @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
+  tendaJenis           TendaJenis @relation(fields: [tendaJenisId], references: [id])
+
+  @@map("tenda_sewa")
+}
+
+enum TipePembayaran {
+  PESERTA
+  TENDA
+}
+
+enum StatusPembayaran {
+  BELUM_BAYAR
+  MENUNGGU_KONFIRMASI
+  LUNAS
+  DITOLAK
+}
+
+model Pembayaran {
+  id                String           @id @default(cuid())
+  sekolahId         String
+  tipe              TipePembayaran
+
+  jumlahBiaya       Int
+  statusPembayaran  StatusPembayaran @default(BELUM_BAYAR)
+
+  buktiTransferUrl  String?          @db.Text
+  catatanAdmin      String?          @db.Text
+
+  kwitansiUrl       String?          @db.Text
+  qrToken           String?          @unique
+
+  statusDaftarUlang Boolean          @default(false)
+  waktuDaftarUlang  DateTime?
+
+  dibayarPada       DateTime?
+  dikonfirmasiPada  DateTime?
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  sekolah           Sekolah          @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
+
+  @@unique([sekolahId, tipe])
+  @@map("pembayaran")
+}
+
+enum JenisTransaksi {
+  PEMASUKAN
+  PENGELUARAN
+  UTANG
+}
+
+enum KategoriPemasukan {
+  PENDAFTARAN
+  SEWA_TENDA
+  SPONSOR
+  PERSENTASE_TENDA
+}
+
+enum KategoriPengeluaran {
+  SETOR_TENDA
+  OPERASIONAL_DIVISI
+  BEBAN_PENGELUARAN
+}
+
+model TransaksiKeuangan {
+  id                  String   @id @default(cuid())
+  tanggal             DateTime @db.Date
+  keterangan          String   @db.Text
+  jenis               JenisTransaksi
+
+  kategoriPemasukan   KategoriPemasukan?
+  kategoriPengeluaran KategoriPengeluaran?
+
+  debit               Int      @default(0)
+  kredit               Int      @default(0)
+  utang               Int      @default(0)
+
+  divisi              Divisi?
+  pic                 String?
+
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("transaksi_keuangan")
+}
+enum StatusPengajuan {
+  MENUNGGU
+  DISETUJUI
+  DITOLAK
+}
+
+model PengajuanAnggaran {
+  id               String   @id @default(cuid())
+  nomorPengajuan   String   @unique
+
+  namaKoordinator  String
+  divisi           Divisi
+  noHp             String
+
+  totalJenisBarang Int
+  totalKuantitas   Int
+  totalPengajuan   Int
+
+  tandaTanganUrl   String?  @db.Text
+  pdfUrl           String?  @db.Text
+
+  status           StatusPengajuan @default(MENUNGGU)
+  catatanAdmin     String?  @db.Text
+  diprosesPada     DateTime?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  items            PengajuanItem[]
+
+  @@map("pengajuan_anggaran")
+}
+
+model PengajuanItem {
+  id           String   @id @default(cuid())
+  pengajuanId  String
+  namaBarang   String
+  qty          Int
+  hargaSatuan  Int
+  total        Int
+
+  pengajuan    PengajuanAnggaran @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+
+  @@map("pengajuan_item")
+}
+
+enum RiwayatPenyakit {
+  TIDAK_ADA
+  ASMA_BERAT
+  EPILEPSI
+  JANTUNG
+  DIABETES
+  HIPERTENSI_BERAT
+  GANGGUAN_GINJAL
+  GANGGUAN_PERNAPASAN_KRONIS
+  RIWAYAT_KEJANG
+  HEMOFILIA
+  ANEMIA_BERAT
+  LAINNYA
+}

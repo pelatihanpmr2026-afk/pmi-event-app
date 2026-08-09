@@ -2,18 +2,7 @@ import path from 'path'
 import { createCanvas, loadImage, GlobalFonts, SKRSContext2D } from '@napi-rs/canvas'
 import { ID_CARD_LAYOUT } from './idcard-layout'
 import { saveBuffer } from './save-file'
-
-let fontsRegistered = false
-
-function registerFonts() {
-  if (fontsRegistered) return
-
-  const fontDir = path.join(process.cwd(), 'src', 'assets', 'fonts')
-  GlobalFonts.registerFromPath(path.join(fontDir, 'Silkscreen-Regular.ttf'), 'Silkscreen')
-  GlobalFonts.registerFromPath(path.join(fontDir, 'Silkscreen-Bold.ttf'), 'Silkscreen-Bold')
-
-  fontsRegistered = true
-}
+import { registerFonts } from './register-fonts'
 
 function wrapAndFitText(
   ctx: SKRSContext2D,

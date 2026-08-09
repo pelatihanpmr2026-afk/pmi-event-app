@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'fs/promises'
+import { mkdir, writeFile, unlink } from 'fs/promises'
 import path from 'path'
 
 // Sengaja DI LUAR folder public/ — supaya tidak bergantung ke static file
@@ -7,7 +7,7 @@ const UPLOAD_ROOT = path.join(process.cwd(), 'storage', 'uploads')
 
 export async function saveUploadedFile(
   file: File,
-  subfolder: 'photos' | 'idcards' | 'qrcodes',
+  subfolder: 'photos' | 'idcards' | 'qrcodes' | 'peserta-photos' | 'excel' | 'bukti-transfer' | 'kwitansi' | 'pengajuan' | 'tanda-tangan',
   filename: string
 ): Promise<string> {
   const targetDir = path.join(UPLOAD_ROOT, subfolder)
@@ -22,7 +22,7 @@ export async function saveUploadedFile(
 
 export async function saveBuffer(
   buffer: Buffer,
-  subfolder: 'photos' | 'idcards' | 'qrcodes',
+  subfolder: 'photos' | 'idcards' | 'qrcodes' | 'peserta-photos' | 'excel' | 'bukti-transfer' | 'kwitansi' | 'pengajuan' | 'tanda-tangan',
   filename: string
 ): Promise<string> {
   const targetDir = path.join(UPLOAD_ROOT, subfolder)
@@ -47,4 +47,13 @@ export function getAbsolutePathFromUrl(url: string): string {
   // url format: /uploads/<subfolder>/<filename>
   const relative = url.replace(/^\/uploads\//, '')
   return path.join(getUploadRootPath(), relative)
+}
+
+export async function deleteFileByUrl(url: string): Promise<void> {
+  try {
+    const absolutePath = getAbsolutePathFromUrl(url)
+    await unlink(absolutePath)
+  } catch {
+    // File mungkin sudah tidak ada — abaikan, ini best-effort cleanup
+  }
 }
