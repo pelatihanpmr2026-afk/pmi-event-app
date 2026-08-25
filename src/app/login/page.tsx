@@ -56,7 +56,9 @@ function LoginForm() {
 
       toast.success('Login berhasil')
       const redirectTo = searchParams.get('redirect') || '/dashboard'
-      router.push(redirectTo)
+      // Hindari kembali ke halaman login setelah autentikasi berhasil.
+      // Refresh membuat server components/middleware membaca cookie sesi baru.
+      router.replace(redirectTo)
       router.refresh()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
