@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/ui/modal'
+import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/responsive-table'
 import { sesiSchema, SesiFormValues } from '@/lib/validations/absensi'
 import { getSesiStatus } from '@/lib/absensi'
 
@@ -34,12 +35,7 @@ export function SesiManager({ initialSesi }: { initialSesi: SesiData[] }) {
   const [editingSesi, setEditingSesi] = useState<SesiData | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<SesiFormValues>({
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<SesiFormValues>({
     resolver: zodResolver(sesiSchema),
   })
 
@@ -65,30 +61,21 @@ export function SesiManager({ initialSesi }: { initialSesi: SesiData[] }) {
     try {
       const url = editingSesi ? `/api/absensi/sesi/${editingSesi.id}` : '/api/absensi/sesi'
       const method = editingSesi ? 'PATCH' : 'POST'
-
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       })
       const result = await res.json()
-
       if (!res.ok) throw new Error(result?.message || 'Gagal menyimpan sesi')
 
       if (editingSesi) {
-        setSesiList((prev) =>
-          prev.map((s) => (s.id === editingSesi.id ? { ...s, ...result.data } : s))
-        )
+        setSesiList((prev) => prev.map((s) => (s.id === editingSesi.id ? { ...s, ...result.data } : s)))
         toast.success('Sesi berhasil diperbarui')
       } else {
-        setSesiList((prev) =>
-          [...prev, { ...result.data, _count: { logs: 0 } }].sort((a, b) =>
-            a.tanggal.localeCompare(b.tanggal)
-          )
-        )
+        setSesiList((prev) => [...prev, { ...result.data, _count: { logs: 0 } }].sort((a, b) => a.tanggal.localeCompare(b.tanggal)))
         toast.success('Sesi berhasil ditambahkan')
       }
-
       setIsModalOpen(false)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
@@ -98,13 +85,11 @@ export function SesiManager({ initialSesi }: { initialSesi: SesiData[] }) {
   }
 
   async function handleDelete(id: string, nama: string) {
-    if (!confirm(`Hapus sesi "${nama}"? Log absensi terkait sesi ini juga akan terhapus.`)) return
-
+    if (!confirm(`Hapus sesi "${nama}"? Log absensi terkait juga akan terhapus.`)) return
     try {
       const res = await fetch(`/api/absensi/sesi/${id}`, { method: 'DELETE' })
       const result = await res.json()
       if (!res.ok) throw new Error(result?.message || 'Gagal menghapus sesi')
-
       setSesiList((prev) => prev.filter((s) => s.id !== id))
       toast.success('Sesi berhasil dihapus')
     } catch (error) {
@@ -112,71 +97,110 @@ export function SesiManager({ initialSesi }: { initialSesi: SesiData[] }) {
     }
   }
 
+  const columns: ResponsiveTableColumn<SesiData>[] = [
+    {
+      key: 'nama',
+      header: 'Nama Sesi',
+      render: (row) => <span className="font-semibold">{row.nama}</span>,
+    },
+    {
+      key: 'tanggal',
+      header: 'Tanggal & Waktu',
+      render: (row) => (
+        <div className="flex flex-col">
+          <span className="text-sm text-gray-600">
+            {new Date(row.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
+          <span className="text-xs text-gray-400">
+            {row.jamMulai} - {row.jamSelesai} WIB
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      align: 'center',
+      render: (row) => {
+        const status = getSesiStatus({ tanggal: new Date(row.tanggal), jamMulai: row.jamMulai, jamSelesai: row.jamSelesai })
+        const badge = STATUS_BADGE[status]
+        return <Badge variant={badge.variant}>{badge.label}</Badge>
+      },
+    },
+    {
+      key: 'log',
+      header: 'Log',
+      align: 'center',
+      render: (row) => <span className="text-gray-500">{row._count.logs} absen</span>,
+    },
+    {
+      key: 'aksi',
+      header: 'Aksi',
+      align: 'center',
+      hideOnMobile: true,
+      render: (row) => (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={() => openEditModal(row)}
+            className="p-1.5 text-gray-500 hover:text-event-navy hover:bg-[var(--color-surface-muted)] rounded-[var(--radius-input)] transition-colors"
+          >
+            <Pencil size={16} />
+          </button>
+          <button
+            onClick={() => handleDelete(row.id, row.nama)}
+            className="p-1.5 text-gray-500 hover:text-pmi-red hover:bg-red-50 rounded-[var(--radius-input)] transition-colors"
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+      ),
+    },
+  ]
+
+  const renderMobileCard = (row: SesiData) => {
+    const status = getSesiStatus({ tanggal: new Date(row.tanggal), jamMulai: row.jamMulai, jamSelesai: row.jamSelesai })
+    const badge = STATUS_BADGE[status]
+    return (
+      <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] bg-white p-4 flex flex-col gap-2">
+        <div className="flex items-start justify-between">
+          <span className="font-body font-semibold text-event-navy">{row.nama}</span>
+          <Badge variant={badge.variant}>{badge.label}</Badge>
+        </div>
+        <div className="text-xs text-gray-400 border-b border-[var(--color-border)] pb-2">
+          {new Date(row.tanggal).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </div>
+        <div className="flex justify-between items-center text-[11px]">
+          <span className="text-gray-400">{row.jamMulai} - {row.jamSelesai} WIB</span>
+          <span className="font-medium text-gray-600">{row._count.logs} absen</span>
+        </div>
+        <div className="flex gap-2 pt-1 border-t border-[var(--color-border)]">
+          <button onClick={() => openEditModal(row)} className="flex-1 py-1.5 rounded-[var(--radius-input)] bg-event-yellow text-event-navy text-xs font-medium">Edit</button>
+          <button onClick={() => handleDelete(row.id, row.nama)} className="flex-1 py-1.5 rounded-[var(--radius-input)] bg-pmi-red text-white text-xs font-medium">Hapus</button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <Card>
-      <div className="px-5 py-3 bg-event-blue border-b-3 border-event-navy flex items-center justify-between">
-        <h2 className="font-heading text-xs text-white">SESI ABSENSI</h2>
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <h2 className="font-heading text-xs text-event-navy">SESI ABSENSI</h2>
         <button
           onClick={openCreateModal}
-          className="w-8 h-8 flex items-center justify-center bg-white border-2 border-event-navy text-event-navy hover:bg-event-cream transition-colors"
+          className="flex items-center gap-1.5 px-3 py-2 bg-event-blue text-white rounded-[var(--radius-btn)] text-xs font-semibold hover:bg-event-blue-dark transition-colors"
         >
-          <Plus size={16} />
+          <Plus size={14} />
+          Tambah Sesi
         </button>
       </div>
 
-      <div className="p-4 flex flex-col gap-3">
-        {sesiList.length === 0 && (
-          <p className="font-body text-xs text-event-navy/50 text-center py-6">
-            Belum ada sesi absensi. Klik tombol + untuk menambahkan.
-          </p>
-        )}
-
-        {sesiList.map((sesi) => {
-          const status = getSesiStatus({
-            tanggal: new Date(sesi.tanggal),
-            jamMulai: sesi.jamMulai,
-            jamSelesai: sesi.jamSelesai,
-          })
-          const badge = STATUS_BADGE[status]
-
-          return (
-            <div
-              key={sesi.id}
-              className="border-2 border-event-navy/20 p-3 flex items-center justify-between gap-3"
-            >
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-body font-bold text-sm text-event-navy">{sesi.nama}</span>
-                  <Badge variant={badge.variant}>{badge.label}</Badge>
-                </div>
-                <p className="font-body text-xs text-event-navy/60 mt-1">
-                  {new Date(sesi.tanggal).toLocaleDateString('id-ID', {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}{' '}
-                  · {sesi.jamMulai} - {sesi.jamSelesai} WIB · {sesi._count.logs} absen tercatat
-                </p>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => openEditModal(sesi)}
-                  className="w-8 h-8 flex items-center justify-center bg-event-yellow border-2 border-event-navy hover:bg-event-yellow-dark transition-colors"
-                >
-                  <Pencil size={14} />
-                </button>
-                <button
-                  onClick={() => handleDelete(sesi.id, sesi.nama)}
-                  className="w-8 h-8 flex items-center justify-center bg-pmi-red text-white border-2 border-event-navy hover:bg-red-700 transition-colors"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      {sesiList.length === 0 ? (
+        <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] bg-white py-10 text-center">
+          <p className="font-body text-sm text-gray-400">Belum ada sesi absensi.</p>
+        </div>
+      ) : (
+        <ResponsiveTable columns={columns} data={sesiList} renderMobileCard={renderMobileCard} />
+      )}
 
       <Modal
         isOpen={isModalOpen}
@@ -215,6 +239,6 @@ export function SesiManager({ initialSesi }: { initialSesi: SesiData[] }) {
           </Button>
         </form>
       </Modal>
-    </Card>
+    </div>
   )
 }

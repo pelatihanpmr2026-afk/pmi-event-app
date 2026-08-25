@@ -18,9 +18,11 @@ interface PembayaranData {
 
 export function KonfirmasiPembayaranPanel({
   pembayaran,
+  label,
   onUpdated,
 }: {
   pembayaran: PembayaranData | null
+  label?: string
   onUpdated: () => void
 }) {
   const [showTolakForm, setShowTolakForm] = useState(false)
@@ -76,7 +78,7 @@ export function KonfirmasiPembayaranPanel({
     <div className="border-2 border-event-navy/20 p-3 flex flex-col gap-3">
       <div className="flex items-center justify-between">
         <span className="font-body font-bold text-xs text-event-navy">
-          {pembayaran.tipe === 'PESERTA' ? 'Pembayaran Peserta & Pendamping' : 'Pembayaran Tenda'}
+          {label ?? (pembayaran.tipe === 'PESERTA' ? 'Pembayaran Peserta & Pendamping' : 'Pembayaran Tenda')}
         </span>
         <Badge variant={statusConfig.variant}>{statusConfig.label}</Badge>
       </div>
@@ -181,7 +183,7 @@ export function KonfirmasiPembayaranPanel({
      {pembayaran.kwitansiUrl && (
   <a href={pembayaran.kwitansiUrl} download target="_blank" rel="noopener noreferrer">
     <Button type="button" variant="secondary" size="sm" className="w-full">
-      Download Kwitansi (PDF)
+      Download Kwitansi {pembayaran.tipe === 'TENDA' ? 'Sewa Tenda' : 'Pendaftaran'} (PDF)
     </Button>
   </a>
 )}

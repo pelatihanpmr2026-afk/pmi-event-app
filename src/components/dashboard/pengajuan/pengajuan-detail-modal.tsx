@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { toast } from 'sonner'
-import { Download, Check, X, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Check, X, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Modal } from '@/components/ui/modal'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { DownloadPengajuanButton } from '@/components/pengajuan/download-pengajuan-button'
 import { DIVISI_OPTIONS } from '@/lib/constants'
 
 interface PengajuanDetail {
@@ -19,7 +20,6 @@ interface PengajuanDetail {
   totalPengajuan: number
   status: 'MENUNGGU' | 'DISETUJUI' | 'DITOLAK'
   catatanAdmin: string | null
-  pdfUrl: string | null
   tandaTanganUrl: string | null
   createdAt: string
   items: { id: string; namaBarang: string; qty: number; hargaSatuan: number; total: number }[]
@@ -149,7 +149,7 @@ useEffect(() => {
       const result = await res.json()
       if (!res.ok) throw new Error(result?.message || 'Gagal menyimpan perubahan')
 
-      toast.success('Perubahan tersimpan, pengajuan otomatis disetujui')
+      toast.success('Perubahan tersimpan, pengajuan menunggu proses')
       setIsEditing(false)
       await fetchDetail()
       onProcessed()
@@ -349,13 +349,8 @@ useEffect(() => {
             </div>
           )}
 
-          {!isEditing && data.pdfUrl && (
-            <a href={data.pdfUrl} download target="_blank" rel="noopener noreferrer">
-              <Button variant="secondary" size="sm" className="w-full flex items-center justify-center gap-1.5">
-                <Download size={14} />
-                Download PDF Pengajuan
-              </Button>
-            </a>
+          {!isEditing && (
+            <DownloadPengajuanButton pengajuanId={data.id} />
           )}
 
           {isEditing && (

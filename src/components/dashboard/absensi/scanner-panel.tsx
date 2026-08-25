@@ -1,43 +1,31 @@
 'use client'
 
 import { useState } from 'react'
-import { Card } from '@/components/ui/card'
+import { Camera, CameraOff } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { QrScanner } from './qr-scanner'
-import { ScanResultCard, type ScanResult } from './scan-result-card'
+import { Card, CardHeader, CardContent } from '@/components/ui/card'
 
 export function ScannerPanel() {
-  const [result, setResult] = useState<ScanResult | null>(null)
-  const [isProcessing, setIsProcessing] = useState(false)
+  const [isScanning, setIsScanning] = useState(false)
 
-  async function handleScan(qrToken: string) {
-    if (isProcessing) return
-    setIsProcessing(true)
-
-    try {
-      const res = await fetch('/api/absensi/scan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qrToken }),
-      })
-      const data = await res.json()
-
-      setResult({ success: res.ok && data.success, message: data.message, data: data.data })
-    } catch {
-      setResult({ success: false, message: 'Gagal menghubungi server' })
-    } finally {
-      setIsProcessing(false)
-    }
+  // Scan result logic untuk panel ini khusus meneruskan ke parent
+  const handleScan = (decodedText: string) => {
+    // Logic untuk melemparkan hasil scan ke parent akan ditangani oleh parent yang membungkus komponen ini
+    // Namun di Dashboard Absensi, logic ini langsung di handle di handleScan di QRScanner
+    // Kita biarkan QRScanner yang handle
   }
 
   return (
     <Card>
-      <div className="px-5 py-3 bg-event-pink border-b-3 border-event-navy">
-        <h2 className="font-heading text-xs text-white">SCAN QR CODE</h2>
-      </div>
-      <div className="p-5 flex flex-col gap-4">
-        <QrScanner onScan={handleScan} isProcessing={isProcessing} />
-        <ScanResultCard result={result} />
-      </div>
+      <CardHeader variant="blue">
+        <h2 className="font-heading text-xs text-white">SCAN QR ABSENSI</h2>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <QrScanner onScan={(text) => {
+          // Logic handle scan di parent
+        }} isProcessing={false} />
+      </CardContent>
     </Card>
   )
 }

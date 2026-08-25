@@ -1,66 +1,108 @@
 'use client'
 
-import { useState } from 'react'
-import Image from 'next/image'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs } from '@/components/ui/tabs'
+import { PixelPageShell } from '@/components/public/pixel-page-shell'
 import { CariSekolah } from '@/components/tenda-sewa/cari-sekolah'
 import { BuatSekolahBaru } from '@/components/tenda-sewa/buat-sekolah-baru'
 import { PemilihanTenda } from '@/components/tenda-sewa/pemilihan-tenda'
+import type { DataSekolahMiniValues } from '@/lib/validations/sekolah'
+
+const CTX_KEY_SEKOLAH = 'tenda-sewa-sekolah-id'
+const CTX_KEY_DRAFT = 'tenda-sewa-draft-sekolah'
+
+const MARQUEE_ITEMS = ['SEWA TENDA', 'PERKEMAHAN', 'KUOTA TERBATAS', 'JANGAN SAMPAI KETINGGALAN']
 
 export default function SewaTendaPage() {
   const router = useRouter()
   const [tab, setTab] = useState<'cari' | 'baru'>('cari')
   const [sekolahId, setSekolahId] = useState<string | null>(null)
+  const [draftSekolah, setDraftSekolah] = useState<DataSekolahMiniValues | null>(null)
+  const [cariQuery, setCariQuery] = useState('')
+  const [hydrated, setHydrated] = useState(false)
 
-  function handleTendaSuccess() {
+  // Pulihkan konteks (sekolah terpilih) dari localStorage setelah refresh (U2).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const sid = window.localStorage.getItem(CTX_KEY_SEKOLAH)
+      const rawDraft = window.localStorage.getItem(CTX_KEY_DRAFT)
+      if (sid) setSekolahId(sid)
+      if (rawDraft) {
+        try {
+          setDraftSekolah(JSON.parse(rawDraft) as DataSekolahMiniValues)
+        } catch {
+          window.localStorage.removeItem(CTX_KEY_DRAFT)
+        }
+      }
+      setHydrated(true)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (!hydrated) return
+    if (sekolahId) window.localStorage.setItem(CTX_KEY_SEKOLAH, sekolahId)
+    else window.localStorage.removeItem(CTX_KEY_SEKOLAH)
+  }, [sekolahId, hydrated])
+
+  useEffect(() => {
+    if (!hydrated) return
+    if (draftSekolah) window.localStorage.setItem(CTX_KEY_DRAFT, JSON.stringify(draftSekolah))
+    else window.localStorage.removeItem(CTX_KEY_DRAFT)
+  }, [draftSekolah, hydrated])
+
+  function handleTendaSuccess(hasReservation: boolean, pilihan?: { tendaJenisId: string; jumlah: number }[]) {
+    if (draftSekolah && pilihan) {
+      window.localStorage.removeItem(CTX_KEY_DRAFT)
+      window.localStorage.removeItem(CTX_KEY_SEKOLAH)
+      router.push(`/tenda/pembayaran/${pilihan[0].tendaJenisId}`)
+      return
+    }
     if (!sekolahId) return
+    if (!hasReservation) {
+      setSekolahId(null)
+      setTab('cari')
+      return
+    }
+    window.localStorage.removeItem(CTX_KEY_SEKOLAH)
+    window.localStorage.removeItem(CTX_KEY_DRAFT)
     router.push(`/tenda/pembayaran/${sekolahId}`)
   }
 
   return (
-    <main className="min-h-screen py-10 px-4 flex flex-col gap-8 items-center">
-      <div className="flex flex-col items-center gap-4 text-center">
-        <div className="flex items-center gap-4">
-          <div className="relative w-76 h-60 sm:w-104 sm:h-[200px] shrink-0">
-                              <Image
-                                src="/assets/LogoEvent.png"
-                                alt="Logo Event"
-                                fill
-                                className="object-contain"
-                                priority
-                              />
-                            </div>
-        </div>
-        <h1 className="font-heading text-lg sm:text-xl text-event-navy leading-relaxed">
-          SEWA TENDA
-        </h1>
-        <p className="font-body text-xs sm:text-sm text-event-navy/70 max-w-md">
-          Bisa dilakukan sebelum atau sesudah pendaftaran peserta
-        </p>
-      </div>
-
-      <div className="w-full max-w-2xl flex flex-col gap-6">
-        {!sekolahId && (
-          <Card>
+    <PixelPageShell
+      title="SEWA TENDA"
+      subtitle="Bisa dilakukan sebelum atau sesudah pendaftaran peserta"
+      marqueeItems={MARQUEE_ITEMS}
+      marqueeVariant="yellow"
+    >
+      <div className="w-full flex flex-col gap-6">
+        {!sekolahId && !draftSekolah && (
+          <Card pixel>
             <CardContent className="pt-5 flex flex-col gap-4">
               <Tabs
+                pixel
                 tabs={[
-                  { key: 'cari', label: 'Sudah Daftar Peserta' },
-                  { key: 'baru', label: 'Belum Daftar Peserta' },
+                  { key: 'cari', label: 'Cari Sekolah' },
+                  { key: 'baru', label: 'Sekolah Baru' },
                 ]}
                 activeKey={tab}
-                onChange={(key) => setTab(key as 'cari' | 'baru')}
+                onChange={(key) => {
+                  setTab(key as 'cari' | 'baru')
+                  setCariQuery('')
+                }}
               />
-              {tab === 'cari' && <CariSekolah onSelect={(s) => setSekolahId(s.id)} />}
-              {tab === 'baru' && <BuatSekolahBaru onCreated={(id) => setSekolahId(id)} />}
+              {tab === 'cari' && <CariSekolah initialQuery={cariQuery} onSelect={(s) => setSekolahId(s.id)} />}
+              {tab === 'baru' && <BuatSekolahBaru onCreated={(data) => setDraftSekolah(data)} onExisting={(nama) => { setCariQuery(nama); setTab('cari') }} />}
             </CardContent>
           </Card>
         )}
 
+        {draftSekolah && !sekolahId && <PemilihanTenda draftSekolah={draftSekolah} onSuccess={handleTendaSuccess} />}
         {sekolahId && <PemilihanTenda sekolahId={sekolahId} onSuccess={handleTendaSuccess} />}
       </div>
-    </main>
+    </PixelPageShell>
   )
 }

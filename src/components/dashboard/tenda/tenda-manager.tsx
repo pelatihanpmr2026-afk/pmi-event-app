@@ -14,6 +14,7 @@ import { tendaJenisSchema, TendaJenisFormValues } from '@/lib/validations/tenda-
 export interface TendaData {
   id: string
   nama: string
+  namaVendor: string | null
   kapasitasMin: number
   kapasitasMax: number
   harga: number
@@ -39,7 +40,7 @@ export function TendaManager({ initialTenda }: { initialTenda: TendaData[] }) {
 
 function openCreateModal() {
   setEditingTenda(null)
-  reset({ nama: '', kapasitasMin: '', kapasitasMax: '', harga: '', hargaVendor: '', stokTotal: '' })
+  reset({ nama: '', namaVendor: '', kapasitasMin: '', kapasitasMax: '', harga: '', hargaVendor: '', stokTotal: '' })
   setIsModalOpen(true)
 }
 
@@ -47,6 +48,7 @@ function openEditModal(tenda: TendaData) {
   setEditingTenda(tenda)
   reset({
     nama: tenda.nama,
+    namaVendor: tenda.namaVendor ?? '',
     kapasitasMin: String(tenda.kapasitasMin),
     kapasitasMax: String(tenda.kapasitasMax),
     harga: String(tenda.harga),
@@ -70,6 +72,7 @@ async function onSubmit(values: TendaJenisFormValues) {
 
 const payload = {
   nama: values.nama,
+  namaVendor: values.namaVendor,
   kapasitasMin: Number(values.kapasitasMin),
   kapasitasMax: Number(values.kapasitasMax),
   harga: Number(values.harga),
@@ -148,6 +151,11 @@ const payload = {
                       {tenda.kapasitasMin}-{tenda.kapasitasMax} orang · Rp
                       {tenda.harga.toLocaleString('id-ID')}
                     </p>
+                    {tenda.namaVendor && (
+                      <p className="font-body text-[10px] text-event-navy/40">
+                        Vendor: {tenda.namaVendor}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
@@ -200,6 +208,12 @@ const payload = {
             placeholder="Contoh: Tenda Dome"
             error={errors.nama?.message}
             {...register('nama')}
+          />
+          <Input
+            label="Nama Vendor"
+            placeholder="Contoh: CV Sejahtera Tenda"
+            error={errors.namaVendor?.message}
+            {...register('namaVendor')}
           />
           <div className="grid grid-cols-2 gap-3">
             <Input

@@ -1,5 +1,11 @@
 import ExcelJS from 'exceljs'
 import { RIWAYAT_PENYAKIT_OPTIONS } from './constants-sekolah'
+import { tryCropToPassportPhoto } from './passport-photo'
+
+const PHOTO_COLUMN_WIDTH = 12
+const PHOTO_WIDTH_PX = 76 // 2 cm at 96 DPI
+const PHOTO_HEIGHT_PX = 113 // 3 cm at 96 DPI
+const PHOTO_ROW_HEIGHT_PT = 120
 
 interface RekapRow {
   noPeserta: string
@@ -35,7 +41,7 @@ export async function generateExcelPesertaRekapBuffer(
 
   const columns = [
     { header: `No ${tipe === 'PESERTA' ? 'Peserta' : 'Pendamping'}`, key: 'no', width: 12 },
-    ...(includeFoto ? [{ header: 'Foto', key: 'foto', width: 14 }] : []),
+    ...(includeFoto ? [{ header: 'Foto', key: 'foto', width: PHOTO_COLUMN_WIDTH }] : []),
     { header: 'Nama Lengkap', key: 'nama', width: 26 },
     { header: 'Sekolah', key: 'sekolah', width: 28 },
     { header: 'Tempat Lahir', key: 'tempatLahir', width: 16 },
@@ -55,7 +61,7 @@ export async function generateExcelPesertaRekapBuffer(
     cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
   })
 
-  rows.forEach((r, i) => {
+  for (const [i, r] of rows.entries()) {
     const rowNum = i + 2
 
     const values: (string | number)[] = [r.noPeserta]
@@ -77,13 +83,19 @@ export async function generateExcelPesertaRekapBuffer(
     sheet.getRow(rowNum).values = values
 
     if (includeFoto) {
-      sheet.getRow(rowNum).height = 60
+      sheet.getRow(rowNum).height = PHOTO_ROW_HEIGHT_PT
       if (r.fotoBuffer) {
-        const imageId = workbook.addImage({ buffer: r.fotoBuffer as unknown as ExcelJS.Buffer, extension: 'jpeg' })
-        sheet.addImage(imageId, { tl: { col: 1, row: rowNum - 1 }, ext: { width: 65, height: 65 } })
+        const croppedBuffer = await tryCropToPassportPhoto(r.fotoBuffer)
+        if (croppedBuffer) {
+          const imageId = workbook.addImage({ buffer: croppedBuffer as unknown as ExcelJS.Buffer, extension: 'jpeg' })
+          sheet.addImage(imageId, {
+            tl: { col: 1, row: rowNum - 1 },
+            ext: { width: PHOTO_WIDTH_PX, height: PHOTO_HEIGHT_PX },
+          })
+        }
       }
     }
-  })
+  }
 
   const buffer = await workbook.xlsx.writeBuffer()
   return Buffer.from(buffer)

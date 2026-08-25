@@ -1,25 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getSession } from '@/lib/get-session'
+import { requireAdmin } from '@/lib/api-guard'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, message: 'Tidak diizinkan' }, { status: 401 })
-    }
+    const guard = await requireAdmin()
+    if (!guard.ok) return guard.response
 
     const { id } = await params
 
     const sekolah = await prisma.sekolah.findUnique({
       where: { id },
       include: {
-        peserta: { orderBy: { createdAt: 'asc' } },
+        peserta: { orderBy: [{ batchKe: 'asc' }, { createdAt: 'asc' }] },
         tendaSewa: { include: { tendaJenis: true } },
-        pembayaran: true,
+        pembayaran: { orderBy: [{ tipe: 'asc' }, { batchKe: 'asc' }] },
       },
     })
 

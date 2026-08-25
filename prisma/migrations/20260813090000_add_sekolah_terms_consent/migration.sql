@@ -1,0 +1,1 @@
+ALTER TABLE `sekolah` ADD COLUMN `termsVersion` VARCHAR(191) NULL, ADD COLUMN `termsAgreedAt` DATETIME(3) NULL;

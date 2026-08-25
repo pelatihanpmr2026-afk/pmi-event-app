@@ -3,21 +3,32 @@ import { nanoid } from 'nanoid'
 import { readFile } from 'fs/promises'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
+import { requireAdmin } from '@/lib/api-guard'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { dataSekolahSchema } from '@/lib/validations/sekolah'
-import { pesertaMetaArraySchema, pendampingArraySchema } from '@/lib/validations/peserta'
-import { normalizeNamaSekolah, deriveKategori, generateKodePendaftaran, sanitizeFilename } from '@/lib/sekolah'
-import { saveBuffer, saveUploadedFile, getFileExtension, getAbsolutePathFromUrl } from '@/lib/save-file'
-import { generateExcelSekolah } from '@/lib/generate-excel-sekolah'
+import { pesertaMetaArraySchema, pendampingArraySchema, normalizeNamaPeserta } from '@/lib/validations/peserta'
+import { normalizeNamaSekolah, namaSekolahKey, generateKodePendaftaran, sanitizeFilename } from '@/lib/sekolah'
+import { saveBuffer, saveUploadedFile, getFileExtension, getAbsolutePathFromUrl, deleteFileByUrl } from '@/lib/save-file'
+import { normalizeParticipantPhotoBuffer } from '@/lib/normalize-image-buffer'
 import { generateQrCode } from '@/lib/generate-qrcode'
 import { generateKwitansi, type KwitansiLineItem } from '@/lib/generate-kwitansi'
+import { generateSuratPernyataan } from '@/lib/generate-surat-pernyataan'
 import { BIAYA_PESERTA, BIAYA_PENDAMPING, ACCEPTED_BUKTI_TYPES, MAX_BUKTI_SIZE } from '@/lib/constants-sekolah'
+import { createPaymentSessionToken, PAYMENT_SESSION_COOKIE, PAYMENT_SESSION_MAX_AGE } from '@/lib/payment-session'
 import type { Jenjang, StatusSekolah } from '@prisma/client'
-
+import { TNC_VERSION } from '@/lib/tnc-content'
 
 const MAX_RETRY_KODE = 5
 
+function getBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+}
+
 export async function POST(req: NextRequest) {
   try {
+    const rl = checkRateLimit(req, { key: 'sekolah-register', max: 15, windowMs: 60 * 60 * 1000 })
+    if (rl) return rl
+
     const formData = await req.formData()
 
     const rawSekolahParsed = JSON.parse(formData.get('dataSekolah')?.toString() ?? '{}')
@@ -53,10 +64,13 @@ export async function POST(req: NextRequest) {
     }
 
     const dataSekolah = parsedSekolah.data
+    if (formData.get('termsVersion') !== TNC_VERSION) return NextResponse.json({ success: false, message: 'Persetujuan syarat dan ketentuan wajib diperbarui' }, { status: 400 })
+    // Prisma Client di development bisa masih berasal dari schema sebelum migrasi.
+    // Assertion ini tetap aman karena migrasi yang menyertai perubahan menambah kedua kolom.
+    const termsConsent = { termsVersion: TNC_VERSION, termsAgreedAt: new Date() } as object
     const pesertaList = parsedPeserta.data
     const pendampingList = parsedPendamping.data
 
-    // Bukti transfer sekarang WAJIB — bagian dari submit final
     const buktiFile = formData.get('buktiTransfer') as File | null
     if (!buktiFile || !(buktiFile instanceof File) || buktiFile.size === 0) {
       return NextResponse.json({ success: false, message: 'Bukti transfer wajib diupload' }, { status: 400 })
@@ -71,6 +85,17 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const tandaTanganFile = formData.get('tandaTanganPenanggungJawab') as File | null
+    if (tandaTanganFile && (!(tandaTanganFile instanceof File) || tandaTanganFile.size === 0)) {
+      return NextResponse.json({ success: false, message: 'File tanda tangan tidak valid' }, { status: 400 })
+    }
+    if (tandaTanganFile && tandaTanganFile.size > 2 * 1024 * 1024) {
+      return NextResponse.json({ success: false, message: 'Ukuran tanda tangan maksimal 2MB' }, { status: 400 })
+    }
+    if (tandaTanganFile && !['image/png', 'image/jpeg'].includes(tandaTanganFile.type)) {
+      return NextResponse.json({ success: false, message: 'Format tanda tangan harus PNG atau JPG' }, { status: 400 })
+    }
+
     const fotoFiles: File[] = []
     for (let i = 0; i < pesertaList.length; i++) {
       const foto = formData.get(`foto_${i}`) as File | null
@@ -83,17 +108,15 @@ export async function POST(req: NextRequest) {
       fotoFiles.push(foto)
     }
 
-    const namaLengkap = normalizeNamaSekolah(
-      dataSekolah.jenjang as Jenjang,
-      dataSekolah.statusSekolah as StatusSekolah,
-      dataSekolah.namaInput
-    )
-    const kategori = deriveKategori(dataSekolah.jenjang as Jenjang)
+    const namaLengkap = normalizeNamaSekolah(dataSekolah.namaSekolah)
+    const kategori = dataSekolah.kategori
 
-    const existingSekolah = await prisma.sekolah.findUnique({
-      where: { namaLengkap },
+    const sekolahDenganNama = await prisma.sekolah.findMany({
       include: { peserta: { select: { id: true } } },
     })
+    const existingSekolah = sekolahDenganNama.find(
+      (sekolah) => namaSekolahKey(sekolah.namaLengkap) === namaSekolahKey(namaLengkap)
+    )
 
     if (existingSekolah && existingSekolah.peserta.length > 0) {
       return NextResponse.json(
@@ -109,20 +132,78 @@ export async function POST(req: NextRequest) {
     }
 
     const uid = nanoid(10)
-    const pesertaFotoData: { url: string; buffer: Buffer }[] = []
-    for (let i = 0; i < fotoFiles.length; i++) {
-      const file = fotoFiles[i]
-      const buffer = Buffer.from(await file.arrayBuffer())
-      const ext = getFileExtension(file.name)
-      const filename = `${uid}-${i}${ext}`
-      const url = await saveBuffer(buffer, 'peserta-photos', filename)
-      pesertaFotoData.push({ url, buffer })
+    const savedFiles: string[] = []
+
+    const cleanupFiles = async () => {
+      await Promise.all(savedFiles.map((url) => deleteFileByUrl(url)))
     }
 
+    let tandaTanganPenanggungJawabUrl: string | null = null
+    const pesertaFotoData: { url: string }[] = []
+    let buktiTransferUrl: string | null = null
+
+    // ===== 1) Simpan SEMUA file dulu, SEBELUM menyentuh database =====
+    // Kegagalan apa pun di tahap ini (foto rusak, magic-bytes bukti tidak
+    // cocok, disk penuh) membatalkan pendaftaran TANPA menulis data — file
+    // yang sudah tersimpan ikut dibersihkan. Dengan begitu tidak pernah ada
+    // sekolah/peserta "ghost" yang tercatat padahal di UI user melihat error.
+    try {
+      if (tandaTanganFile) {
+        const ext = getFileExtension(tandaTanganFile.name)
+        tandaTanganPenanggungJawabUrl = await saveUploadedFile(
+          tandaTanganFile,
+          'tanda-tangan',
+          `${uid}-ttd-penanggung-jawab${ext}`
+        )
+        savedFiles.push(tandaTanganPenanggungJawabUrl)
+      }
+
+      for (let i = 0; i < fotoFiles.length; i++) {
+        const file = fotoFiles[i]
+        let buffer: Buffer
+        try {
+          buffer = await normalizeParticipantPhotoBuffer(Buffer.from(await file.arrayBuffer()))
+        } catch {
+          await cleanupFiles()
+          return NextResponse.json(
+            { success: false, message: `Foto peserta ke-${i + 1} tidak valid. Gunakan JPG atau PNG yang tidak rusak.` },
+            { status: 400 }
+          )
+        }
+        const filename = `${uid}-${i}.jpg`
+        const url = await saveBuffer(buffer, 'peserta-photos', filename)
+        pesertaFotoData.push({ url })
+        savedFiles.push(url)
+      }
+
+      // Bukti transfer disimpan di sini juga — sebelum transaksi DB — sehingga
+      // jika file ditolak (mis. nama .png tapi isi JPEG hasil kompresi), user
+      // langsung mendapat pesan error dan TIDAK ada data yang masuk DB.
+      const buktiExt = getFileExtension(buktiFile.name)
+      const buktiFilename = `${uid}${buktiExt}`
+      buktiTransferUrl = await saveUploadedFile(buktiFile, 'bukti-transfer', buktiFilename)
+      savedFiles.push(buktiTransferUrl)
+    } catch (fileError) {
+      await cleanupFiles()
+      const message =
+        fileError instanceof Error && fileError.message.includes('Isi file')
+          ? 'File bukti transfer tidak cocok dengan ekstensinya (contoh: isi JPEG tapi nama file .png). Upload file asli tanpa mengubah ekstensi.'
+          : fileError instanceof Error
+            ? fileError.message
+            : 'Gagal menyimpan file. Silakan coba lagi.'
+      return NextResponse.json({ success: false, message }, { status: 400 })
+    }
+
+    const dibayarPada = new Date()
+    const qrToken = nanoid(24)
     const biayaPeserta = pesertaList.length * BIAYA_PESERTA
     const biayaPendamping = pendampingList.length * BIAYA_PENDAMPING
     const totalBiaya = biayaPeserta + biayaPendamping
 
+    // ===== 2) Satu transaksi: Sekolah + Peserta + Pembayaran =====
+    // Baris pembayaran (MENUNGGU_KONFIRMASI + buktiTransferUrl) dibuat DALAM
+    // transaksi yang sama dengan sekolah & peserta — mustahil ada sekolah yang
+    // tersimpan tanpa tagihan.
     let createdSekolah: Prisma.SekolahGetPayload<{ include: { peserta: true } }> | null = null
     let lastError: unknown = null
     const attemptCount = existingSekolah ? 1 : MAX_RETRY_KODE
@@ -141,13 +222,20 @@ export async function POST(req: NextRequest) {
           const sekolah = existingSekolah
             ? await tx.sekolah.update({
                 where: { id: existingSekolah.id },
-                data: { namaPembina: dataSekolah.namaPembina, noWhatsappPembina: dataSekolah.noWhatsappPembina },
+                data: {
+                  namaPembina: dataSekolah.namaPembina,
+                  noWhatsappPembina: dataSekolah.noWhatsappPembina,
+                  tandaTanganPenanggungJawabUrl,
+                  ...termsConsent,
+                },
               })
             : await tx.sekolah.create({
                 data: {
-                  jenjang: dataSekolah.jenjang as Jenjang,
-                  statusSekolah: dataSekolah.statusSekolah as StatusSekolah,
-                  namaInput: dataSekolah.namaInput,
+                  // Kolom lama dipertahankan untuk kompatibilitas data historis;
+                  // pendaftaran baru hanya meminta nama resmi dan kategori.
+                  jenjang: 'SMA' as Jenjang,
+                  statusSekolah: 'SWASTA' as StatusSekolah,
+                  namaInput: namaLengkap,
                   namaLengkap,
                   kategori,
                   nomorPendaftaran: kodeInfo.nomorPendaftaran,
@@ -155,6 +243,8 @@ export async function POST(req: NextRequest) {
                   kodePendaftaran: kodeInfo.kodePendaftaran,
                   namaPembina: dataSekolah.namaPembina,
                   noWhatsappPembina: dataSekolah.noWhatsappPembina,
+                  tandaTanganPenanggungJawabUrl,
+                  ...termsConsent,
                 },
               })
 
@@ -163,9 +253,9 @@ export async function POST(req: NextRequest) {
               ...pesertaList.map((p, i) => ({
                 sekolahId: sekolah.id,
                 tipe: 'PESERTA' as const,
-                namaLengkap: p.namaLengkap,
+                namaLengkap: normalizeNamaPeserta(p.namaLengkap),
                 tempatLahir: p.tempatLahir,
-                tanggalLahir: new Date(p.tanggalLahir),
+                tanggalLahir: new Date(`${p.tanggalLahir}T00:00:00.000Z`),
                 alamat: p.alamat,
                 agama: p.agama,
                 golonganDarah: p.golonganDarah,
@@ -178,9 +268,9 @@ export async function POST(req: NextRequest) {
               ...pendampingList.map((p) => ({
                 sekolahId: sekolah.id,
                 tipe: 'PENDAMPING' as const,
-                namaLengkap: p.namaLengkap,
+                namaLengkap: normalizeNamaPeserta(p.namaLengkap),
                 tempatLahir: p.tempatLahir,
-                tanggalLahir: new Date(p.tanggalLahir),
+                tanggalLahir: new Date(`${p.tanggalLahir}T00:00:00.000Z`),
                 alamat: p.alamat,
                 agama: p.agama,
                 golonganDarah: p.golonganDarah,
@@ -192,40 +282,73 @@ export async function POST(req: NextRequest) {
             ],
           })
 
+          await tx.pembayaran.upsert({
+            where: { sekolahId_tipe_batchKe: { sekolahId: sekolah.id, tipe: 'PESERTA', batchKe: 1 } },
+            create: {
+              sekolahId: sekolah.id,
+              tipe: 'PESERTA',
+              batchKe: 1,
+              jumlahBiaya: totalBiaya,
+              statusPembayaran: 'MENUNGGU_KONFIRMASI',
+              buktiTransferUrl,
+              dibayarPada,
+              qrToken,
+              kwitansiUrl: null,
+            },
+            update: {
+              batchKe: 1,
+              jumlahBiaya: totalBiaya,
+              statusPembayaran: 'MENUNGGU_KONFIRMASI',
+              buktiTransferUrl,
+              dibayarPada,
+              qrToken,
+            },
+          })
+
           return tx.sekolah.findUniqueOrThrow({ where: { id: sekolah.id }, include: { peserta: true } })
         })
         break
       } catch (error) {
         lastError = error
-        if (
-          !existingSekolah &&
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2002' &&
-          (error.meta?.target as string[])?.includes('kodePendaftaran')
-        ) {
-          continue
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+          const target = (error.meta?.target as string[]) ?? []
+          // Kode pendaftaran duplikat karena 2 request nyaris bersamaan — coba nomor baru.
+          if (!existingSekolah && target.includes('kodePendaftaran')) {
+            continue
+          }
+          // Nama sekolah sama terdaftar bersamaan oleh 2 tab (namaLengkap unique di DB).
+          if (target.includes('namaLengkap')) {
+            await cleanupFiles()
+            return NextResponse.json(
+              {
+                success: false,
+                message: `"${namaLengkap}" sudah terdaftar. Silakan kembali ke Step 1.`,
+              },
+              { status: 409 }
+            )
+          }
         }
         throw error
       }
     }
 
     if (!createdSekolah) {
+      await cleanupFiles()
       console.error('[POST /api/sekolah] Gagal generate kode pendaftaran unik:', lastError)
       return NextResponse.json({ success: false, message: 'Gagal memproses pendaftaran, silakan coba lagi.' }, { status: 500 })
     }
 
-    // Simpan bukti transfer + generate kwitansi + buat record Pembayaran (langsung MENUNGGU_KONFIRMASI)
-    const buktiExt = getFileExtension(buktiFile.name)
-    const buktiFilename = `${uid}${buktiExt}`
-    const buktiTransferUrl = await saveUploadedFile(buktiFile, 'bukti-transfer', buktiFilename)
-    const dibayarPada = new Date()
-
-    const qrToken = nanoid(24)
+    // ===== 3) Kwitansi dibuat SETELAH transaksi sukses (non-blokir) =====
+    // Gagal generate kwitansi tidak membatalkan pendaftaran yang sudah valid —
+    // kwitansiUrl cukup dikosongkan dan bisa dibuat ulang oleh admin.
     let kwitansiUrl: string | null = null
 
     try {
       const qrFilename = `kwitansi-${nanoid(10)}.png`
-      const qrCodeUrl = await generateQrCode(qrToken, qrFilename)
+      // QR sekarang berisi URL LENGKAP (bukan token polos) — bisa langsung
+      // discan & dibuka oleh kamera HP manapun ke halaman verifikasi.
+      const verifikasiUrl = `${getBaseUrl()}/kwitansi/verifikasi/${qrToken}`
+      const qrCodeUrl = await generateQrCode(verifikasiUrl, qrFilename)
       const qrCodeBuffer = await readFile(getAbsolutePathFromUrl(qrCodeUrl))
 
       const items: KwitansiLineItem[] = [
@@ -246,68 +369,51 @@ export async function POST(req: NextRequest) {
         qrCodeBuffer,
         filename: `${sanitizeFilename(nomorKwitansi)}.pdf`,
       })
+
+      if (kwitansiUrl) {
+        await prisma.pembayaran.update({
+          where: { sekolahId_tipe_batchKe: { sekolahId: createdSekolah.id, tipe: 'PESERTA', batchKe: 1 } },
+          data: { kwitansiUrl },
+        })
+      }
     } catch (kwitansiError) {
       console.error('[POST /api/sekolah] Gagal generate kwitansi:', kwitansiError)
     }
 
-    await prisma.pembayaran.upsert({
-      where: { sekolahId_tipe: { sekolahId: createdSekolah.id, tipe: 'PESERTA' } },
-      create: {
-        sekolahId: createdSekolah.id,
-        tipe: 'PESERTA',
-        jumlahBiaya: totalBiaya,
-        statusPembayaran: 'MENUNGGU_KONFIRMASI',
-        buktiTransferUrl,
-        dibayarPada,
-        qrToken,
-        kwitansiUrl,
-      },
-      update: {
-        jumlahBiaya: totalBiaya,
-        statusPembayaran: 'MENUNGGU_KONFIRMASI',
-        buktiTransferUrl,
-        dibayarPada,
-        qrToken,
-        kwitansiUrl,
-      },
-    })
-
-    try {
-      const excelFilename = `${sanitizeFilename(createdSekolah.kodePendaftaran)}.xlsx`
-      const excelUrl = await generateExcelSekolah({
-        namaSekolah: namaLengkap,
-        kodePendaftaran: createdSekolah.kodePendaftaran,
-        peserta: pesertaList.map((p, i) => ({
-          namaLengkap: p.namaLengkap,
-          tempatLahir: p.tempatLahir,
-          tanggalLahir: new Date(p.tanggalLahir),
-          alamat: p.alamat,
-          agama: p.agama,
-          golonganDarah: p.golonganDarah,
-          tahunMasuk: Number(p.tahunMasuk),
-          noHp: p.noHp,
-          gender: p.gender,
-          fotoBuffer: pesertaFotoData[i].buffer,
-        })),
-        pendamping: pendampingList.map((p) => ({
-          namaLengkap: p.namaLengkap,
-          tempatLahir: p.tempatLahir,
-          tanggalLahir: new Date(p.tanggalLahir),
-          alamat: p.alamat,
-          agama: p.agama,
-          golonganDarah: p.golonganDarah,
-          tahunMasuk: Number(p.tahunMasuk),
-          noHp: p.noHp,
-          gender: p.gender,
-        })),
-        filename: excelFilename,
-      })
-      await prisma.sekolah.update({ where: { id: createdSekolah.id }, data: { excelUrl } })
-    } catch (excelError) {
-      console.error('[POST /api/sekolah] Gagal generate Excel:', excelError)
+    // ===== 4) Surat Pernyataan dibuat SETELAH transaksi sukses (non-blokir) =====
+    // Sama seperti kwitansi: kegagalan di sini tidak membatalkan pendaftaran.
+    // Surat dibuat SEKARANG (bukan menunggu konfirmasi admin) supaya tombol
+    // download Surat Pernyataan + Kwitansi langsung muncul di halaman status
+    // pembayaran meskipun bukti transfer belum diverifikasi.
+    if (createdSekolah.suratPernyataanUrl == null) {
+      try {
+        let tandaTanganBuffer: Buffer | null = null
+        if (tandaTanganPenanggungJawabUrl) {
+          try {
+            tandaTanganBuffer = await readFile(getAbsolutePathFromUrl(tandaTanganPenanggungJawabUrl))
+          } catch (signatureError) {
+            console.error('[POST /api/sekolah] Gagal membaca tanda tangan:', signatureError)
+          }
+        }
+        const suratFilename = `${sanitizeFilename(createdSekolah.kodePendaftaran)}.pdf`
+        const suratUrl = await generateSuratPernyataan({
+          namaSekolah: createdSekolah.namaLengkap,
+          kodePendaftaran: createdSekolah.kodePendaftaran,
+          namaPembina: createdSekolah.namaPembina,
+          tanggal: new Date(),
+          filename: suratFilename,
+          tandaTanganBuffer,
+        })
+        await prisma.sekolah.update({
+          where: { id: createdSekolah.id },
+          data: { suratPernyataanUrl: suratUrl },
+        })
+      } catch (suratError) {
+        console.error('[POST /api/sekolah] Gagal generate Surat Pernyataan:', suratError)
+      }
     }
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       {
         success: true,
         message: 'Pendaftaran & bukti transfer berhasil dikirim',
@@ -315,8 +421,34 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     )
+
+    // Beri sesi pembayaran peserta (30 hari) — dipakai melindungi endpoint
+    // upload bukti transfer dari akses pihak yang tidak berhak.
+    const paymentToken = await createPaymentSessionToken(createdSekolah.id)
+    response.cookies.set(PAYMENT_SESSION_COOKIE, paymentToken, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: PAYMENT_SESSION_MAX_AGE,
+      path: `/api/sekolah/${createdSekolah.id}`,
+    })
+
+    return response
   } catch (error) {
     console.error('[POST /api/sekolah]', error)
+    return NextResponse.json({ success: false, message: 'Terjadi kesalahan pada server' }, { status: 500 })
+  }
+}
+
+export async function GET() {
+  try {
+    const guard = await requireAdmin()
+    if (!guard.ok) return guard.response
+
+    const panitiaList = await prisma.sekolah.findMany({ orderBy: { createdAt: 'desc' } })
+    return NextResponse.json({ success: true, data: panitiaList })
+  } catch (error) {
+    console.error('[GET /api/sekolah]', error)
     return NextResponse.json({ success: false, message: 'Terjadi kesalahan pada server' }, { status: 500 })
   }
 }

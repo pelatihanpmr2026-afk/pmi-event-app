@@ -9,8 +9,6 @@ const PREFIX_MAP: Record<Jenjang, Record<StatusSekolah, string>> = {
   MA: { NEGERI: 'MAN', SWASTA: 'MAS' },
 }
 
-// Semua variasi kata jenjang & status yang mungkin diketik ulang user
-// secara tidak sengaja, walau sudah dipilih lewat dropdown.
 const REDUNDANT_WORDS = new Set([
   'smp', 'smpn', 'smps',
   'mts', 'mtsn', 'mtss',
@@ -21,13 +19,30 @@ const REDUNDANT_WORDS = new Set([
 ])
 
 /**
- * Menghapus kata jenjang/status yang keketik ulang di AWAL input user
- * (mis. "SMA Negeri 1 Cianjur" -> "1 Cianjur"), supaya tidak dobel
- * dengan prefix yang sudah otomatis ditambahkan dari pilihan dropdown.
- * Hanya membersihkan token di awal, bukan di tengah/akhir kalimat
- * (supaya nama sekolah yang kebetulan mengandung kata serupa di
- * bagian belakang tidak ikut terpotong, misal "SMA Terpadu Al Ma'arif").
+ * Normalisasi nilai yang disimpan: kapital seluruhnya dan satu spasi antar kata.
+ * Istilah seperti "NEGERI", "N", atau "SMKN" sengaja tidak diubah agar
+ * nama resmi yang diinput pengguna tetap terjaga.
  */
+export function normalizeNamaSekolah(namaSekolah: string): string
+export function normalizeNamaSekolah(jenjang: Jenjang, statusSekolah: StatusSekolah, namaInput: string): string
+export function normalizeNamaSekolah(
+  namaSekolahOrJenjang: string | Jenjang,
+  statusSekolah?: StatusSekolah,
+  namaInput?: string
+): string {
+  if (statusSekolah && namaInput !== undefined) {
+    const prefix = PREFIX_MAP[namaSekolahOrJenjang as Jenjang][statusSekolah]
+    return `${prefix} ${stripRedundantPrefix(namaInput)}`.trim()
+  }
+
+  const namaSekolah = namaSekolahOrJenjang
+  return namaSekolah
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLocaleUpperCase('id-ID')
+}
+
+/** Membersihkan awalan jenjang/status yang terketik ulang pada alur lama. */
 export function stripRedundantPrefix(input: string): string {
   const tokens = input.trim().split(/\s+/)
 
@@ -43,14 +58,15 @@ export function stripRedundantPrefix(input: string): string {
   return tokens.join(' ').trim()
 }
 
-export function normalizeNamaSekolah(
-  jenjang: Jenjang,
-  statusSekolah: StatusSekolah,
-  namaInput: string
-): string {
-  const prefix = PREFIX_MAP[jenjang][statusSekolah]
-  const cleanedInput = stripRedundantPrefix(namaInput).replace(/\s+/g, ' ')
-  return `${prefix} ${cleanedInput}`.trim()
+/**
+ * Kunci pembanding untuk mendeteksi nama sekolah yang sama tanpa mengubah
+ * nama tersimpan. Variasi awalan sekolah negeri diperlakukan setara:
+ * "SMK NEGERI 1", "SMK N 1", dan "SMKN 1" menghasilkan kunci yang sama.
+ */
+export function namaSekolahKey(namaSekolah: string): string {
+  return normalizeNamaSekolah(namaSekolah)
+    .replace(/\b(SMP|SMA|SMK|MTS|MA)\s+(?:NEGERI|N)\b/g, '$1')
+    .replace(/\b(SMP|SMA|SMK|MTS|MA)N\b/g, '$1')
 }
 
 export function deriveKategori(jenjang: Jenjang): KategoriSekolah {
@@ -67,6 +83,7 @@ async function findNomorUrutKosong(kategori: KategoriSekolah, tahun: number): Pr
       nomorPendaftaran: true,
       pembayaran: {
         where: { tipe: 'PESERTA' },
+        orderBy: { batchKe: 'asc' },
         select: { statusPembayaran: true },
       },
     },
@@ -96,11 +113,11 @@ export async function generateKodePendaftaran(
 ): Promise<{ nomorPendaftaran: number; tahunPendaftaran: number; kodePendaftaran: string }> {
   const nomorPendaftaran = await findNomorUrutKosong(kategori, tahun)
   const nomorFormatted = String(nomorPendaftaran).padStart(3, '0')
-  const namaSekolahFormatted = namaLengkap
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '_')
-  const kodePendaftaran = `${nomorFormatted}${kategori}PMR${tahun}_${namaSekolahFormatted}`
+  const kodeKategori = kategori === 'WIRA' ? 'WR' : 'MD'
+  const bulan = String(new Date().getMonth() + 1).padStart(2, '0')
+  // Format terbaca: 001-WR.08.2026 (nomor urut-kategori.bulan daftar.tahun daftar).
+  // Unik karena nomorPendaftaran berurutan per kategori per tahun.
+  const kodePendaftaran = `${nomorFormatted}-${kodeKategori}.${bulan}.${tahun}`
 
   return { nomorPendaftaran, tahunPendaftaran: tahun, kodePendaftaran }
 }

@@ -3,9 +3,13 @@ import { getSession } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
 import { SekolahStats } from '@/components/dashboard/sekolah-stats'
 import { SekolahTable } from '@/components/dashboard/sekolah-table'
-import { DashboardBackground } from '@/components/dashboard/dashboard-background'
 
 export const dynamic = 'force-dynamic'
+
+function pilihPembayaranPeserta<T extends { tipe: string; statusPembayaran: string; batchKe: number; jumlahBiaya: number; statusDaftarUlang: boolean }>(payments: T[]) {
+  const peserta = payments.filter((p) => p.tipe === 'PESERTA').sort((a, b) => b.batchKe - a.batchKe)
+  return peserta.find((p) => p.statusPembayaran === 'MENUNGGU_KONFIRMASI' || p.statusPembayaran === 'DITOLAK') ?? peserta[0] ?? null
+}
 
 export default async function DashboardSekolahPage() {
   const session = await getSession()
@@ -21,19 +25,32 @@ export default async function DashboardSekolahPage() {
   })
 
   const totalSekolah = sekolahList.length
+  const totalPeserta = sekolahList.reduce(
+    (sum, s) => sum + s.peserta.filter((p) => p.tipe === 'PESERTA').length,
+    0
+  )
+  const totalPendamping = sekolahList.reduce(
+    (sum, s) => sum + s.peserta.filter((p) => p.tipe === 'PENDAMPING').length,
+    0
+  )
+  const menungguKonfirmasi = sekolahList.reduce((sum, s) => {
+    const pembayaranPeserta = pilihPembayaranPeserta(s.pembayaran)
+    const pembayaranTenda = s.pembayaran.find((p) => p.tipe === 'TENDA')
+    let count = 0
+    if (pembayaranPeserta?.statusPembayaran === 'MENUNGGU_KONFIRMASI') count++
+    if (pembayaranTenda?.statusPembayaran === 'MENUNGGU_KONFIRMASI') count++
+    return sum + count
+  }, 0)
 
   const serializedData = sekolahList.map((s) => {
     const jp = s.peserta.filter((p) => p.tipe === 'PESERTA').length
     const jd = s.peserta.filter((p) => p.tipe === 'PENDAMPING').length
-
-    const pembayaranPeserta = s.pembayaran.find((p) => p.tipe === 'PESERTA') ?? null
+    const pembayaranPeserta = pilihPembayaranPeserta(s.pembayaran)
     const pembayaranTenda = s.pembayaran.find((p) => p.tipe === 'TENDA') ?? null
-
-    const menungguPeserta = pembayaranPeserta?.statusPembayaran === 'MENUNGGU_KONFIRMASI' ? 1 : 0
-    const menungguTenda = pembayaranTenda?.statusPembayaran === 'MENUNGGU_KONFIRMASI' ? 1 : 0
 
     return {
       id: s.id,
+      nomorPendaftaran: s.nomorPendaftaran,
       namaLengkap: s.namaLengkap,
       kodePendaftaran: s.kodePendaftaran,
       jenjang: s.jenjang,
@@ -42,48 +59,46 @@ export default async function DashboardSekolahPage() {
       jumlahPeserta: jp,
       jumlahPendamping: jd,
       jumlahTenda: s.tendaSewa.reduce((sum, t) => sum + t.jumlah, 0),
+      sudahCetak: s.sudahCetak,
       pembayaranPeserta: pembayaranPeserta
-        ? { status: pembayaranPeserta.statusPembayaran, jumlahBiaya: pembayaranPeserta.jumlahBiaya }
+        ? {
+            id: pembayaranPeserta.id,
+            status: pembayaranPeserta.statusPembayaran,
+            jumlahBiaya: pembayaranPeserta.jumlahBiaya,
+            statusDaftarUlang: pembayaranPeserta.statusDaftarUlang,
+            buktiTransferUrl: pembayaranPeserta.buktiTransferUrl,
+            kwitansiUrl: pembayaranPeserta.kwitansiUrl,
+          }
         : null,
       pembayaranTenda: pembayaranTenda
-        ? { status: pembayaranTenda.statusPembayaran, jumlahBiaya: pembayaranTenda.jumlahBiaya }
+        ? {
+            id: pembayaranTenda.id,
+            status: pembayaranTenda.statusPembayaran,
+            jumlahBiaya: pembayaranTenda.jumlahBiaya,
+            buktiTransferUrl: pembayaranTenda.buktiTransferUrl,
+            kwitansiUrl: pembayaranTenda.kwitansiUrl,
+          }
         : null,
-      _menungguCount: menungguPeserta + menungguTenda,
     }
   })
 
-  const totalPeserta = serializedData.reduce((sum, s) => sum + s.jumlahPeserta, 0)
-  const totalPendamping = serializedData.reduce((sum, s) => sum + s.jumlahPendamping, 0)
-  const menungguKonfirmasi = serializedData.reduce((sum, s) => sum + s._menungguCount, 0)
-
-  const cleanedData = serializedData.map(({ _menungguCount, ...rest }) => rest)
-
   return (
-    <div className="relative flex flex-col gap-8 px-4 py-6 md:px-8 lg:px-10">
-      <DashboardBackground />
-
-      {/* Header */}
-      <div className="relative z-10 space-y-2">
-        <h1 className="font-heading text-2xl sm:text-3xl lg:text-4xl text-event-navy leading-tight tracking-tight">
-          DASHBOARD <span className="text-event-pink">SEKOLAH</span>
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="font-heading text-base sm:text-lg text-event-navy leading-relaxed">
+          DASHBOARD SEKOLAH
         </h1>
-        <p className="font-body text-sm sm:text-base text-event-navy/70">
-          Kelola pendaftaran sekolah, verifikasi pembayaran peserta &amp; tenda
+        <p className="font-body text-xs text-[var(--color-text-muted)] mt-1">
+          Kelola pendaftaran sekolah, verifikasi pembayaran peserta & tenda.
         </p>
       </div>
-
-      {/* Stats Cards (client component with animated counters) */}
       <SekolahStats
         totalSekolah={totalSekolah}
         totalPeserta={totalPeserta}
         totalPendamping={totalPendamping}
         menungguKonfirmasi={menungguKonfirmasi}
       />
-
-      {/* Table (client component with search/filter & animations) */}
-      <SekolahTable initialData={cleanedData} />
-
-      <div className="h-8" />
+      <SekolahTable initialData={serializedData.slice(0, 20)} initialTotal={totalSekolah} role={session.role} />
     </div>
   )
 }

@@ -61,16 +61,25 @@ export async function getKeuanganStatsData() {
   const sekolahTendaLunas = await prisma.sekolah.findMany({
     where: { pembayaran: { some: { tipe: 'TENDA', statusPembayaran: 'LUNAS' } } },
     select: {
-      tendaSewa: { select: { jumlah: true, tendaJenis: { select: { hargaVendor: true } } } },
+      tendaSewa: {
+        select: { jumlah: true, tendaJenis: { select: { nama: true, namaVendor: true, hargaVendor: true } } },
+      },
     },
   })
 
+  const vendorMap = new Map<string, { vendor: string; nominal: number }>()
   let harusDisetorVendor = 0
   for (const s of sekolahTendaLunas) {
     for (const t of s.tendaSewa) {
-      harusDisetorVendor += t.jumlah * t.tendaJenis.hargaVendor
+      const nominal = t.jumlah * t.tendaJenis.hargaVendor
+      harusDisetorVendor += nominal
+      const vendor = t.tendaJenis.namaVendor?.trim() || 'Vendor Belum Diisi'
+      const existing = vendorMap.get(vendor)
+      if (existing) existing.nominal += nominal
+      else vendorMap.set(vendor, { vendor, nominal })
     }
   }
+  const vendorBreakdown = [...vendorMap.values()].sort((a, b) => b.nominal - a.nominal)
 
   // ===== TRANSAKSI MANUAL (ledger) =====
   const manualPemasukan = await prisma.transaksiKeuangan.groupBy({
@@ -99,14 +108,30 @@ export async function getKeuanganStatsData() {
   })
   const totalUtang = totalUtangAgg._sum.utang ?? 0
 
+  // ===== OPERASIONAL DIVISI =====
+  // Disetor dari 2 sumber yang sudah menjadi TransaksiKeuangan (bukan
+  // double-count): pengajuan anggaran yang DISETUJUI (proses/route.ts
+  // membuat transaksi kategori OPERASIONAL_DIVISI) + pengeluaran manual
+  // dengan kategori OPERASIONAL_DIVISI. Dihitung per divisi.
+  const operasionalDivisiAgg = await prisma.transaksiKeuangan.groupBy({
+    by: ['divisi'],
+    where: { jenis: 'PENGELUARAN', kategoriPengeluaran: 'OPERASIONAL_DIVISI' },
+    _sum: { kredit: true },
+  })
+  const operasionalDivisiBreakdown = operasionalDivisiAgg.map((m) => ({
+    divisi: m.divisi,
+    nominal: m._sum.kredit ?? 0,
+  }))
+  const totalOperasionalDivisi = operasionalDivisiBreakdown.reduce((acc, m) => acc + m.nominal, 0)
+
   // ===== GABUNGKAN =====
-  const pemasukanPendaftaran = pendaftaranOnline + pendaftaranManual
-  const pemasukanSewaTenda = sewaTendaOnline + sewaTendaManual
+  const pemasukanPendaftaran = pendaftaranOnline
+  const pemasukanSewaTenda = sewaTendaOnline
   const keuntunganSewaTenda = pemasukanSewaTenda - harusDisetorVendor
-  const pemasukanLainLain = sponsorManual + persentaseTendaManual + keuntunganSewaTenda
+  const pemasukanLainLain = sponsorManual + keuntunganSewaTenda
 
   const totalPemasukan =
-    pemasukanPendaftaran + pemasukanSewaTenda + sponsorManual + persentaseTendaManual
+    pemasukanPendaftaran + pemasukanSewaTenda + pemasukanLainLain
 
   const saldoBersih = pemasukanPendaftaran + pemasukanLainLain
   const saldoKotor = pemasukanPendaftaran + pemasukanSewaTenda
@@ -116,6 +141,12 @@ export async function getKeuanganStatsData() {
     pemasukanPendaftaran: {
       total: pemasukanPendaftaran,
       breakdown: { pesertaWira, pesertaMadya, pendampingWira, pendampingMadya },
+      breakdownNominal: {
+        pesertaWira: pesertaWira * BIAYA_PESERTA,
+        pesertaMadya: pesertaMadya * BIAYA_PESERTA,
+        pendampingWira: pendampingWira * BIAYA_PENDAMPING,
+        pendampingMadya: pendampingMadya * BIAYA_PENDAMPING,
+      },
       manual: pendaftaranManual,
     },
     pemasukanSewaTenda: {
@@ -124,6 +155,7 @@ export async function getKeuanganStatsData() {
       manual: sewaTendaManual,
     },
     harusDisetorVendor,
+    vendorBreakdown,
     keuntunganSewaTenda,
     pemasukanLainLain: {
       total: pemasukanLainLain,
@@ -137,6 +169,10 @@ export async function getKeuanganStatsData() {
     saldoKotor,
     saldoAkhir,
     totalUtang,
+    operasionalDivisi: {
+      total: totalOperasionalDivisi,
+      breakdown: operasionalDivisiBreakdown,
+    },
   }
 }
 
@@ -150,6 +186,7 @@ export function formatRp(n: number) {
 export async function getTransaksiListData() {
   const transaksi = await prisma.transaksiKeuangan.findMany({
     orderBy: [{ tanggal: 'asc' }, { createdAt: 'asc' }],
+    include: { pengajuan: { select: { nomorPengajuan: true } } },
   })
 
   let saldoBerjalan = 0
@@ -169,6 +206,8 @@ export async function getTransaksiListData() {
       saldo: saldoBerjalan,
       divisi: t.divisi,
       pic: t.pic,
+      pengajuanId: t.pengajuanId,
+      nomorPengajuan: t.pengajuan?.nomorPengajuan ?? null,
     }
   })
 }

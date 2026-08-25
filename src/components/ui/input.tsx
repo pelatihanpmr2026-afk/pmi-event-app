@@ -10,9 +10,9 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 export const Input = forwardRef<HTMLInputElement, InputProps>(
   ({ className, label, error, hint, id, ...props }, ref) => {
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1.5 w-full">
         {label && (
-          <label htmlFor={id} className="font-body font-bold text-sm text-event-navy">
+          <label htmlFor={id} className="font-body font-medium text-sm text-event-navy">
             {label}
           </label>
         )}
@@ -20,19 +20,19 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           ref={ref}
           id={id}
           className={cn(
-            'font-body px-4 py-3 bg-white border-3 border-event-navy text-event-navy',
-            'placeholder:text-event-navy/40',
-            'focus:outline-none focus:shadow-pixel-sm focus:-translate-x-[1px] focus:-translate-y-[1px]',
-            'transition-all duration-100',
-            error && 'border-pmi-red',
+            'font-body w-full h-11 px-3.5 bg-white border rounded-[var(--radius-input)]',
+            'placeholder:text-gray-400 text-event-navy',
+            'border-[var(--color-border)] focus:outline-none focus:border-event-blue focus:shadow-[var(--shadow-focus-blue)]',
+            error && 'border-pmi-red focus:border-pmi-red focus:shadow-none',
             className
           )}
           {...props}
         />
-        {hint && !error && <p className="text-xs text-event-navy/60">{hint}</p>}
-        {error && <p className="text-xs font-bold text-pmi-red">{error}</p>}
+        {hint && !error && <p className="text-xs text-[var(--color-text-muted)]">{hint}</p>}
+        {error && <p className="text-xs font-medium text-pmi-red">{error}</p>}
       </div>
     )
   }
 )
+
 Input.displayName = 'Input'

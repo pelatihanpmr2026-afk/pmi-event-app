@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { nanoid } from 'nanoid'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/prisma'
 import { panitiaServerSchema } from '@/lib/validations/panitia'
 import { generateNomorRegistrasi } from '@/lib/generate-nomor-registrasi'
@@ -7,10 +8,16 @@ import { saveUploadedFile, getFileExtension, getAbsolutePathFromUrl } from '@/li
 import { generateQrCode } from '@/lib/generate-qrcode'
 import { generateIdCard } from '@/lib/generate-idcard'
 import { DIVISI_OPTIONS, DIVISI_CAPACITY, MAX_FOTO_SIZE, ACCEPTED_FOTO_TYPES } from '@/lib/constants'
-import path from 'path'
+import { requireRole } from '@/lib/api-guard'
+import { checkRateLimit } from '@/lib/rate-limit'
+
+const MAX_RETRY_NOMOR = 3
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = checkRateLimit(req, { key: 'panitia-register', max: 30, windowMs: 60 * 60 * 1000 })
+    if (rl) return rl
+
     const formData = await req.formData()
 
     const rawData = {
@@ -99,51 +106,84 @@ const idCardUrl = await generateIdCard({
   filename: idCardFilename,
 })
 
-    // 4. Generate nomor registrasi & simpan ke database
-    //    Cek ulang kapasitas tepat sebelum create() sebagai lapisan pengaman kedua
-    //    (menutup celah race condition antara pengecekan awal dan proses generate file di atas)
-    const finalCount = await prisma.panitia.count({ where: { divisi: data.divisi } })
-    if (maxKapasitas !== undefined && finalCount >= maxKapasitas) {
+    // 4. Simpan ke database. Kapasitas + create dibuat ATOMIC dengan MySQL
+    //    advisory lock per divisi (GET_LOCK) — dua pendaftar divisi sama yang
+    //    submit bersamaan tidak bisa sama-sama lolos cek kuota (race condition).
+    const lockName = `panitia-${data.divisi}`
+    await prisma.$queryRaw`SELECT GET_LOCK(${lockName}, 5)`
+
+    try {
+      const finalCount = await prisma.panitia.count({ where: { divisi: data.divisi } })
+      if (maxKapasitas !== undefined && finalCount >= maxKapasitas) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Kuota untuk divisi "${divisiLabel}" baru saja penuh oleh pendaftar lain. Silakan pilih divisi lain.`,
+          },
+          { status: 409 }
+        )
+      }
+
+      // nomorRegistrasi & qrToken unik di DB — retry dengan nomor baru saat
+      // terjadi tabrakan (P2002).
+      let panitia: Awaited<ReturnType<typeof prisma.panitia.create>> | null = null
+      let lastCreateError: unknown = null
+
+      for (let attempt = 0; attempt < MAX_RETRY_NOMOR; attempt++) {
+        try {
+          const nomorRegistrasi = await generateNomorRegistrasi()
+          panitia = await prisma.panitia.create({
+            data: {
+              nomorRegistrasi,
+              nama: data.nama,
+              gender: data.gender,
+              noWhatsapp: data.noWhatsapp,
+              alamat: data.alamat,
+              asalUnit: data.asalUnit,
+              divisi: data.divisi,
+              fotoUrl,
+              qrCodeUrl,
+              idCardUrl,
+              qrToken,
+            },
+          })
+          break
+        } catch (error) {
+          lastCreateError = error
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P2002'
+          ) {
+            continue
+          }
+          throw error
+        }
+      }
+
+      if (!panitia) {
+        console.error('[POST /api/panitia] Gagal generate nomor registrasi unik:', lastCreateError)
+        return NextResponse.json(
+          { success: false, message: 'Pendaftaran gagal, silakan coba lagi.' },
+          { status: 500 }
+        )
+      }
+
       return NextResponse.json(
         {
-          success: false,
-          message: `Kuota untuk divisi "${divisiLabel}" baru saja penuh oleh pendaftar lain. Silakan pilih divisi lain.`,
+          success: true,
+          message: 'Pendaftaran berhasil',
+          data: {
+            id: panitia.id,
+            nomorRegistrasi: panitia.nomorRegistrasi,
+            idCardUrl: panitia.idCardUrl,
+            qrCodeUrl: panitia.qrCodeUrl,
+          },
         },
-        { status: 409 }
+        { status: 201 }
       )
+    } finally {
+      await prisma.$queryRaw`SELECT RELEASE_LOCK(${lockName})`
     }
-
-    const nomorRegistrasi = await generateNomorRegistrasi()
-
-    const panitia = await prisma.panitia.create({
-      data: {
-        nomorRegistrasi,
-        nama: data.nama,
-        gender: data.gender,
-        noWhatsapp: data.noWhatsapp,
-        alamat: data.alamat,
-        asalUnit: data.asalUnit,
-        divisi: data.divisi,
-        fotoUrl,
-        qrCodeUrl,
-        idCardUrl,
-        qrToken,
-      },
-    })
-
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Pendaftaran berhasil',
-        data: {
-          id: panitia.id,
-          nomorRegistrasi: panitia.nomorRegistrasi,
-          idCardUrl: panitia.idCardUrl,
-          qrCodeUrl: panitia.qrCodeUrl,
-        },
-      },
-      { status: 201 }
-    )
   } catch (error) {
     console.error('[POST /api/panitia]', error)
     return NextResponse.json(
@@ -155,6 +195,11 @@ const idCardUrl = await generateIdCard({
 
 export async function GET() {
   try {
+    // Daftar panitia berisi qrToken (kredensial absensi) dan data pribadi —
+    // tidak boleh publik. Hanya untuk admin kesekretariatan.
+    const guard = await requireRole('KESEKRETARIATAN')
+    if (!guard.ok) return guard.response
+
     const panitiaList = await prisma.panitia.findMany({
       orderBy: { createdAt: 'desc' },
     })

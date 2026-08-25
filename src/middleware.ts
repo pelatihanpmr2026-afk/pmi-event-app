@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifySessionToken, SESSION_COOKIE } from '@/lib/auth'
+import { isPathAllowedForRole, getDefaultPathForRole } from '@/lib/admin-role'
 
 export async function middleware(req: NextRequest) {
   const token = req.cookies.get(SESSION_COOKIE)?.value
@@ -14,7 +15,13 @@ export async function middleware(req: NextRequest) {
   }
 
   if (session && isLoginPage) {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
+    return NextResponse.redirect(new URL(getDefaultPathForRole(session.role), req.url))
+  }
+
+  if (session && req.nextUrl.pathname.startsWith('/dashboard')) {
+    if (!isPathAllowedForRole(session.role, req.nextUrl.pathname)) {
+      return NextResponse.redirect(new URL(getDefaultPathForRole(session.role), req.url))
+    }
   }
 
   return NextResponse.next()

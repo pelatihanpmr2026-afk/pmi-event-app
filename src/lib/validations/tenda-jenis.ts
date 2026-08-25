@@ -10,6 +10,7 @@ const numericStringSchema = (label: string, min = 0) =>
 export const tendaJenisSchema = z
   .object({
     nama: z.string().min(3, 'Nama minimal 3 karakter').max(100),
+    namaVendor: z.string().trim().min(2, 'Nama vendor wajib diisi').max(100),
     kapasitasMin: numericStringSchema('Kapasitas min', 1),
     kapasitasMax: numericStringSchema('Kapasitas maks', 1),
     harga: numericStringSchema('Harga', 0),
@@ -26,6 +27,7 @@ export type TendaJenisFormValues = z.infer<typeof tendaJenisSchema>
 export const tendaJenisApiSchema = z
   .object({
     nama: z.string().min(3, 'Nama minimal 3 karakter').max(100),
+    namaVendor: z.string().trim().min(2, 'Nama vendor wajib diisi').max(100),
     kapasitasMin: z.number().int().min(1, 'Kapasitas min minimal 1'),
     kapasitasMax: z.number().int().min(1, 'Kapasitas maks minimal 1'),
     harga: z.number().int().min(0, 'Harga tidak boleh negatif'),

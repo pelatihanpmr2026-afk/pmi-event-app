@@ -5,6 +5,7 @@ import { Search, Eye } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/responsive-table'
 import { DIVISI_OPTIONS } from '@/lib/constants'
 import { PengajuanDetailModal } from './pengajuan-detail-modal'
 
@@ -58,6 +59,89 @@ export function PengajuanTable({ initialData }: { initialData: PengajuanListItem
     if (result.success) setData(result.data)
   }
 
+  const columns: ResponsiveTableColumn<PengajuanListItem>[] = [
+    {
+      key: 'no',
+      header: 'No. Pengajuan',
+      render: (row) => <span className="font-medium text-gray-600">{row.nomorPengajuan}</span>,
+    },
+    {
+      key: 'koordinator',
+      header: 'Koordinator',
+      render: (row) => <span className="font-semibold">{row.namaKoordinator}</span>,
+    },
+    {
+      key: 'divisi',
+      header: 'Divisi',
+      render: (row) => (
+        <span className="text-gray-500">
+          {DIVISI_OPTIONS.find((d) => d.value === row.divisi)?.label ?? row.divisi}
+        </span>
+      ),
+    },
+    {
+      key: 'jenis',
+      header: 'Jenis Barang',
+      align: 'center',
+      render: (row) => row.totalJenisBarang,
+    },
+    {
+      key: 'total',
+      header: 'Total',
+      align: 'right',
+      render: (row) => <span className="font-medium">Rp{row.totalPengajuan.toLocaleString('id-ID')}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      align: 'center',
+      render: (row) => <Badge variant={STATUS_CONFIG[row.status].variant}>{STATUS_CONFIG[row.status].label}</Badge>,
+    },
+    {
+      key: 'aksi',
+      header: 'Aksi',
+      align: 'center',
+      hideOnMobile: true,
+      render: (row) => (
+        <button
+          onClick={() => openDetail(row.id)}
+          className="w-9 h-9 inline-flex items-center justify-center rounded-[var(--radius-btn)] border border-[var(--color-border)] text-gray-400 hover:text-event-navy hover:bg-[var(--color-surface-muted)] transition-colors"
+        >
+          <Eye size={16} />
+        </button>
+      ),
+    },
+  ]
+
+  const renderMobileCard = (row: PengajuanListItem) => (
+    <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] bg-white p-4 flex flex-col gap-2">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="font-body font-semibold text-event-navy">{row.namaKoordinator}</p>
+          <p className="font-body text-xs text-gray-400">{row.nomorPengajuan}</p>
+        </div>
+        <Badge variant={STATUS_CONFIG[row.status].variant}>{STATUS_CONFIG[row.status].label}</Badge>
+      </div>
+      <div className="flex items-center gap-2 text-[11px] font-body border-t border-[var(--color-border)] pt-2 mt-1">
+        <Badge variant="default">
+          {DIVISI_OPTIONS.find((d) => d.value === row.divisi)?.label ?? row.divisi}
+        </Badge>
+        <span className="font-medium text-gray-600">
+          {row.totalJenisBarang} jenis · Rp{row.totalPengajuan.toLocaleString('id-ID')}
+        </span>
+      </div>
+      <div className="flex justify-end pt-1">
+        <button
+          onClick={() => openDetail(row.id)}
+          className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-btn)] bg-event-blue text-white text-xs font-medium hover:bg-event-blue-dark transition-colors"
+        >
+          <Eye size={14} />
+          Lihat Detail
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col sm:flex-row gap-3">
@@ -90,96 +174,16 @@ export function PengajuanTable({ initialData }: { initialData: PengajuanListItem
         </div>
       </div>
 
-      {filtered.length === 0 && (
-        <div className="border-3 border-event-navy bg-white py-12 flex flex-col items-center gap-2">
-          <Search size={24} className="text-event-navy/30" />
-          <p className="font-body text-sm text-event-navy/50">Tidak ada data yang cocok</p>
+      {filtered.length === 0 ? (
+        <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] bg-white py-12 flex flex-col items-center justify-center gap-2">
+          <Search size={24} className="text-gray-300" />
+          <p className="font-body text-sm text-gray-400">Tidak ada data yang cocok</p>
         </div>
+      ) : (
+        <ResponsiveTable columns={columns} data={filtered} renderMobileCard={renderMobileCard} />
       )}
 
-      {/* MOBILE */}
-      {filtered.length > 0 && (
-        <div className="md:hidden flex flex-col gap-3">
-          {filtered.map((p) => (
-            <div key={p.id} className="border-3 border-event-navy bg-white p-4 flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-body font-bold text-sm text-event-navy">{p.namaKoordinator}</p>
-                  <p className="font-body text-[11px] text-event-navy/60">{p.nomorPengajuan}</p>
-                </div>
-                <Badge variant={STATUS_CONFIG[p.status].variant}>{STATUS_CONFIG[p.status].label}</Badge>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <Badge variant="default">{DIVISI_OPTIONS.find((d) => d.value === p.divisi)?.label}</Badge>
-                <span className="font-body text-[11px] text-event-navy/60">
-                  {p.totalJenisBarang} jenis · Rp{p.totalPengajuan.toLocaleString('id-ID')}
-                </span>
-              </div>
-              <button
-                onClick={() => openDetail(p.id)}
-                className="flex items-center justify-center gap-1.5 py-2 bg-event-blue text-white border-2 border-event-navy font-body font-bold text-xs"
-              >
-                <Eye size={14} />
-                Lihat Detail
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* DESKTOP */}
-      {filtered.length > 0 && (
-        <div className="hidden md:block border-3 border-event-navy overflow-x-auto bg-white">
-          <table className="w-full min-w-[900px]">
-            <thead>
-              <tr className="bg-event-navy text-white">
-                <th className="font-body text-xs text-left px-4 py-3">Nomor</th>
-                <th className="font-body text-xs text-left px-4 py-3">Koordinator</th>
-                <th className="font-body text-xs text-left px-4 py-3">Divisi</th>
-                <th className="font-body text-xs text-center px-4 py-3">Jenis Barang</th>
-                <th className="font-body text-xs text-right px-4 py-3">Total</th>
-                <th className="font-body text-xs text-center px-4 py-3">Status</th>
-                <th className="font-body text-xs text-center px-4 py-3 w-20">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p, i) => (
-                <tr
-                  key={p.id}
-                  className={`border-t-2 border-event-navy/10 hover:bg-event-blue/5 ${
-                    i % 2 === 1 ? 'bg-event-cream/40' : ''
-                  }`}
-                >
-                  <td className="px-4 py-3 font-body text-xs text-event-navy/70">{p.nomorPengajuan}</td>
-                  <td className="px-4 py-3 font-body text-sm font-bold text-event-navy">{p.namaKoordinator}</td>
-                  <td className="px-4 py-3 font-body text-xs text-event-navy">
-                    {DIVISI_OPTIONS.find((d) => d.value === p.divisi)?.label}
-                  </td>
-                  <td className="px-4 py-3 text-center font-body text-xs text-event-navy">{p.totalJenisBarang}</td>
-                  <td className="px-4 py-3 text-right font-body text-xs font-bold text-event-navy">
-                    Rp{p.totalPengajuan.toLocaleString('id-ID')}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <Badge variant={STATUS_CONFIG[p.status].variant}>{STATUS_CONFIG[p.status].label}</Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-center">
-                      <button
-                        onClick={() => openDetail(p.id)}
-                        className="w-8 h-8 flex items-center justify-center bg-event-blue text-white border-2 border-event-navy hover:bg-event-blue-dark transition-colors"
-                      >
-                        <Eye size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <p className="font-body text-xs text-event-navy/60">
+      <p className="font-body text-xs text-gray-400">
         Menampilkan {filtered.length} dari {data.length} total pengajuan
       </p>
 

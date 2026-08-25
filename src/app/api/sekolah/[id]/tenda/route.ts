@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { tendaSelectionSchema } from '@/lib/validations/tenda'
 import { TENDA_TOLERANSI } from '@/lib/constants-sekolah'
+import { lockDanValidasiStokTenda } from '@/lib/tenda-stock'
+import { hasTendaSession, TENDA_SESSION_COOKIE } from '@/lib/tenda-session'
 
 export async function POST(
   req: NextRequest,
@@ -9,6 +11,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params
+    if (!(await hasTendaSession(req.cookies.get(TENDA_SESSION_COOKIE)?.value, id))) return NextResponse.json({ success: false, message: 'Verifikasi sekolah diperlukan untuk mengubah pilihan tenda' }, { status: 401 })
     const body = await req.json()
     const parsed = tendaSelectionSchema.safeParse(body)
 
@@ -80,32 +83,19 @@ export async function POST(
         { status: 400 }
       )
     }
+    if (totalKapasitas < efektifJumlahOrang) {
+      return NextResponse.json({ success: false, message: `Kapasitas tenda (${totalKapasitas} orang) belum mencukupi kebutuhan (${efektifJumlahOrang} orang)` }, { status: 400 })
+    }
 
     try {
       const result = await prisma.$transaction(async (tx) => {
-        for (const p of pilihan) {
-          const jenis = tendaJenisList.find((t) => t.id === p.tendaJenisId)!
+        await lockDanValidasiStokTenda(tx, id, pilihan)
 
-          const sewaLainAgg = await tx.tendaSewa.findMany({
-            where: { tendaJenisId: p.tendaJenisId, sekolahId: { not: id } },
-            select: {
-              jumlah: true,
-              sekolah: {
-                select: { pembayaran: { where: { tipe: 'TENDA' }, select: { statusPembayaran: true } } },
-              },
-            },
-          })
-
-          const terpakaiLain = sewaLainAgg.reduce((sum, s) => {
-            const status = s.sekolah.pembayaran[0]?.statusPembayaran
-            return status === 'DITOLAK' ? sum : sum + s.jumlah
-          }, 0)
-
-          const stokTersisa = jenis.stokTotal - terpakaiLain
-
-          if (p.jumlah > stokTersisa) {
-            throw new Error(`STOK_HABIS:${jenis.nama}:${stokTersisa}`)
-          }
+        const pembayaranTerbaru = await tx.pembayaran.findUnique({
+          where: { sekolahId_tipe_batchKe: { sekolahId: id, tipe: 'TENDA', batchKe: 1 } },
+        })
+        if (pembayaranTerbaru && pembayaranTerbaru.statusPembayaran !== 'BELUM_BAYAR') {
+          throw new Error('PILIHAN_TERKUNCI')
         }
 
         await tx.tendaSewa.deleteMany({ where: { sekolahId: id } })
@@ -122,8 +112,8 @@ export async function POST(
         })
 
         await tx.pembayaran.upsert({
-          where: { sekolahId_tipe: { sekolahId: id, tipe: 'TENDA' } },
-          create: { sekolahId: id, tipe: 'TENDA', jumlahBiaya, statusPembayaran: 'BELUM_BAYAR' },
+          where: { sekolahId_tipe_batchKe: { sekolahId: id, tipe: 'TENDA', batchKe: 1 } },
+          create: { sekolahId: id, tipe: 'TENDA', batchKe: 1, jumlahBiaya, statusPembayaran: 'BELUM_BAYAR' },
           update: { jumlahBiaya },
         })
 
@@ -136,6 +126,12 @@ export async function POST(
         const [, nama, sisa] = txError.message.split(':')
         return NextResponse.json(
           { success: false, message: `Stok "${nama}" tersisa ${sisa} unit, tidak cukup.` },
+          { status: 409 }
+        )
+      }
+      if (txError instanceof Error && txError.message === 'PILIHAN_TERKUNCI') {
+        return NextResponse.json(
+          { success: false, message: 'Pembayaran tenda sudah diproses dan pilihan tidak dapat diubah.' },
           { status: 409 }
         )
       }

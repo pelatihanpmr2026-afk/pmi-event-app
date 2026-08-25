@@ -33,6 +33,22 @@
   --animate-glitch: glitch 4s steps(2, end) infinite;
   --animate-scroll-hint: scroll-hint 1.8s steps(3, end) infinite;
   --breakpoint-xs: 400px;
+
+  --radius-card: 16px;
+  --radius-input: 10px;
+  --radius-btn: 10px;
+  --radius-pill: 999px;
+
+  --shadow-soft: 0 1px 2px rgba(16,24,40,0.06), 0 1px 3px rgba(16,24,40,0.10);
+  --shadow-md: 0 4px 8px rgba(16,24,40,0.08), 0 2px 4px rgba(16,24,40,0.06);
+  --shadow-lg: 0 12px 24px rgba(16,24,40,0.12), 0 4px 8px rgba(16,24,40,0.06);
+  --shadow-focus-blue: 0 0 0 4px rgba(24,152,213,0.18);
+  --shadow-focus-pink: 0 0 0 4px rgba(236,62,150,0.18);
+
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F7F8FA;
+  --color-border: #E5E8EE;
+  --color-text-muted: #6B7280;
 }
 
 @keyframes pixel-pop {
@@ -72,6 +88,8 @@
   50% { transform: translateY(8px); opacity: 0.4; }
 }
 
+
+
 .pixel-shadow-text {
   text-shadow: 4px 4px 0px rgba(54, 83, 165, 1);
 }
@@ -85,7 +103,14 @@
 }
 
 .font-body {
-  font-family: var(--font-pixel-body), sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
+  font-feature-settings: 'cv11', 'ss01';
+  letter-spacing: -0.01em;
+}
+
+.modern-focus-ring:focus {
+  outline: none;
 }
 
 * {
@@ -174,4 +199,104 @@ body {
 }
 .border-5 {
   border-width: 5px;
+}
+
+/* ===== FIX: Teks input jadi transparan saat autofill aktif di mobile Safari/Chrome ===== */
+input, textarea, select {
+  color: #3653A5;
+  -webkit-text-fill-color: #3653A5;
+  caret-color: #3653A5;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: #3653A5 !important;
+  -webkit-box-shadow: 0 0 0px 1000px #FFFFFF inset !important;
+  box-shadow: 0 0 0px 1000px #FFFFFF inset !important;
+  caret-color: #3653A5 !important;
+  transition: background-color 0s 600000s, color 0s 600000s !important;
+}
+
+/* ====== REDESIGN HOMEPAGE (palet tidak berubah) ====== */
+
+@keyframes blob-drift {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, -6%) scale(1.08); }
+  66% { transform: translate(-5%, 4%) scale(0.94); }
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(var(--float-rot, 0deg)); }
+  50% { transform: translateY(-14px) rotate(var(--float-rot, 0deg)); }
+}
+
+@keyframes sparkle-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.12); }
+}
+
+@keyframes drift-x {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(7px); }
+}
+
+.aurora-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(48px);
+  will-change: transform;
+  animation: blob-drift 18s ease-in-out infinite;
+}
+
+.gradient-text {
+  background: linear-gradient(100deg, var(--color-event-navy) 0%, var(--color-event-blue) 48%, var(--color-event-pink) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.pixel-shadow-soft {
+  text-shadow: 3px 3px 0 rgba(54, 83, 165, 0.16);
+}
+
+.marquee-edge {
+  mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 10%, black 90%, transparent);
+}
+
+.hero-shape {
+  position: absolute;
+  will-change: transform;
+  animation: float-slow 7s steps(6, end) infinite;
+}
+
+.sparkle-dot {
+  position: absolute;
+  border-radius: 9999px;
+  animation: sparkle-pulse 3.2s steps(2, start) infinite;
+}
+
+.float-slow {
+  animation: float-slow 6s steps(6, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-blob,
+  .hero-shape,
+  .sparkle-dot,
+  .float-slow {
+    animation: none !important;
+  }
+  .gradient-text {
+    color: var(--color-event-navy);
+    -webkit-text-fill-color: var(--color-event-navy);
+  }
 }

@@ -1,0 +1,1505 @@
+{
+  "summary": {
+    "files_analyzed": 245,
+    "total_lines": 25569,
+    "code_lines": 20917,
+    "comment_lines": 1982
+  },
+  "languages": {
+    "javascript": {
+      "files": 1,
+      "lines": 21
+    },
+    "typescript": {
+      "files": 236,
+      "lines": 17639
+    },
+    "python": {
+      "files": 8,
+      "lines": 3257
+    }
+  },
+  "security": {
+    "critical": [
+      {
+        "file": "src\\app\\api\\auth\\login\\route.ts",
+        "line": 11,
+        "type": "hardcoded_secret",
+        "severity": "critical",
+        "message": "Potential hardcoded secret detected"
+      }
+    ],
+    "high": [
+      {
+        "file": "src\\lib\\sekolah.ts",
+        "line": 68,
+        "type": "sql_injection",
+        "severity": "high",
+        "message": "Potential SQL injection vulnerability"
+      },
+      {
+        "file": "src\\lib\\sekolah.ts",
+        "line": 69,
+        "type": "sql_injection",
+        "severity": "high",
+        "message": "Potential SQL injection vulnerability"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 46,
+        "type": "sql_injection",
+        "severity": "high",
+        "message": "Potential SQL injection vulnerability"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 654,
+        "type": "sql_injection",
+        "severity": "high",
+        "message": "Potential SQL injection vulnerability"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 660,
+        "type": "sql_injection",
+        "severity": "high",
+        "message": "Potential SQL injection vulnerability"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 665,
+        "type": "sql_injection",
+        "severity": "high",
+        "message": "Potential SQL injection vulnerability"
+      }
+    ],
+    "medium": [
+      {
+        "file": "src\\components\\dashboard\\dashboard-background.tsx",
+        "line": 12,
+        "type": "insecure_protocol",
+        "severity": "medium",
+        "message": "Insecure HTTP protocol used"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 51,
+        "type": "xss_vulnerable",
+        "severity": "medium",
+        "message": "Potential XSS vulnerability - unescaped HTML rendering"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 56,
+        "type": "unsafe_react_html",
+        "severity": "medium",
+        "message": "React unsafe HTML pattern detected - ensure content is sanitized"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 61,
+        "type": "insecure_protocol",
+        "severity": "medium",
+        "message": "Insecure HTTP protocol used"
+      }
+    ],
+    "low": [
+      {
+        "file": "prisma\\create-admin.ts",
+        "line": 13,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\create-admin.ts",
+        "line": 26,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\create-admin.ts",
+        "line": 33,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\create-admin.ts",
+        "line": 50,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\create-admin.ts",
+        "line": 51,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\create-admin.ts",
+        "line": 52,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\create-admin.ts",
+        "line": 53,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\create-admin.ts",
+        "line": 54,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\seed.ts",
+        "line": 31,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\seed.ts",
+        "line": 32,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\seed.ts",
+        "line": 34,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\seed.ts",
+        "line": 36,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\seed.ts",
+        "line": 37,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\seed.ts",
+        "line": 40,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\seed.ts",
+        "line": 46,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\seed.ts",
+        "line": 48,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\set-password.ts",
+        "line": 11,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\set-password.ts",
+        "line": 16,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\set-password.ts",
+        "line": 22,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": "prisma\\set-password.ts",
+        "line": 33,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ux-researcher-designer\\scripts\\persona_generator.py",
+        "line": 580,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ux-researcher-designer\\scripts\\persona_generator.py",
+        "line": 582,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 574,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 575,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 576,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 577,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 578,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 579,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 580,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 581,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 582,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 583,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 584,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 585,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "line": 587,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 66,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 553,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 554,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 555,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 556,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 560,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 561,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 562,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 563,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 564,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 565,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 568,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 570,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 571,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 576,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 577,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 578,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 579,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 580,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 582,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 585,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 586,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 590,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 591,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 592,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 593,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 597,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 598,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 599,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 600,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 601,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 605,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 606,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 607,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 608,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 609,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 613,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 614,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 615,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 616,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 617,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 618,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 619,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 623,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 625,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 626,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 627,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 629,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 630,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 669,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 679,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 681,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "line": 687,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\fullstack_decision_engine.py",
+        "line": 345,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\fullstack_decision_engine.py",
+        "line": 348,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\fullstack_decision_engine.py",
+        "line": 372,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\fullstack_decision_engine.py",
+        "line": 376,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\fullstack_decision_engine.py",
+        "line": 396,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\fullstack_decision_engine.py",
+        "line": 398,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 361,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 374,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 809,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 813,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 814,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 816,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 817,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 821,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 824,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 825,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 826,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 827,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 828,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 829,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 830,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 831,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 833,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "line": 834,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 924,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 927,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 928,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 929,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 932,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 933,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 934,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 937,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 938,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 939,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 940,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 943,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 945,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 948,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 950,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 952,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 953,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 954,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 955,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 956,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 958,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 960,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 962,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 999,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 1012,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "line": 1014,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 77,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 86,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 87,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 89,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 434,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 440,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 441,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 442,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 444,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 445,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 446,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 447,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 450,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 451,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 452,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 453,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 454,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 458,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 460,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 463,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 465,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 469,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 471,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 474,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 477,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 479,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 517,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 527,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "line": 529,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\review_report_generator.py",
+        "line": 206,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\review_report_generator.py",
+        "line": 465,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\review_report_generator.py",
+        "line": 475,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\review_report_generator.py",
+        "line": 480,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\review_report_generator.py",
+        "line": 499,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\review_report_generator.py",
+        "line": 501,
+        "type": "debug_code",
+        "severity": "low",
+        "message": "Debug code should be removed in production"
+      }
+    ],
+    "info": [
+      {
+        "file": "src\\app\\page.tsx",
+        "line": 20,
+        "type": "todo_fixme",
+        "severity": "info",
+        "message": "Unresolved TODO/FIXME comment"
+      }
+    ]
+  },
+  "complexity": {
+    "high_complexity_files": [
+      {
+        "file": "src\\components\\tenda-sewa\\pemilihan-tenda.tsx",
+        "complexity": 23,
+        "nesting": 6
+      },
+      {
+        "file": "src\\app\\api\\sekolah\\route.ts",
+        "complexity": 30,
+        "nesting": 8
+      },
+      {
+        "file": "src\\app\\api\\sekolah\\[id]\\susulan\\route.ts",
+        "complexity": 20,
+        "nesting": 6
+      },
+      {
+        "file": "src\\app\\api\\sekolah\\[id]\\pembayaran\\[tipe]\\route.ts",
+        "complexity": 32,
+        "nesting": 8
+      },
+      {
+        "file": ".claude\\skills\\ux-researcher-designer\\scripts\\persona_generator.py",
+        "complexity": 106,
+        "nesting": 2
+      },
+      {
+        "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+        "complexity": 34,
+        "nesting": 4
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+        "complexity": 130,
+        "nesting": 3
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\fullstack_decision_engine.py",
+        "complexity": 76,
+        "nesting": 3
+      },
+      {
+        "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+        "complexity": 34,
+        "nesting": 6
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+        "complexity": 187,
+        "nesting": 9
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+        "complexity": 99,
+        "nesting": 3
+      },
+      {
+        "file": ".claude\\skills\\code-reviewer\\scripts\\review_report_generator.py",
+        "complexity": 117,
+        "nesting": 2
+      }
+    ],
+    "average_complexity": 7.4
+  },
+  "code_smells": [
+    {
+      "file": ".claude\\skills\\ux-researcher-designer\\scripts\\persona_generator.py",
+      "type": "large_file",
+      "details": "585 lines (threshold: 500)"
+    },
+    {
+      "file": ".claude\\skills\\ui-design-system\\scripts\\design_token_generator.py",
+      "type": "large_file",
+      "details": "590 lines (threshold: 500)"
+    },
+    {
+      "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+      "type": "large_file",
+      "details": "691 lines (threshold: 500)"
+    },
+    {
+      "file": ".claude\\skills\\senior-fullstack\\scripts\\project_scaffolder.py",
+      "type": "large_file",
+      "details": "867 lines (threshold: 500)"
+    },
+    {
+      "file": ".claude\\skills\\code-reviewer\\scripts\\code_quality_checker.py",
+      "type": "large_file",
+      "details": "1020 lines (threshold: 500)"
+    },
+    {
+      "file": ".claude\\skills\\code-reviewer\\scripts\\pr_analyzer.py",
+      "type": "large_file",
+      "details": "535 lines (threshold: 500)"
+    },
+    {
+      "file": ".claude\\skills\\code-reviewer\\scripts\\review_report_generator.py",
+      "type": "large_file",
+      "details": "505 lines (threshold: 500)"
+    }
+  ],
+  "dependencies": {
+    "package_managers": [
+      "npm"
+    ],
+    "total_deps": 35,
+    "outdated": [],
+    "vulnerable": [],
+    "recommendations": []
+  },
+  "tests": {
+    "source_files": 245,
+    "test_files": 0,
+    "estimated_coverage": 0,
+    "rating": "poor",
+    "recommendation": "Consider adding more tests (70% gap to target)"
+  },
+  "documentation": {
+    "has_readme": true,
+    "has_contributing": false,
+    "has_license": false,
+    "has_changelog": false,
+    "api_docs": [],
+    "score": 30
+  },
+  "overall_score": 0,
+  "grade": "F",
+  "recommendations": [
+    {
+      "priority": "P0",
+      "category": "security",
+      "issue": "Potential hardcoded secret detected",
+      "file": "src\\app\\api\\auth\\login\\route.ts",
+      "action": "Remove or secure sensitive data at line 11"
+    },
+    {
+      "priority": "P1",
+      "category": "security",
+      "issue": "Potential SQL injection vulnerability",
+      "file": "src\\lib\\sekolah.ts",
+      "action": "Review and fix security vulnerability"
+    },
+    {
+      "priority": "P1",
+      "category": "security",
+      "issue": "Potential SQL injection vulnerability",
+      "file": "src\\lib\\sekolah.ts",
+      "action": "Review and fix security vulnerability"
+    },
+    {
+      "priority": "P1",
+      "category": "security",
+      "issue": "Potential SQL injection vulnerability",
+      "file": ".claude\\skills\\senior-fullstack\\scripts\\code_quality_analyzer.py",
+      "action": "Review and fix security vulnerability"
+    },
+    {
+      "priority": "P1",
+      "category": "quality",
+      "issue": "Low test coverage: 0%",
+      "action": "Add unit tests to improve coverage to at least 70%"
+    },
+    {
+      "priority": "P2",
+      "category": "maintainability",
+      "issue": "High complexity in src\\components\\tenda-sewa\\pemilihan-tenda.tsx",
+      "action": "Refactor to reduce cyclomatic complexity"
+    },
+    {
+      "priority": "P2",
+      "category": "maintainability",
+      "issue": "High complexity in src\\app\\api\\sekolah\\route.ts",
+      "action": "Refactor to reduce cyclomatic complexity"
+    }
+  ]
+}

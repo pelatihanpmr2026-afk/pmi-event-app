@@ -11,6 +11,11 @@ export const STATUS_SEKOLAH_OPTIONS = [
   { value: 'SWASTA', label: 'Swasta' },
 ] as const
 
+export const KATEGORI_SEKOLAH_OPTIONS = [
+  { value: 'WIRA', label: 'Wira' },
+  { value: 'MADYA', label: 'Madya' },
+] as const
+
 export const AGAMA_OPTIONS = [
   { value: 'ISLAM', label: 'Islam' },
   { value: 'KRISTEN', label: 'Kristen' },
@@ -29,13 +34,16 @@ export const GOLONGAN_DARAH_OPTIONS = [
   { value: 'TIDAK_TAHU', label: 'Tidak Tahu' },
 ] as const
 
-export const BIAYA_PESERTA = 35000
-export const BIAYA_PENDAMPING = 25000
+export const BIAYA_PESERTA = 50000
+export const BIAYA_PENDAMPING = 40000
 
-export const TENDA_TOLERANSI = 15 // toleransi kapasitas tambahan dari panitia
+export const TENDA_TOLERANSI = 10 // toleransi kapasitas tambahan dari panitia
+export const TENDA_RESERVASI_JAM = 2
+export const TENDA_RESERVASI_SEMENTARA_MENIT = 60
 
 export interface TendaSeedData {
   nama: string
+  namaVendor: string
   kapasitasMin: number
   kapasitasMax: number
   harga: number
@@ -43,31 +51,31 @@ export interface TendaSeedData {
 }
 
 export const TENDA_SEED_DATA: TendaSeedData[] = [
-  { nama: 'Tenda Dome', kapasitasMin: 10, kapasitasMax: 12, harga: 400000, stokTotal: 5 },
-  { nama: 'Tenda Regu BPBD', kapasitasMin: 13, kapasitasMax: 15, harga: 500000, stokTotal: 5 },
-  { nama: 'Tenda Family Dinsos', kapasitasMin: 15, kapasitasMax: 17, harga: 550000, stokTotal: 5 },
-  { nama: 'Tenda Dome Besar', kapasitasMin: 20, kapasitasMax: 25, harga: 600000, stokTotal: 5 },
-  { nama: 'Tenda Family', kapasitasMin: 35, kapasitasMax: 40, harga: 750000, stokTotal: 5 },
-  { nama: 'Tenda Army Dinsos', kapasitasMin: 40, kapasitasMax: 45, harga: 950000, stokTotal: 5 },
-  { nama: 'Tenda Pleton', kapasitasMin: 80, kapasitasMax: 90, harga: 1200000, stokTotal: 5 },
-  { nama: 'Tenda Merah Putih Dinsos', kapasitasMin: 100, kapasitasMax: 110, harga: 1300000, stokTotal: 5 },
+  { nama: 'Tenda Dome', namaVendor: 'CV Tenda Cianjur', kapasitasMin: 10, kapasitasMax: 12, harga: 400000, stokTotal: 5 },
+  { nama: 'Tenda Regu BPBD', namaVendor: 'BPBD Kab. Cianjur', kapasitasMin: 13, kapasitasMax: 15, harga: 500000, stokTotal: 5 },
+  { nama: 'Tenda Family Dinsos', namaVendor: 'Dinsos Kab. Cianjur', kapasitasMin: 15, kapasitasMax: 17, harga: 550000, stokTotal: 5 },
+  { nama: 'Tenda Dome Besar', namaVendor: 'CV Tenda Cianjur', kapasitasMin: 20, kapasitasMax: 25, harga: 600000, stokTotal: 5 },
+  { nama: 'Tenda Family', namaVendor: 'CV Tenda Cianjur', kapasitasMin: 35, kapasitasMax: 40, harga: 750000, stokTotal: 5 },
+  { nama: 'Tenda Army Dinsos', namaVendor: 'Dinsos Kab. Cianjur', kapasitasMin: 40, kapasitasMax: 45, harga: 950000, stokTotal: 5 },
+  { nama: 'Tenda Pleton', namaVendor: 'CV Tenda Cianjur', kapasitasMin: 80, kapasitasMax: 90, harga: 1200000, stokTotal: 5 },
+  { nama: 'Tenda Merah Putih Dinsos', namaVendor: 'Dinsos Kab. Cianjur', kapasitasMin: 100, kapasitasMax: 110, harga: 1300000, stokTotal: 5 },
 ]
 
 export const REKENING_INFO = {
-  namaBank: 'BANK XXXX (placeholder)',
-  nomorRekening: '0000000000',
-  atasNama: 'PMI Kabupaten Cianjur (placeholder)',
+  namaBank: 'BANK BSI',
+  nomorRekening: '1994888087',
+  atasNama: 'FAHMI FIRMANSYAH',
 }
 
 export const ACCEPTED_BUKTI_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
 export const MAX_BUKTI_SIZE = 5 * 1024 * 1024 // 5MB
 
 export const STATUS_PEMBAYARAN_CONFIG = {
-  BELUM_BAYAR: { label: 'Belum Bayar', variant: 'warning' as const },
-  MENUNGGU_KONFIRMASI: { label: 'Menunggu Konfirmasi', variant: 'info' as const },
-  LUNAS: { label: 'Lunas', variant: 'success' as const },
-  DITOLAK: { label: 'Ditolak', variant: 'danger' as const },
-}
+  BELUM_BAYAR: { label: 'Belum Bayar', variant: 'warning' },
+  MENUNGGU_KONFIRMASI: { label: 'Menunggu Konfirmasi', variant: 'info' },
+  LUNAS: { label: 'Lunas', variant: 'success' },
+  DITOLAK: { label: 'Ditolak', variant: 'danger' },
+} as const
 
 export const RIWAYAT_PENYAKIT_OPTIONS = [
   { value: 'TIDAK_ADA', label: 'Tidak Ada Riwayat Penyakit' },
@@ -81,7 +89,6 @@ export const RIWAYAT_PENYAKIT_OPTIONS = [
   { value: 'RIWAYAT_KEJANG', label: 'Riwayat Kejang' },
   { value: 'HEMOFILIA', label: 'Hemofilia (Gangguan Pembekuan Darah)' },
   { value: 'ANEMIA_BERAT', label: 'Anemia Berat' },
-  { value: 'LAINNYA', label: 'Lainnya' },
 ] as const
 
 // Dipakai untuk penanda visual di dashboard admin & halaman verifikasi kwitansi —
@@ -89,3 +96,7 @@ export const RIWAYAT_PENYAKIT_OPTIONS = [
 export const RIWAYAT_PENYAKIT_PERLU_PERHATIAN: string[] = RIWAYAT_PENYAKIT_OPTIONS.filter(
   (o) => o.value !== 'TIDAK_ADA'
 ).map((o) => o.value)
+
+// Placeholder — ganti sesuai kode wilayah/kwarcab resmi
+export const NO_PESERTA_KODE_WILAYAH = '02.03.15.AR'
+export const NO_PESERTA_SUFFIX = '2026'

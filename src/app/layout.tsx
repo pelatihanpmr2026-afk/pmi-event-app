@@ -10,15 +10,6 @@ const pressStart2P = localFont({
   display: 'swap',
 })
 
-const silkscreen = localFont({
-  src: [
-    { path: '../assets/fonts/Silkscreen-Regular.ttf', weight: '400' },
-    { path: '../assets/fonts/Silkscreen-Bold.ttf', weight: '700' },
-  ],
-  variable: '--font-pixel-body',
-  display: 'swap',
-})
-
 export const metadata: Metadata = {
   title: 'Pelantikan & Pelatihan PMR 2026 Se-Kabupaten Cianjur',
   description: 'Website resmi pendaftaran dan manajemen event Pelantikan & Pelatihan PMR 2026 Se-Kabupaten Cianjur oleh PMI.',
@@ -31,7 +22,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id">
-      <body className={`${pressStart2P.variable} ${silkscreen.variable} font-body antialiased`}>
+      <body className={`${pressStart2P.variable} font-body antialiased`}>
         {children}
         <Toaster position="top-center" richColors />
       </body>

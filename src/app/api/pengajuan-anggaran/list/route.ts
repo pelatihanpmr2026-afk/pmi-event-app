@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getSession } from '@/lib/get-session'
+import { requireRole } from '@/lib/api-guard'
 
 export async function GET() {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, message: 'Tidak diizinkan' }, { status: 401 })
-    }
+    const guard = await requireRole('KEUANGAN')
+    if (!guard.ok) return guard.response
 
     const data = await prisma.pengajuanAnggaran.findMany({
       orderBy: { createdAt: 'desc' },

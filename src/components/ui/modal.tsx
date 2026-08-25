@@ -32,24 +32,26 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
   if (typeof document === 'undefined') return null
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div
-        className="absolute inset-0 bg-event-navy/60 backdrop-blur-sm"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={onClose} />
       <div
         className={cn(
-          'relative bg-white border-3 border-event-navy shadow-pixel-lg w-full max-w-lg max-h-[90vh] overflow-y-auto animate-pixel-pop',
+          'relative bg-white w-full sm:max-w-lg max-h-[92vh] sm:max-h-[85vh] overflow-y-auto',
+          'rounded-t-[24px] sm:rounded-[var(--radius-card)] shadow-[var(--shadow-lg)]',
+          'animate-in slide-in-from-bottom sm:zoom-in-95 duration-200',
           className
         )}
       >
-        <div className="sticky top-0 flex items-center justify-between px-5 py-4 bg-event-blue border-b-3 border-event-navy">
-          <h2 className="font-heading text-xs sm:text-sm text-white">{title}</h2>
+        <div className="sm:hidden flex justify-center pt-3">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+        <div className="sticky top-0 z-10 flex items-center justify-between px-5 py-4 bg-white border-b border-[var(--color-border)]">
+          <h2 className="font-body font-semibold text-base text-event-navy">{title}</h2>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center bg-white border-2 border-event-navy text-event-navy hover:bg-event-cream transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-[var(--color-surface-muted)] hover:text-event-navy transition-colors"
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
         <div className="p-5">{children}</div>

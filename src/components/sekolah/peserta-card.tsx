@@ -1,6 +1,7 @@
 'use client'
 
-import { UseFormReturn } from 'react-hook-form'
+import { memo } from 'react'
+import { useFormContext } from 'react-hook-form'
 import { Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -8,65 +9,54 @@ import { RadioPixel } from '@/components/ui/radio-pixel'
 import { ParticipantPhotoUpload } from './participant-photo-upload'
 import { AGAMA_OPTIONS, GOLONGAN_DARAH_OPTIONS, RIWAYAT_PENYAKIT_OPTIONS } from '@/lib/constants-sekolah'
 import { GENDER_OPTIONS } from '@/lib/constants'
-import { PesertaPendampingValues } from '@/lib/validations/peserta'
+import { normalizeNamaPeserta, PesertaOnlyValues } from '@/lib/validations/peserta'
 
-
-export function PesertaCard({
-  form,
+export const PesertaCard = memo(function PesertaCard({
   index,
-  onRemove,
   canRemove,
+  onRemove,
 }: {
-  form: UseFormReturn<PesertaPendampingValues>
   index: number
-  onRemove: () => void
   canRemove: boolean
+  onRemove: () => void
 }) {
-  const {
-    register,
-    watch,
-    setValue,
-    formState: { errors },
-  } = form
-
+  const { register, watch, setValue, formState: { errors } } = useFormContext<PesertaOnlyValues>()
   const itemErrors = errors.peserta?.[index]
-  const foto = watch(`peserta.${index}.foto`)
-  const gender = watch(`peserta.${index}.gender`)
+  const namaLengkapField = register(`peserta.${index}.namaLengkap`)
 
   return (
-    <div className="border-3 border-event-navy bg-white p-4 flex flex-col gap-3">
+    <div className="border-3 border-event-navy rounded-[var(--radius-card)] bg-white p-4 flex flex-col gap-3 shadow-pixel-sm">
       <div className="flex items-center justify-between">
         <span className="font-heading text-[10px] text-event-navy">PESERTA #{index + 1}</span>
         {canRemove && (
           <button
             type="button"
             onClick={onRemove}
-            className="w-7 h-7 flex items-center justify-center bg-pmi-red text-white border-2 border-event-navy"
+            className="w-8 h-8 flex items-center justify-center rounded-[var(--radius-btn)] bg-pmi-red text-white hover:bg-red-700 transition-colors"
           >
-            <Trash2 size={12} />
+            <Trash2 size={14} />
           </button>
         )}
       </div>
-
       <div className="flex gap-4">
         <ParticipantPhotoUpload
-          value={foto}
-          onChange={(file) =>
-            setValue(`peserta.${index}.foto`, file as File, { shouldValidate: true })
-          }
-          error={itemErrors?.foto?.message as string | undefined}
+          value={watch(`peserta.${index}.foto`)}
+           onChange={(file) => setValue(`peserta.${index}.foto`, file as File, { shouldValidate: true })}
+          error={itemErrors?.foto?.message}
         />
         <div className="flex-1 min-w-0">
           <Input
             label="Nama Lengkap"
             placeholder="Nama sesuai identitas"
             error={itemErrors?.namaLengkap?.message}
-            {...register(`peserta.${index}.namaLengkap`)}
+            {...namaLengkapField}
+            onBlur={(event) => {
+              namaLengkapField.onBlur(event)
+              setValue(`peserta.${index}.namaLengkap`, normalizeNamaPeserta(event.target.value), { shouldValidate: true })
+            }}
           />
         </div>
       </div>
-
-
       <div className="grid grid-cols-2 gap-3">
         <Input
           label="Tempat Lahir"
@@ -77,18 +67,18 @@ export function PesertaCard({
         <Input
           label="Tanggal Lahir"
           type="date"
+          min="1900-01-01"
+          max={new Date().toISOString().slice(0, 10)}
           error={itemErrors?.tanggalLahir?.message}
           {...register(`peserta.${index}.tanggalLahir`)}
         />
       </div>
-
       <Input
         label="Alamat Lengkap"
         placeholder="Alamat domisili"
         error={itemErrors?.alamat?.message}
         {...register(`peserta.${index}.alamat`)}
       />
-
       <div className="grid grid-cols-2 gap-3">
         <Select
           label="Agama"
@@ -105,7 +95,6 @@ export function PesertaCard({
           {...register(`peserta.${index}.golonganDarah`)}
         />
       </div>
-
       <div className="grid grid-cols-2 gap-3">
         <Input
           label="Tahun Masuk"
@@ -121,27 +110,28 @@ export function PesertaCard({
           {...register(`peserta.${index}.noHp`)}
         />
       </div>
-
-     <RadioPixel
+      <RadioPixel
+        pixel
         label="Jenis Kelamin"
         name={`peserta.${index}.gender`}
         options={GENDER_OPTIONS}
-        value={gender}
+        value={watch(`peserta.${index}.gender`)}
         onChange={(val) =>
-          setValue(`peserta.${index}.gender`, val as PesertaPendampingValues['peserta'][number]['gender'], {
-            shouldValidate: true,
-          })
+          setValue(
+            `peserta.${index}.gender`,
+            val as (typeof GENDER_OPTIONS)[number]['value'], // <-- Hapus 'as any', pakai union type
+            { shouldValidate: true }
+          )
         }
         error={itemErrors?.gender?.message}
       />
-
       <Select
         label="Riwayat Penyakit"
         placeholder="Pilih riwayat penyakit"
         options={[...RIWAYAT_PENYAKIT_OPTIONS]}
-        error={itemErrors?.riwayatPenyakit?.message as string | undefined}
+        error={itemErrors?.riwayatPenyakit?.message}
         {...register(`peserta.${index}.riwayatPenyakit`)}
       />
     </div>
   )
-}
+})

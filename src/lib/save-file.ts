@@ -1,5 +1,6 @@
 import { mkdir, writeFile, unlink } from 'fs/promises'
 import path from 'path'
+import { validateFileContent } from './file-type'
 
 // Sengaja DI LUAR folder public/ — supaya tidak bergantung ke static file
 // serving Next.js/Turbopack yang tidak reliable untuk file yang dibuat saat runtime.
@@ -7,13 +8,19 @@ const UPLOAD_ROOT = path.join(process.cwd(), 'storage', 'uploads')
 
 export async function saveUploadedFile(
   file: File,
-  subfolder: 'photos' | 'idcards' | 'qrcodes' | 'peserta-photos' | 'excel' | 'bukti-transfer' | 'kwitansi' | 'pengajuan' | 'tanda-tangan',
+  subfolder: 'photos' | 'idcards' | 'qrcodes' | 'peserta-photos' | 'excel' | 'bukti-transfer' | 'kwitansi' | 'pengajuan' | 'tanda-tangan' | 'surat-pernyataan',
   filename: string
 ): Promise<string> {
   const targetDir = path.join(UPLOAD_ROOT, subfolder)
   await mkdir(targetDir, { recursive: true })
 
   const buffer = Buffer.from(await file.arrayBuffer())
+
+  // Validasi isi dengan magic bytes, bukan hanya MIME/ekstensi yang diklaim klien.
+  if (!validateFileContent(buffer, filename, { strict: true })) {
+    throw new Error(`Isi file tidak cocok dengan ekstensi "${filename}"`)
+  }
+
   const targetPath = path.join(targetDir, filename)
   await writeFile(targetPath, buffer)
 
@@ -22,7 +29,7 @@ export async function saveUploadedFile(
 
 export async function saveBuffer(
   buffer: Buffer,
-  subfolder: 'photos' | 'idcards' | 'qrcodes' | 'peserta-photos' | 'excel' | 'bukti-transfer' | 'kwitansi' | 'pengajuan' | 'tanda-tangan',
+  subfolder: 'photos' | 'idcards' | 'qrcodes' | 'peserta-photos' | 'excel' | 'bukti-transfer' | 'kwitansi' | 'pengajuan' | 'tanda-tangan' | 'surat-pernyataan',
   filename: string
 ): Promise<string> {
   const targetDir = path.join(UPLOAD_ROOT, subfolder)

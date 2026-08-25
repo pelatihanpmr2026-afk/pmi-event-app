@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getSession } from '@/lib/get-session'
 import { getUraianLabel } from '@/lib/keuangan'
+import { resolveRekapTanggal } from '@/lib/rekap-tanggal'
+import { requireRole } from '@/lib/api-guard'
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) return NextResponse.json({ success: false, message: 'Tidak diizinkan' }, { status: 401 })
+    const guard = await requireRole('KEUANGAN')
+    if (!guard.ok) return guard.response
 
     const { searchParams } = new URL(req.url)
-    const tanggalStr = searchParams.get('tanggal')
+    const tanggalStr = searchParams.get('tanggal') ?? ''
     if (!tanggalStr) return NextResponse.json({ success: false, message: 'Tanggal wajib diisi' }, { status: 400 })
 
-    const start = new Date(`${tanggalStr}T00:00:00`)
-    const end = new Date(`${tanggalStr}T23:59:59`)
+    const { start, end } = resolveRekapTanggal(tanggalStr)
 
     const transaksi = await prisma.transaksiKeuangan.findMany({
       where: { tanggal: { gte: start, lte: end } },

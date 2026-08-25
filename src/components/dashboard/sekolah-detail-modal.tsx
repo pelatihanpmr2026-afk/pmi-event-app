@@ -25,6 +25,7 @@ interface SekolahDetail {
   namaPembina: string
   noWhatsappPembina: string
   excelUrl: string | null
+  suratPernyataanUrl: string | null
   peserta: {
     id: string
     tipe: 'PESERTA' | 'PENDAMPING'
@@ -34,6 +35,7 @@ interface SekolahDetail {
     agama: string
     golonganDarah: string
     gender: string
+    batchKe: number
   fotoUrl: string | null
     riwayatPenyakit: string | null
   }[]
@@ -48,6 +50,7 @@ interface SekolahDetail {
     kwitansiUrl: string | null
     statusDaftarUlang: boolean
     waktuDaftarUlang: string | null
+    batchKe: number
   }[]
 }
 
@@ -95,7 +98,9 @@ export function SekolahDetailModal({
 
   const pesertaList = data?.peserta.filter((p) => p.tipe === 'PESERTA') ?? []
   const pendampingList = data?.peserta.filter((p) => p.tipe === 'PENDAMPING') ?? []
-  const pembayaranPeserta = data?.pembayaran.find((p) => p.tipe === 'PESERTA') ?? null
+  const pembayaranPeserta = data?.pembayaran
+    .filter((p) => p.tipe === 'PESERTA')
+    .sort((a, b) => a.batchKe - b.batchKe) ?? []
   const pembayaranTenda = data?.pembayaran.find((p) => p.tipe === 'TENDA') ?? null
 
   return (
@@ -131,10 +136,8 @@ export function SekolahDetailModal({
               <p className="font-body text-xs text-event-navy/60">{data.kodePendaftaran}</p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <Badge variant="default">{data.kategori}</Badge>
-                {pembayaranPeserta?.statusPembayaran === 'LUNAS' && (
-                  <Badge variant={pembayaranPeserta.statusDaftarUlang ? 'success' : 'warning'}>
-                    {pembayaranPeserta.statusDaftarUlang ? 'Sudah Daftar Ulang' : 'Belum Daftar Ulang'}
-                  </Badge>
+                {pembayaranPeserta.some((p) => p.statusPembayaran === 'LUNAS') && (
+                  <Badge variant="success">Ada pembayaran lunas</Badge>
                 )}
                 <span className="font-body text-xs text-event-navy/60">
                   Pembina: {data.namaPembina} · {data.noWhatsappPembina}
@@ -149,8 +152,22 @@ export function SekolahDetailModal({
               transition={{ delay: 0.1 }}
               className="grid grid-cols-1 sm:grid-cols-2 gap-3"
             >
-              <div className="pixel-card">
-                <KonfirmasiPembayaranPanel pembayaran={pembayaranPeserta} onUpdated={handlePaymentUpdated} />
+              <div className="flex flex-col gap-3">
+                {pembayaranPeserta.length === 0 ? (
+                  <div className="pixel-card">
+                    <KonfirmasiPembayaranPanel pembayaran={null} onUpdated={handlePaymentUpdated} />
+                  </div>
+                ) : (
+                  pembayaranPeserta.map((pembayaran) => (
+                    <div className="pixel-card" key={pembayaran.id}>
+                      <KonfirmasiPembayaranPanel
+                        pembayaran={pembayaran}
+                        label={pembayaran.batchKe === 1 ? 'Batch 1 (Pendaftaran Awal)' : `Batch ${pembayaran.batchKe} (Susulan)`}
+                        onUpdated={handlePaymentUpdated}
+                      />
+                    </div>
+                  ))
+                )}
               </div>
               <div className="pixel-card">
                 <KonfirmasiPembayaranPanel pembayaran={pembayaranTenda} onUpdated={handlePaymentUpdated} />
@@ -263,10 +280,13 @@ export function SekolahDetailModal({
                         </span>
                       )}
                     </div>
-                    <p className="font-body text-[10px] text-event-navy/50">
-                      {findLabel(GENDER_OPTIONS, p.gender)} · {findLabel(AGAMA_OPTIONS, p.agama)} ·{' '}
-                      {findLabel(GOLONGAN_DARAH_OPTIONS, p.golonganDarah)}
-                    </p>
+                      <p className="font-body text-[10px] text-event-navy/50">
+                        {findLabel(GENDER_OPTIONS, p.gender)} · {findLabel(AGAMA_OPTIONS, p.agama)} ·{' '}
+                        {findLabel(GOLONGAN_DARAH_OPTIONS, p.golonganDarah)}
+                      </p>
+                      <Badge variant="default" className="mt-1 text-[9px]">
+                        {p.batchKe === 1 ? 'Batch 1' : `Susulan #${p.batchKe}`}
+                      </Badge>
                   </div>
                       </motion.div>
                     ))
@@ -275,16 +295,15 @@ export function SekolahDetailModal({
               </div>
             </motion.div>
 
-            {/* Excel Download */}
-            {data.excelUrl && (
+            {/* Dibuat ulang saat diklik agar data dan foto selalu terbaru. */}
+            
               <motion.div
                 initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25 }}
               >
                 <motion.a
-                  href={data.excelUrl}
-                  download
+                  href={`/api/sekolah/${data.id}/export`}
                   target="_blank"
                   rel="noopener noreferrer"
                   whileHover={{ scale: 1.02 }}
@@ -294,6 +313,21 @@ export function SekolahDetailModal({
                   📊 Download Excel Rekap
                 </motion.a>
               </motion.div>
+            {data.suratPernyataanUrl && (
+              <motion.a
+                href={data.suratPernyataanUrl}
+                download={`Surat-Pernyataan-${data.kodePendaftaran}.pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.28 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="block border-2 border-event-blue bg-event-blue px-3 py-2.5 text-center font-body text-xs font-bold text-white hover:bg-event-navy transition-colors shadow-pixel-sm hover:shadow-pixel-md"
+              >
+                Download Surat Pernyataan
+              </motion.a>
             )}
           </motion.div>
         )}

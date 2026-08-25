@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sesiSchema } from '@/lib/validations/absensi'
+import { requireRole } from '@/lib/api-guard'
 
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const guard = await requireRole('KESEKRETARIATAN')
+    if (!guard.ok) return guard.response
+
     const { id } = await params
     const body = await req.json()
     const parsed = sesiSchema.safeParse(body)
@@ -40,6 +44,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const guard = await requireRole('KESEKRETARIATAN')
+    if (!guard.ok) return guard.response
+
     const { id } = await params
     await prisma.absensiSesi.delete({ where: { id } })
     return NextResponse.json({ success: true, message: 'Sesi berhasil dihapus' })

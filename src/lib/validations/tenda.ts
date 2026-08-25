@@ -7,6 +7,15 @@ export const tendaPilihanSchema = z.object({
 
 export const tendaSelectionSchema = z.object({
   pilihan: z.array(tendaPilihanSchema),
+}).superRefine(({ pilihan }, ctx) => {
+  const ids = new Set<string>()
+
+  pilihan.forEach((pilihanTenda, index) => {
+    if (ids.has(pilihanTenda.tendaJenisId)) {
+      ctx.addIssue({ code: 'custom', path: ['pilihan', index, 'tendaJenisId'], message: 'Satu jenis tenda hanya boleh dipilih sekali' })
+    }
+    ids.add(pilihanTenda.tendaJenisId)
+  })
 })
 
 export type TendaPilihanValues = z.infer<typeof tendaPilihanSchema>

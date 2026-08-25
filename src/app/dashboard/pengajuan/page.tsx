@@ -45,11 +45,10 @@ export default async function DashboardPengajuanPage() {
         <h1 className="font-heading text-base sm:text-lg text-event-navy leading-relaxed">
           PENGAJUAN ANGGARAN
         </h1>
-        <p className="font-body text-xs text-event-navy/60 mt-1">
-          Kelola pengajuan kebutuhan/barang dari setiap divisi
+        <p className="font-body text-xs text-[var(--color-text-muted)] mt-1">
+          Kelola pengajuan kebutuhan/barang dari setiap divisi.
         </p>
       </div>
-
       <PengajuanStats
         total={total}
         menunggu={menunggu}
@@ -57,7 +56,6 @@ export default async function DashboardPengajuanPage() {
         ditolak={ditolak}
         totalNominalDisetujui={totalNominalDisetujui}
       />
-
       <PengajuanTable initialData={serializedData} />
     </div>
   )

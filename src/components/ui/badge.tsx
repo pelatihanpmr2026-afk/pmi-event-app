@@ -4,11 +4,11 @@ import { cn } from '@/lib/utils'
 type BadgeVariant = 'success' | 'warning' | 'info' | 'default' | 'danger'
 
 const variantStyles: Record<BadgeVariant, string> = {
-  success: 'bg-green-500 text-white',
-  warning: 'bg-event-yellow text-event-navy',
-  info: 'bg-event-blue text-white',
-  default: 'bg-event-navy text-white',
-  danger: 'bg-pmi-red text-white',
+  success: 'bg-green-50 text-green-700 ring-1 ring-green-200',
+  warning: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  info: 'bg-blue-50 text-event-blue-dark ring-1 ring-blue-200',
+  default: 'bg-gray-100 text-gray-700 ring-1 ring-gray-200',
+  danger: 'bg-red-50 text-pmi-red ring-1 ring-red-200',
 }
 
 export function Badge({
@@ -19,7 +19,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-block px-3 py-1 text-xs font-bold border-2 border-event-navy',
+        'inline-flex items-center px-2.5 py-1 rounded-[var(--radius-pill)] text-xs font-medium',
         variantStyles[variant],
         className
       )}

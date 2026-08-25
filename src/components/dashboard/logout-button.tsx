@@ -17,11 +17,11 @@ export function LogoutButton({ className }: { className?: string }) {
     <button
       onClick={handleLogout}
       className={cn(
-        'flex items-center justify-center gap-1.5 font-body font-bold text-xs bg-event-yellow text-white px-3 py-2 border-2 border-white/30 hover:border-event-pink hover:text-event-pink transition-colors',
+        'flex items-center justify-center gap-2 font-body font-medium text-sm text-gray-500 px-3 py-2.5 rounded-[var(--radius-input)] border border-[var(--color-border)] hover:bg-red-50 hover:text-pmi-red hover:border-red-200 transition-colors',
         className
       )}
     >
-      <LogOut size={14} />
+      <LogOut size={16} />
       Keluar
     </button>
   )

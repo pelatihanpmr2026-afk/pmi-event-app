@@ -123,7 +123,7 @@ const pembayaran = await prisma.pembayaran.findUnique({
             <span className="font-bold">{jumlahPendamping} orang</span>
           </div>
 
-          {pembayaran.tipe === 'TENDA' && sekolah.tendaSewa.length > 0 && (
+          {sekolah.tendaSewa.length > 0 && (
             <div className="pt-2 border-t-2 border-event-navy/10 flex flex-col gap-1.5">
               <span className="font-body text-xs text-event-navy/60">Tenda yang Disewa</span>
               {sekolah.tendaSewa.map((t) => (
@@ -163,14 +163,6 @@ const pembayaran = await prisma.pembayaran.findUnique({
             </div>
           )}
 
-          {pembayaran.tipe === 'PESERTA' && pembayaran.statusPembayaran === 'LUNAS' && (
-            <div className="flex justify-between items-center font-body text-xs text-event-navy pt-2 border-t-2 border-event-navy/10">
-              <span className="text-event-navy/60">Status Daftar Ulang</span>
-              <Badge variant={pembayaran.statusDaftarUlang ? 'success' : 'warning'}>
-                {pembayaran.statusDaftarUlang ? 'Sudah Daftar Ulang' : 'Belum Daftar Ulang'}
-              </Badge>
-            </div>
-          )}
 
           <div className="flex justify-between font-heading text-xs text-event-navy pt-2 border-t-2 border-event-navy/20">
             <span>TOTAL</span>

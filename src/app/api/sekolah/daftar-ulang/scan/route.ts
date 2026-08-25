@@ -1,16 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getSession } from '@/lib/get-session'
+import { requireRole } from '@/lib/api-guard'
+
+function ambilQrToken(nilaiQr: unknown): string | null {
+  const nilai = nilaiQr?.toString()?.trim()
+  if (!nilai) return null
+
+  // Kwitansi baru menyimpan URL verifikasi lengkap di QR agar bisa dibuka
+  // langsung dari kamera. QR lama hanya menyimpan token, jadi keduanya diterima.
+  try {
+    const url = new URL(nilai)
+    const bagianPath = url.pathname.split('/').filter(Boolean)
+    const indexVerifikasi = bagianPath.findIndex(
+      (bagian, index) => bagian === 'kwitansi' && bagianPath[index + 1] === 'verifikasi'
+    )
+
+    return indexVerifikasi >= 0 ? bagianPath[indexVerifikasi + 2] ?? null : null
+  } catch {
+    return nilai
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, message: 'Tidak diizinkan' }, { status: 401 })
-    }
+    const guard = await requireRole('KESEKRETARIATAN')
+    if (!guard.ok) return guard.response
 
     const body = await req.json()
-    const qrToken = body?.qrToken?.toString()?.trim()
+    const qrToken = ambilQrToken(body?.qrToken)
 
     if (!qrToken) {
       return NextResponse.json(
@@ -24,7 +41,8 @@ export async function POST(req: NextRequest) {
       include: {
         sekolah: {
           include: {
-            peserta: { select: { tipe: true } },
+            peserta: { select: { tipe: true, namaLengkap: true, riwayatPenyakit: true } },
+            tendaSewa: { include: { tendaJenis: { select: { nama: true } } } },
           },
         },
       },
@@ -54,19 +72,29 @@ export async function POST(req: NextRequest) {
     const { sekolah } = pembayaran
     const jumlahPeserta = sekolah.peserta.filter((p) => p.tipe === 'PESERTA').length
     const jumlahPendamping = sekolah.peserta.filter((p) => p.tipe === 'PENDAMPING').length
+    const dataSekolah = {
+      namaLengkap: sekolah.namaLengkap,
+      kodePendaftaran: sekolah.kodePendaftaran,
+      kategori: sekolah.kategori,
+      jumlahPeserta,
+      jumlahPendamping,
+      tenda: sekolah.tendaSewa.map((tenda) => ({ nama: tenda.tendaJenis.nama, jumlah: tenda.jumlah })),
+      pesertaDenganRiwayatPenyakit: sekolah.peserta
+        .filter(
+          (peserta) =>
+            peserta.tipe === 'PESERTA' &&
+            peserta.riwayatPenyakit &&
+            peserta.riwayatPenyakit !== 'TIDAK_ADA'
+        )
+        .map((peserta) => ({ namaLengkap: peserta.namaLengkap, riwayatPenyakit: peserta.riwayatPenyakit! })),
+    }
 
     if (pembayaran.statusDaftarUlang) {
       return NextResponse.json(
         {
           success: false,
           message: `${sekolah.namaLengkap} sudah daftar ulang sebelumnya pada ${pembayaran.waktuDaftarUlang?.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'long' })}`,
-          data: {
-            namaLengkap: sekolah.namaLengkap,
-            kodePendaftaran: sekolah.kodePendaftaran,
-            kategori: sekolah.kategori,
-            jumlahPeserta,
-            jumlahPendamping,
-          },
+          data: dataSekolah,
         },
         { status: 409 }
       )
@@ -80,13 +108,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Daftar ulang berhasil dicatat',
-      data: {
-        namaLengkap: sekolah.namaLengkap,
-        kodePendaftaran: sekolah.kodePendaftaran,
-        kategori: sekolah.kategori,
-        jumlahPeserta,
-        jumlahPendamping,
-      },
+      data: dataSekolah,
     })
   } catch (error) {
     console.error('[POST /api/sekolah/daftar-ulang/scan]', error)

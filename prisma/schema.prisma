@@ -45,6 +45,14 @@ enum StatusPanitia {
   HADIR
 }
 
+enum AdminRole {
+  SUPERADMIN
+  KESEKRETARIATAN
+  KEUANGAN
+  ACARA
+  KTA
+}
+
 model Panitia {
   id              String        @id @default(cuid())
   nomorRegistrasi String        @unique
@@ -71,12 +79,14 @@ model Panitia {
 }
 
 model Admin {
-  id           String   @id @default(cuid())
-  username     String   @unique
+  id           String      @id @default(cuid())
+  username     String      @unique
   passwordHash String
   nama         String
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  role         AdminRole   @default(SUPERADMIN)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  adminLogs    AdminLog[]  // <--- TAMBAHKAN INI (Relasi balikan)
 
   @@map("admin")
 }
@@ -168,7 +178,12 @@ model Sekolah {
 
   estimasiPesertaPendamping Int?
 
-  excelUrl          String?  @db.Text
+excelUrl          String?  @db.Text
+  suratPernyataanUrl String? @db.Text
+  tandaTanganPenanggungJawabUrl String? @db.Text
+  termsVersion     String?
+  termsAgreedAt    DateTime?
+  sudahCetak       Boolean  @default(false)
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -184,6 +199,10 @@ model Peserta {
   id                  String   @id @default(cuid())
   sekolahId           String
   tipe                TipePeserta
+
+  batchKe             Int      @default(1)
+
+  noPeserta           String?  @unique
 
   namaLengkap         String
   tempatLahir         String
@@ -205,10 +224,10 @@ model Peserta {
 
   @@map("peserta")
 }
-
 model TendaJenis {
   id           String   @id @default(cuid())
   nama         String
+  namaVendor   String?
   kapasitasMin Int
   kapasitasMax Int
   harga        Int
@@ -219,6 +238,7 @@ model TendaJenis {
   updatedAt    DateTime @updatedAt
 
   tendaSewa    TendaSewa[]
+  reservasiItems ReservasiTendaItem[]
 
   @@map("tenda_jenis")
 }
@@ -255,6 +275,8 @@ model Pembayaran {
   sekolahId         String
   tipe              TipePembayaran
 
+  batchKe           Int              @default(1)
+
   jumlahBiaya       Int
   statusPembayaran  StatusPembayaran @default(BELUM_BAYAR)
 
@@ -275,7 +297,7 @@ model Pembayaran {
 
   sekolah           Sekolah          @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
 
-  @@unique([sekolahId, tipe])
+  @@unique([sekolahId, tipe, batchKe])
   @@map("pembayaran")
 }
 
@@ -314,6 +336,9 @@ model TransaksiKeuangan {
   divisi              Divisi?
   pic                 String?
 
+  pengajuanId         String?  @unique
+  pengajuan           PengajuanAnggaran? @relation(fields: [pengajuanId], references: [id])
+
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -348,6 +373,7 @@ model PengajuanAnggaran {
   updatedAt        DateTime @updatedAt
 
   items            PengajuanItem[]
+  transaksi        TransaksiKeuangan?
 
   @@map("pengajuan_anggaran")
 }
@@ -378,4 +404,52 @@ enum RiwayatPenyakit {
   HEMOFILIA
   ANEMIA_BERAT
   LAINNYA
+}
+
+model AdminLog {
+  id           String      @id @default(cuid())
+  adminId      String?
+  adminName    String
+  adminRole    AdminRole?
+  action       String
+  targetType   String?
+  targetId     String?
+  metadata     Json?
+  ip           String?
+  userAgent    String?
+  createdAt    DateTime    @default(now())
+  admin        Admin?      @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@map("admin_log")
+}
+
+model ReservasiTenda {
+  id                String   @id
+  namaSekolah       String
+  kategori          KategoriSekolah
+  namaPembina       String
+  noWhatsappPembina String
+  estimasiPesertaPendamping Int
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  items             ReservasiTendaItem[]
+
+  @@index([expiresAt])
+  @@map("reservasi_tenda")
+}
+
+model ReservasiTendaItem {
+  id             String @id @default(cuid())
+  reservasiId    String
+  tendaJenisId   String
+  jumlah         Int
+  hargaSatuan    Int
+
+  reservasi      ReservasiTenda @relation(fields: [reservasiId], references: [id], onDelete: Cascade)
+  tendaJenis     TendaJenis     @relation(fields: [tendaJenisId], references: [id])
+
+  @@unique([reservasiId, tendaJenisId])
+  @@map("reservasi_tenda_item")
 }

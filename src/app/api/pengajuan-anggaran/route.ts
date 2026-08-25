@@ -5,10 +5,14 @@ import { dataPengajuSchema, itemBarangArraySchema } from '@/lib/validations/peng
 import { generateNomorPengajuan } from '@/lib/generate-nomor-pengajuan'
 import { generatePdfPengajuanBuffer } from '@/lib/generate-pdf-pengajuan'
 import { saveBuffer, saveUploadedFile, getFileExtension } from '@/lib/save-file'
+import { checkRateLimit } from '@/lib/rate-limit'
 import type { Divisi } from '@prisma/client'
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = checkRateLimit(req, { key: 'pengajuan-submit', max: 30, windowMs: 60 * 60 * 1000 })
+    if (rl) return rl
+
     const formData = await req.formData()
 
     const rawDataPengaju = formData.get('dataPengaju')?.toString()

@@ -7,18 +7,17 @@ export interface DraftData {
   currentStep: number
   dataSekolah: unknown
   dataPeserta: unknown
+  dataPendamping: unknown
   sekolahId: string | null
   savedAt: number
 }
-
-// ===== localStorage: data teks =====
 
 export function saveDraft(data: Omit<DraftData, 'savedAt'>) {
   try {
     const payload: DraftData = { ...data, savedAt: Date.now() }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(payload))
   } catch {
-    // Storage penuh atau diblokir — abaikan, draft bersifat best-effort
+    // Storage penuh atau diblokir — abaikan
   }
 }
 
@@ -26,15 +25,11 @@ export function loadDraft(): DraftData | null {
   try {
     const raw = localStorage.getItem(DRAFT_KEY)
     if (!raw) return null
-
     const parsed = JSON.parse(raw) as DraftData
-
-    // Draft kedaluwarsa dibuang, supaya tidak muncul data lama yang sudah tidak relevan
     if (Date.now() - parsed.savedAt > DRAFT_MAX_AGE) {
       clearDraft()
       return null
     }
-
     return parsed
   } catch {
     return null
@@ -51,7 +46,6 @@ export function clearDraft() {
 }
 
 // ===== IndexedDB: file foto =====
-
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, 1)
@@ -77,7 +71,7 @@ export async function savePhoto(key: string, file: File): Promise<void> {
     })
     db.close()
   } catch {
-    // abaikan — foto akan diminta ulang kalau gagal tersimpan
+    // abaikan
   }
 }
 

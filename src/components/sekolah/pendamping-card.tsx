@@ -1,53 +1,48 @@
 'use client'
 
-import { UseFormReturn } from 'react-hook-form'
+import { memo } from 'react'
+import { useFormContext } from 'react-hook-form'
 import { Trash2 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { RadioPixel } from '@/components/ui/radio-pixel'
 import { AGAMA_OPTIONS, GOLONGAN_DARAH_OPTIONS } from '@/lib/constants-sekolah'
 import { GENDER_OPTIONS } from '@/lib/constants'
-import { PesertaPendampingValues } from '@/lib/validations/peserta'
+import { normalizeNamaPeserta, PendampingOnlyValues } from '@/lib/validations/peserta'
 
-export function PendampingCard({
-  form,
+export const PendampingCard = memo(function PendampingCard({
   index,
   onRemove,
 }: {
-  form: UseFormReturn<PesertaPendampingValues>
   index: number
   onRemove: () => void
 }) {
-  const {
-    register,
-    watch,
-    setValue,
-    formState: { errors },
-  } = form
-
+  const { register, watch, setValue, formState: { errors } } = useFormContext<PendampingOnlyValues>()
   const itemErrors = errors.pendamping?.[index]
-  const gender = watch(`pendamping.${index}.gender`)
+  const namaLengkapField = register(`pendamping.${index}.namaLengkap`)
 
   return (
-    <div className="border-3 border-event-navy bg-white p-4 flex flex-col gap-3">
+    <div className="border-3 border-event-navy rounded-[var(--radius-card)] bg-white p-4 flex flex-col gap-3 shadow-pixel-sm">
       <div className="flex items-center justify-between">
         <span className="font-heading text-[10px] text-event-navy">PENDAMPING #{index + 1}</span>
         <button
           type="button"
           onClick={onRemove}
-          className="w-7 h-7 flex items-center justify-center bg-pmi-red text-white border-2 border-event-navy"
+          className="w-8 h-8 flex items-center justify-center rounded-[var(--radius-btn)] bg-pmi-red text-white hover:bg-red-700 transition-colors"
         >
-          <Trash2 size={12} />
+          <Trash2 size={14} />
         </button>
       </div>
-
       <Input
         label="Nama Lengkap"
         placeholder="Nama sesuai identitas"
         error={itemErrors?.namaLengkap?.message}
-        {...register(`pendamping.${index}.namaLengkap`)}
+        {...namaLengkapField}
+        onBlur={(event) => {
+          namaLengkapField.onBlur(event)
+          setValue(`pendamping.${index}.namaLengkap`, normalizeNamaPeserta(event.target.value), { shouldValidate: true })
+        }}
       />
-
       <div className="grid grid-cols-2 gap-3">
         <Input
           label="Tempat Lahir"
@@ -58,18 +53,18 @@ export function PendampingCard({
         <Input
           label="Tanggal Lahir"
           type="date"
+          min="1900-01-01"
+          max={new Date().toISOString().slice(0, 10)}
           error={itemErrors?.tanggalLahir?.message}
           {...register(`pendamping.${index}.tanggalLahir`)}
         />
       </div>
-
       <Input
         label="Alamat Lengkap"
         placeholder="Alamat domisili"
         error={itemErrors?.alamat?.message}
         {...register(`pendamping.${index}.alamat`)}
       />
-
       <div className="grid grid-cols-2 gap-3">
         <Select
           label="Agama"
@@ -86,7 +81,6 @@ export function PendampingCard({
           {...register(`pendamping.${index}.golonganDarah`)}
         />
       </div>
-
       <div className="grid grid-cols-2 gap-3">
         <Input
           label="Tahun Masuk"
@@ -102,16 +96,16 @@ export function PendampingCard({
           {...register(`pendamping.${index}.noHp`)}
         />
       </div>
-
       <RadioPixel
+        pixel
         label="Jenis Kelamin"
         name={`pendamping.${index}.gender`}
         options={GENDER_OPTIONS}
-        value={gender}
+        value={watch(`pendamping.${index}.gender`)}
         onChange={(val) =>
           setValue(
             `pendamping.${index}.gender`,
-            val as PesertaPendampingValues['pendamping'][number]['gender'],
+            val as (typeof GENDER_OPTIONS)[number]['value'], // <-- Hapus 'as any', pakai union type
             { shouldValidate: true }
           )
         }
@@ -119,4 +113,4 @@ export function PendampingCard({
       />
     </div>
   )
-}
+})

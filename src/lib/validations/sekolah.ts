@@ -1,16 +1,13 @@
 import { z } from 'zod'
 
 export const dataSekolahSchema = z.object({
-  jenjang: z.enum(['SMP', 'MTS', 'SMA', 'SMK', 'MA'], {
-    error: (issue) => (issue.input === undefined ? 'Pilih jenjang sekolah' : 'Jenjang tidak valid'),
-  }),
-  statusSekolah: z.enum(['NEGERI', 'SWASTA'], {
-    error: (issue) => (issue.input === undefined ? 'Pilih status sekolah' : 'Status tidak valid'),
-  }),
-  namaInput: z
+  namaSekolah: z
     .string()
     .min(2, 'Nama sekolah minimal 2 karakter')
     .max(150, 'Nama sekolah maksimal 150 karakter'),
+  kategori: z.enum(['MADYA', 'WIRA'], {
+    error: (issue) => (issue.input === undefined ? 'Pilih kategori PMR' : 'Kategori tidak valid'),
+  }),
   namaPembina: z
     .string()
     .min(3, 'Nama pembina minimal 3 karakter')

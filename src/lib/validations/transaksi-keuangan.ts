@@ -20,8 +20,8 @@ export const transaksiKeuanganSchema = z
       .enum(['SETOR_TENDA', 'OPERASIONAL_DIVISI', 'BEBAN_PENGELUARAN'])
       .optional(),
     nominal: nominalSchema,
-    divisi: z.string().optional(),
-    pic: z.string().optional(),
+    divisi: z.string().min(1, 'Pilih divisi'),
+    pic: z.string().trim().min(2, 'Pilih atau isi nama PIC'),
   })
   .superRefine((data, ctx) => {
     if (data.jenis === 'PEMASUKAN' && !data.kategoriPemasukan) {
@@ -33,14 +33,6 @@ export const transaksiKeuanganSchema = z
         path: ['kategoriPengeluaran'],
         message: 'Pilih kategori pengeluaran',
       })
-    }
-    if (data.jenis === 'PENGELUARAN' && data.kategoriPengeluaran === 'OPERASIONAL_DIVISI') {
-      if (!data.divisi) {
-        ctx.addIssue({ code: 'custom', path: ['divisi'], message: 'Pilih divisi' })
-      }
-      if (!data.pic || data.pic.trim().length < 2) {
-        ctx.addIssue({ code: 'custom', path: ['pic'], message: 'Pilih atau isi nama PIC' })
-      }
     }
   })
 

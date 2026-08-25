@@ -13,7 +13,7 @@ function formatRp(n: number) {
 }
 
 const cellInputClass =
-  'w-full px-2.5 py-2 text-sm border-2 border-event-navy/30 focus:border-event-navy focus:outline-none font-body'
+  'w-full px-2.5 py-2 text-sm text-event-navy bg-white border rounded-[var(--radius-input)] border-[var(--color-border)] focus:border-event-blue focus:outline-none font-body caret-event-navy'
 
 export function ItemsTable({
   fields,
@@ -31,16 +31,16 @@ export function ItemsTable({
   const watchedItems = watch('items')
 
   return (
-    <div className="border-3 border-event-navy bg-white overflow-x-auto">
+    <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] bg-white overflow-x-auto shadow-[var(--shadow-soft)]">
       <table className="w-full min-w-[700px]">
         <thead>
-          <tr className="bg-event-navy text-white">
-            <th className="font-body text-xs px-3 py-3 w-12">No</th>
-            <th className="font-body text-xs px-3 py-3 text-left">Nama Barang</th>
-            <th className="font-body text-xs px-3 py-3 w-28">Jumlah</th>
-            <th className="font-body text-xs px-3 py-3 w-40">Harga Satuan</th>
-            <th className="font-body text-xs px-3 py-3 w-36 text-right">Total</th>
-            <th className="font-body text-xs px-3 py-3 w-20">Aksi</th>
+          <tr className="bg-[var(--color-surface-muted)]">
+            <th className="font-body text-xs font-semibold text-gray-500 px-3 py-3 w-12">No</th>
+            <th className="font-body text-xs font-semibold text-gray-500 px-3 py-3 text-left">Nama Barang</th>
+            <th className="font-body text-xs font-semibold text-gray-500 px-3 py-3 w-28">Jumlah</th>
+            <th className="font-body text-xs font-semibold text-gray-500 px-3 py-3 w-40">Harga Satuan</th>
+            <th className="font-body text-xs font-semibold text-gray-500 px-3 py-3 w-36 text-right">Total</th>
+            <th className="font-body text-xs font-semibold text-gray-500 px-3 py-3 w-20">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -50,8 +50,8 @@ export function ItemsTable({
             const harga = Number(watchedItems?.[index]?.hargaSatuan) || 0
 
             return (
-              <tr key={field.id} className={`border-t-2 border-event-navy/10 ${index % 2 === 1 ? 'bg-event-cream/40' : ''}`}>
-                <td className="text-center font-body text-sm text-event-navy/60 px-2 py-2">{index + 1}</td>
+              <tr key={field.id} className="border-t border-[var(--color-border)]">
+                <td className="text-center font-body text-sm text-event-navy px-2 py-2">{index + 1}</td>
                 <td className="px-2 py-2">
                   <input
                     type="text"
@@ -60,7 +60,7 @@ export function ItemsTable({
                     {...register(`items.${index}.namaBarang`)}
                   />
                   {itemErrors?.namaBarang?.message && (
-                    <p className="text-[10px] font-bold text-pmi-red mt-1">{itemErrors.namaBarang.message}</p>
+                    <p className="text-[10px] font-medium text-pmi-red mt-1">{itemErrors.namaBarang.message}</p>
                   )}
                 </td>
                 <td className="px-2 py-2">
@@ -71,7 +71,7 @@ export function ItemsTable({
                     {...register(`items.${index}.qty`)}
                   />
                   {itemErrors?.qty?.message && (
-                    <p className="text-[10px] font-bold text-pmi-red mt-1">{itemErrors.qty.message}</p>
+                    <p className="text-[10px] font-medium text-pmi-red mt-1">{itemErrors.qty.message}</p>
                   )}
                 </td>
                 <td className="px-2 py-2">
@@ -82,10 +82,10 @@ export function ItemsTable({
                     {...register(`items.${index}.hargaSatuan`)}
                   />
                   {itemErrors?.hargaSatuan?.message && (
-                    <p className="text-[10px] font-bold text-pmi-red mt-1">{itemErrors.hargaSatuan.message}</p>
+                    <p className="text-[10px] font-medium text-pmi-red mt-1">{itemErrors.hargaSatuan.message}</p>
                   )}
                 </td>
-                <td className="px-3 py-2 text-right font-body font-bold text-sm text-event-navy">
+                <td className="px-3 py-2 text-right font-body font-semibold text-sm text-event-navy">
                   {formatRp(qty * harga)}
                 </td>
                 <td className="px-2 py-2">
@@ -94,7 +94,7 @@ export function ItemsTable({
                       type="button"
                       onClick={() => onRemove(index)}
                       disabled={fields.length <= 1}
-                      className="w-9 h-9 flex items-center justify-center bg-pmi-red text-white border-2 border-event-navy disabled:opacity-30"
+                      className="w-9 h-9 flex items-center justify-center rounded-[var(--radius-input)] bg-red-50 text-pmi-red hover:bg-red-100 disabled:opacity-30 transition-colors"
                     >
                       <Trash2 size={14} />
                     </button>

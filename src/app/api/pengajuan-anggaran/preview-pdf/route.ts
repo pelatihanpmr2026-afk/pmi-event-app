@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { dataPengajuSchema, itemBarangArraySchema } from '@/lib/validations/pengajuan-anggaran'
 import { generatePdfPengajuanBuffer } from '@/lib/generate-pdf-pengajuan'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = checkRateLimit(req, { key: 'pengajuan-preview', max: 60, windowMs: 60 * 60 * 1000 })
+    if (rl) return rl
+
     const formData = await req.formData()
     const rawDataPengaju = formData.get('dataPengaju')?.toString()
     const rawItems = formData.get('items')?.toString()

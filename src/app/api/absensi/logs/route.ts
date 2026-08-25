@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { requireRole } from '@/lib/api-guard'
 
 export async function GET() {
   try {
+    const guard = await requireRole('KESEKRETARIATAN')
+    if (!guard.ok) return guard.response
+
     const logs = await prisma.absensiLog.findMany({
       orderBy: { scannedAt: 'desc' },
       take: 50,

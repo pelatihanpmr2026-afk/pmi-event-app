@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getSession } from '@/lib/get-session'
 import { transaksiKeuanganSchema } from '@/lib/validations/transaksi-keuangan'
-import { getTransaksiListData } from '@/lib/keuangan'
 import type { Divisi } from '@prisma/client'
+import { requireRole } from '@/lib/api-guard'
+import { getTransaksiListData } from '@/lib/keuangan'
 
 export async function GET() {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, message: 'Tidak diizinkan' }, { status: 401 })
-    }
+    const guard = await requireRole('KEUANGAN')
+    if (!guard.ok) return guard.response
 
     const data = await getTransaksiListData()
     return NextResponse.json({ success: true, data })
@@ -25,14 +23,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, message: 'Tidak diizinkan' }, { status: 401 })
-    }
+    const guard = await requireRole('KEUANGAN')
+    if (!guard.ok) return guard.response
 
     const body = await req.json()
     const parsed = transaksiKeuanganSchema.safeParse(body)
-
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, message: 'Data tidak valid', errors: parsed.error.flatten() },
@@ -40,8 +35,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
-const data = parsed.data
+    const data = parsed.data
     const nominal = Number(data.nominal)
+
+    // FIX: Hapus const utang = data.utang ... 
+    // Kita langsung tentukan nilai utang berdasarkan jenis transaksi di bawah.
 
     const transaksi = await prisma.transaksiKeuangan.create({
       data: {
@@ -52,15 +50,9 @@ const data = parsed.data
         kategoriPengeluaran: data.jenis === 'PENGELUARAN' ? data.kategoriPengeluaran : null,
         debit: data.jenis === 'PEMASUKAN' ? nominal : 0,
         kredit: data.jenis === 'PENGELUARAN' ? nominal : 0,
-        utang: data.jenis === 'UTANG' ? nominal : 0,
-        divisi:
-          data.jenis === 'PENGELUARAN' && data.kategoriPengeluaran === 'OPERASIONAL_DIVISI'
-            ? (data.divisi as Divisi)
-            : null,
-        pic:
-          data.jenis === 'PENGELUARAN' && data.kategoriPengeluaran === 'OPERASIONAL_DIVISI'
-            ? data.pic
-            : null,
+        utang: data.jenis === 'UTANG' ? nominal : 0, // <-- Perbaikan di sini
+        divisi: data.divisi as Divisi,
+        pic: data.pic,
       },
     })
 

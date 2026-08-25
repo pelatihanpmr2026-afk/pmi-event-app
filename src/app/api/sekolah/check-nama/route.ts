@@ -1,33 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { normalizeNamaSekolah } from '@/lib/sekolah'
-import type { Jenjang, StatusSekolah } from '@prisma/client'
+import { namaSekolahKey, normalizeNamaSekolah } from '@/lib/sekolah'
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
-    const jenjang = searchParams.get('jenjang') as Jenjang | null
-    const statusSekolah = searchParams.get('statusSekolah') as StatusSekolah | null
-    const namaInput = searchParams.get('namaInput')?.trim() ?? ''
+    const namaSekolah = searchParams.get('namaSekolah')?.trim() ?? ''
 
-    if (!jenjang || !statusSekolah || namaInput.length < 2) {
+    if (namaSekolah.length < 2) {
       return NextResponse.json(
         { success: false, message: 'Parameter tidak lengkap' },
         { status: 400 }
       )
     }
 
-    const namaLengkap = normalizeNamaSekolah(jenjang, statusSekolah, namaInput)
+    const namaLengkap = normalizeNamaSekolah(namaSekolah)
 
-    const existing = await prisma.sekolah.findUnique({
-      where: { namaLengkap },
+    const sekolahList = await prisma.sekolah.findMany({
       select: {
         id: true,
+        namaLengkap: true,
         namaPembina: true,
         noWhatsappPembina: true,
         _count: { select: { peserta: true } },
       },
     })
+    const existing = sekolahList.find((sekolah) => namaSekolahKey(sekolah.namaLengkap) === namaSekolahKey(namaLengkap))
 
     if (!existing) {
       return NextResponse.json({

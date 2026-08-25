@@ -52,6 +52,24 @@ function findDivisiLabel(value: string): string {
   return DIVISI_OPTIONS.find((d) => d.value === value)?.label ?? value
 }
 
+/** Pecah teks jadi baris-baris yang muat dalam maxWidth (ctx.font harus sudah di-set). */
+function wrapText(ctx: SKRSContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(/\s+/)
+  const lines: string[] = []
+  let line = ''
+  for (const word of words) {
+    const candidate = line ? `${line} ${word}` : word
+    if (ctx.measureText(candidate).width <= maxWidth || !line) {
+      line = candidate
+    } else {
+      lines.push(line)
+      line = word
+    }
+  }
+  if (line) lines.push(line)
+  return lines
+}
+
 export async function generatePdfPengajuanBuffer(params: GeneratePdfPengajuanParams): Promise<Buffer> {
   registerFonts()
 
@@ -63,7 +81,7 @@ export async function generatePdfPengajuanBuffer(params: GeneratePdfPengajuanPar
   const totalsHeight = 110
   const signatureHeight = 190
   const footerHeight = 70
-  const spacing = 220 // jarak antar section
+  const spacing = 280 // jarak antar section
 
   const HEIGHT =
     headerHeight + infoHeight + tableHeight + totalsHeight + signatureHeight + footerHeight + spacing + MARGIN * 2
@@ -86,7 +104,6 @@ export async function generatePdfPengajuanBuffer(params: GeneratePdfPengajuanPar
     const logoH = (logo.height / logo.width) * logoW
     ctx.drawImage(logo, MARGIN, (headerHeight - logoH) / 2, logoW, logoH)
   } catch {
-    // Logo opsional — kalau gagal dimuat, PDF tetap digenerate tanpa logo
   }
 
   drawText(ctx, 'FORM PENGAJUAN ANGGARAN', WIDTH / 2, 55, {
@@ -131,11 +148,14 @@ export async function generatePdfPengajuanBuffer(params: GeneratePdfPengajuanPar
 
   // ===== TABEL RINCIAN =====
   const tableTop = y
-  const col = { no: MARGIN + 20, nama: MARGIN + 60, qty: 560, harga: 660, total: WIDTH - MARGIN - 20 }
+  // Kolom dialokasikan dengan jeda agar teks tidak tumpang tindih.
+  // Tabel membentang dari MARGIN (50) sampai WIDTH - MARGIN (850).
+  const col = { no: 72, nama: 108, qty: 480, harga: 690, total: WIDTH - MARGIN - 20 }
+  const namaMaxWidth = col.qty - 12 - col.nama // 440 - 12 - 108 = 320px
 
   ctx.fillStyle = NAVY
   ctx.fillRect(MARGIN, y, WIDTH - MARGIN * 2, tableHeaderHeight)
-  drawText(ctx, 'NO', col.no, y + tableHeaderHeight / 2, { font: 'bold 13px Silkscreen-Bold', color: '#FFFFFF' })
+  drawText(ctx, 'NO', col.no, y + tableHeaderHeight / 2, { font: 'bold 13px Silkscreen-Bold', color: '#FFFFFF', align: 'center' })
   drawText(ctx, 'NAMA BARANG/KEBUTUHAN', col.nama, y + tableHeaderHeight / 2, {
     font: 'bold 13px Silkscreen-Bold',
     color: '#FFFFFF',
@@ -162,8 +182,15 @@ export async function generatePdfPengajuanBuffer(params: GeneratePdfPengajuanPar
       ctx.fillStyle = '#F5F7FB'
       ctx.fillRect(MARGIN, y, WIDTH - MARGIN * 2, rowHeight)
     }
-    drawText(ctx, `${i + 1}`, col.no, y + rowHeight / 2, { font: '14px Silkscreen', color: NAVY })
-    drawText(ctx, item.namaBarang, col.nama, y + rowHeight / 2, { font: '14px Silkscreen', color: NAVY })
+    drawText(ctx, `${i + 1}`, col.no, y + rowHeight / 2, { font: '14px Silkscreen', color: NAVY, align: 'center' })
+    // Nama barang di-wrap agar tidak menabrak kolom QTY.
+    ctx.font = '14px Silkscreen'
+    const lines = wrapText(ctx, item.namaBarang, namaMaxWidth).slice(0, 2)
+    const lineH = 20
+    const startY = y + rowHeight / 2 - ((lines.length - 1) * lineH) / 2
+    lines.forEach((ln, li) => {
+      drawText(ctx, ln, col.nama, startY + li * lineH, { font: '14px Silkscreen', color: NAVY })
+    })
     drawText(ctx, `${item.qty}`, col.qty, y + rowHeight / 2, { font: '14px Silkscreen', color: NAVY, align: 'center' })
     drawText(ctx, formatRupiah(item.hargaSatuan), col.harga, y + rowHeight / 2, {
       font: '14px Silkscreen',

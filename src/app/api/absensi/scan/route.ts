@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isSesiActive } from '@/lib/absensi'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
+    const rl = checkRateLimit(req, { key: 'absensi-scan', max: 300, windowMs: 60 * 1000 })
+    if (rl) return rl
+
     const body = await req.json()
     const qrToken = body?.qrToken?.toString()?.trim()
 

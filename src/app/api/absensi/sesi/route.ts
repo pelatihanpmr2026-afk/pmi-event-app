@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sesiSchema } from '@/lib/validations/absensi'
+import { requireRole } from '@/lib/api-guard'
 
 export async function GET() {
   try {
+    const guard = await requireRole('KESEKRETARIATAN')
+    if (!guard.ok) return guard.response
+
     const sesiList = await prisma.absensiSesi.findMany({
       orderBy: { tanggal: 'asc' },
       include: { _count: { select: { logs: true } } },
@@ -21,6 +25,9 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    const guard = await requireRole('KESEKRETARIATAN')
+    if (!guard.ok) return guard.response
+
     const body = await req.json()
     const parsed = sesiSchema.safeParse(body)
 

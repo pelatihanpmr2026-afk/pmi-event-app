@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { TENDA_TOLERANSI } from '@/lib/constants-sekolah'
+import { TENDA_RESERVASI_JAM, TENDA_TOLERANSI } from '@/lib/constants-sekolah'
+import { batasReservasiTenda, reservasiTendaAktif } from '@/lib/tenda-stock'
+import { hasTendaSession, TENDA_SESSION_COOKIE } from '@/lib/tenda-session'
 
 export async function GET(
   req: NextRequest,
@@ -8,6 +10,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params
+    if (!(await hasTendaSession(req.cookies.get(TENDA_SESSION_COOKIE)?.value, id))) return NextResponse.json({ success: false, message: 'Verifikasi sekolah diperlukan' }, { status: 401 })
 
     const sekolah = await prisma.sekolah.findUnique({
       where: { id },
@@ -28,6 +31,7 @@ export async function GET(
     const batasKapasitas = efektifJumlahOrang + TENDA_TOLERANSI
 
     const pembayaranTenda = sekolah.pembayaran[0] ?? null
+    const reservasiAktif = reservasiTendaAktif(pembayaranTenda ?? undefined, batasReservasiTenda())
     const terkunci = pembayaranTenda ? pembayaranTenda.statusPembayaran !== 'BELUM_BAYAR' : false
 
     return NextResponse.json({
@@ -41,6 +45,11 @@ export async function GET(
         batasKapasitas,
         terkunci,
         statusPembayaranTenda: pembayaranTenda?.statusPembayaran ?? null,
+        reservasiAktif,
+        reservasiBerakhirPada:
+          pembayaranTenda?.statusPembayaran === 'BELUM_BAYAR'
+            ? new Date(pembayaranTenda.updatedAt.getTime() + TENDA_RESERVASI_JAM * 60 * 60 * 1000)
+            : null,
         pilihanSaatIni: sekolah.tendaSewa.map((t) => ({
           tendaJenisId: t.tendaJenisId,
           jumlah: t.jumlah,

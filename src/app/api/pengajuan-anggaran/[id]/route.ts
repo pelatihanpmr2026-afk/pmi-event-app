@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getSession } from '@/lib/get-session'
+import { requireRole } from '@/lib/api-guard'
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getSession()
-    if (!session) {
-      return NextResponse.json({ success: false, message: 'Tidak diizinkan' }, { status: 401 })
-    }
+    const guard = await requireRole('KEUANGAN')
+    if (!guard.ok) return guard.response
 
     const { id } = await params
 

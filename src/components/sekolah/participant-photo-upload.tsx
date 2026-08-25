@@ -47,7 +47,7 @@ useEffect(() => {
           }`}
         >
           <Upload size={18} className="text-event-navy/60" />
-          <span className="font-body text-[10px] text-event-navy/60">Upload foto (JPG/PNG)</span>
+          <span className="font-body text-[10px] text-event-navy/60">Upload foto (JPG/PNG), wajah jelas dan pencahayaan cukup</span>
           <input
             ref={inputRef}
             type="file"
@@ -68,6 +68,7 @@ useEffect(() => {
           >
             <X size={12} />
           </button>
+          <label className="absolute -bottom-7 left-0 whitespace-nowrap cursor-pointer font-body text-[10px] text-event-blue underline">Ganti foto<input ref={inputRef} type="file" accept={ACCEPTED_FOTO_TYPES.join(',')} className="hidden" onChange={handleFileChange} /></label>
         </div>
       )}
       {error && <p className="text-[11px] font-bold text-pmi-red">{error}</p>}
