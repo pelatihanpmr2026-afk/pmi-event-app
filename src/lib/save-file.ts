@@ -8,7 +8,7 @@ const UPLOAD_ROOT = path.join(process.cwd(), 'storage', 'uploads')
 
 export async function saveUploadedFile(
   file: File,
-  subfolder: 'photos' | 'idcards' | 'qrcodes' | 'peserta-photos' | 'excel' | 'bukti-transfer' | 'kwitansi' | 'pengajuan' | 'tanda-tangan' | 'surat-pernyataan',
+  subfolder: 'photos' | 'idcards' | 'qrcodes' | 'peserta-photos' | 'excel' | 'bukti-transfer' | 'kwitansi' | 'pengajuan' | 'tanda-tangan' | 'surat-pernyataan' | 'tenda',
   filename: string
 ): Promise<string> {
   const targetDir = path.join(UPLOAD_ROOT, subfolder)
@@ -29,7 +29,7 @@ export async function saveUploadedFile(
 
 export async function saveBuffer(
   buffer: Buffer,
-  subfolder: 'photos' | 'idcards' | 'qrcodes' | 'peserta-photos' | 'excel' | 'bukti-transfer' | 'kwitansi' | 'pengajuan' | 'tanda-tangan' | 'surat-pernyataan',
+  subfolder: 'photos' | 'idcards' | 'qrcodes' | 'peserta-photos' | 'excel' | 'bukti-transfer' | 'kwitansi' | 'pengajuan' | 'tanda-tangan' | 'surat-pernyataan' | 'tenda',
   filename: string
 ): Promise<string> {
   const targetDir = path.join(UPLOAD_ROOT, subfolder)

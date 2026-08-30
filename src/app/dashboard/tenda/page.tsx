@@ -33,6 +33,7 @@ export default async function DashboardTendaPage() {
 const data: TendaData[] = tendaList.map((t) => ({
   id: t.id,
   nama: t.nama,
+  gambarUrl: t.gambarUrl,
   namaVendor: t.namaVendor,
   kapasitasMin: t.kapasitasMin,
   kapasitasMax: t.kapasitasMax,

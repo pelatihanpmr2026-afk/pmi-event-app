@@ -54,24 +54,24 @@ enum AdminRole {
 }
 
 model Panitia {
-  id              String        @id @default(cuid())
-  nomorRegistrasi String        @unique
+  id              String   @id @default(cuid())
+  nomorRegistrasi String   @unique
   nama            String
   gender          Gender
   noWhatsapp      String
-  alamat          String        @db.Text
+  alamat          String   @db.Text
   asalUnit        AsalUnit
   divisi          Divisi
 
-  fotoUrl         String        @db.Text
-  qrCodeUrl       String?       @db.Text
-  idCardUrl       String?       @db.Text
-  qrToken         String        @unique
+  fotoUrl   String  @db.Text
+  qrCodeUrl String? @db.Text
+  idCardUrl String? @db.Text
+  qrToken   String  @unique
 
-  status          StatusPanitia @default(TERDAFTAR)
+  status StatusPanitia @default(TERDAFTAR)
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   absensiLogs AbsensiLog[]
 
@@ -79,14 +79,14 @@ model Panitia {
 }
 
 model Admin {
-  id           String      @id @default(cuid())
-  username     String      @unique
+  id           String     @id @default(cuid())
+  username     String     @unique
   passwordHash String
   nama         String
-  role         AdminRole   @default(SUPERADMIN)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  adminLogs    AdminLog[]  // <--- TAMBAHKAN INI (Relasi balikan)
+  role         AdminRole  @default(SUPERADMIN)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  adminLogs    AdminLog[] // <--- TAMBAHKAN INI (Relasi balikan)
 
   @@map("admin")
 }
@@ -95,8 +95,8 @@ model AbsensiSesi {
   id         String   @id @default(cuid())
   nama       String
   tanggal    DateTime @db.Date
-  jamMulai   String   // format "HH:mm", contoh: "07:00"
-  jamSelesai String   // format "HH:mm", contoh: "09:00"
+  jamMulai   String // format "HH:mm", contoh: "07:00"
+  jamSelesai String // format "HH:mm", contoh: "09:00"
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -159,101 +159,102 @@ enum GolonganDarah {
   TIDAK_TAHU
 }
 
-
 model Sekolah {
-  id                String   @id @default(cuid())
+  id String @id @default(cuid())
 
-  jenjang           Jenjang
-  statusSekolah     StatusSekolah
-  namaInput         String
-  namaLengkap       String   @unique
-  kategori          KategoriSekolah
+  jenjang       Jenjang
+  statusSekolah StatusSekolah
+  namaInput     String
+  namaLengkap   String          @unique
+  kategori      KategoriSekolah
 
-  nomorPendaftaran  Int
-  tahunPendaftaran  Int
-  kodePendaftaran   String   @unique
+  nomorPendaftaran Int
+  tahunPendaftaran Int
+  kodePendaftaran  String @unique
 
   namaPembina       String
   noWhatsappPembina String
 
   estimasiPesertaPendamping Int?
 
-excelUrl          String?  @db.Text
-  suratPernyataanUrl String? @db.Text
-  tandaTanganPenanggungJawabUrl String? @db.Text
-  termsVersion     String?
-  termsAgreedAt    DateTime?
-  sudahCetak       Boolean  @default(false)
+  excelUrl                      String?   @db.Text
+  suratPernyataanUrl            String?   @db.Text
+  tandaTanganPenanggungJawabUrl String?   @db.Text
+  termsVersion                  String?
+  termsAgreedAt                 DateTime?
+  sudahCetak                    Boolean   @default(false)
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  peserta           Peserta[]
-  tendaSewa         TendaSewa[]
-  pembayaran        Pembayaran[]
+  peserta    Peserta[]
+  tendaSewa  TendaSewa[]
+  pembayaran Pembayaran[]
 
   @@map("sekolah")
 }
 
 model Peserta {
-  id                  String   @id @default(cuid())
-  sekolahId           String
-  tipe                TipePeserta
+  id        String      @id @default(cuid())
+  sekolahId String
+  tipe      TipePeserta
 
-  batchKe             Int      @default(1)
+  batchKe Int @default(1)
 
-  noPeserta           String?  @unique
+  noPeserta String? @unique
 
-  namaLengkap         String
-  tempatLahir         String
-  tanggalLahir        DateTime @db.Date
-  alamat              String   @db.Text
-  agama               Agama
-  golonganDarah       GolonganDarah
-  tahunMasuk          Int
-  noHp                String?
-  gender              Gender
+  namaLengkap   String
+  tempatLahir   String
+  tanggalLahir  DateTime      @db.Date
+  alamat        String        @db.Text
+  agama         Agama
+  golonganDarah GolonganDarah
+  tahunMasuk    Int
+  noHp          String?
+  gender        Gender
 
-  riwayatPenyakit     RiwayatPenyakit?
+  riwayatPenyakit RiwayatPenyakit?
 
-  fotoUrl             String?  @db.Text
+  fotoUrl String? @db.Text
 
-  createdAt           DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  sekolah             Sekolah  @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
+  sekolah Sekolah @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
 
   @@map("peserta")
 }
+
 model TendaJenis {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   nama         String
+  gambarUrl    String? @db.Text
   namaVendor   String?
   kapasitasMin Int
   kapasitasMax Int
   harga        Int
-  hargaVendor  Int      @default(0)
+  hargaVendor  Int     @default(0)
   stokTotal    Int
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  tendaSewa    TendaSewa[]
+  tendaSewa      TendaSewa[]
   reservasiItems ReservasiTendaItem[]
 
   @@map("tenda_jenis")
 }
 
 model TendaSewa {
-  id                  String   @id @default(cuid())
+  id                  String @id @default(cuid())
   sekolahId           String
   tendaJenisId        String
   jumlah              Int
   hargaSatuanSaatSewa Int // snapshot harga saat disewa, jaga-jaga kalau harga berubah nanti
 
-  createdAt           DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  sekolah             Sekolah    @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
-  tendaJenis           TendaJenis @relation(fields: [tendaJenisId], references: [id])
+  sekolah    Sekolah    @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
+  tendaJenis TendaJenis @relation(fields: [tendaJenisId], references: [id])
 
   @@map("tenda_sewa")
 }
@@ -271,31 +272,31 @@ enum StatusPembayaran {
 }
 
 model Pembayaran {
-  id                String           @id @default(cuid())
-  sekolahId         String
-  tipe              TipePembayaran
+  id        String         @id @default(cuid())
+  sekolahId String
+  tipe      TipePembayaran
 
-  batchKe           Int              @default(1)
+  batchKe Int @default(1)
 
-  jumlahBiaya       Int
-  statusPembayaran  StatusPembayaran @default(BELUM_BAYAR)
+  jumlahBiaya      Int
+  statusPembayaran StatusPembayaran @default(BELUM_BAYAR)
 
-  buktiTransferUrl  String?          @db.Text
-  catatanAdmin      String?          @db.Text
+  buktiTransferUrl String? @db.Text
+  catatanAdmin     String? @db.Text
 
-  kwitansiUrl       String?          @db.Text
-  qrToken           String?          @unique
+  kwitansiUrl String? @db.Text
+  qrToken     String? @unique
 
-  statusDaftarUlang Boolean          @default(false)
+  statusDaftarUlang Boolean   @default(false)
   waktuDaftarUlang  DateTime?
 
-  dibayarPada       DateTime?
-  dikonfirmasiPada  DateTime?
+  dibayarPada      DateTime?
+  dikonfirmasiPada DateTime?
 
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  sekolah           Sekolah          @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
+  sekolah Sekolah @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
 
   @@unique([sekolahId, tipe, batchKe])
   @@map("pembayaran")
@@ -321,29 +322,30 @@ enum KategoriPengeluaran {
 }
 
 model TransaksiKeuangan {
-  id                  String   @id @default(cuid())
-  tanggal             DateTime @db.Date
-  keterangan          String   @db.Text
-  jenis               JenisTransaksi
+  id         String         @id @default(cuid())
+  tanggal    DateTime       @db.Date
+  keterangan String         @db.Text
+  jenis      JenisTransaksi
 
   kategoriPemasukan   KategoriPemasukan?
   kategoriPengeluaran KategoriPengeluaran?
 
-  debit               Int      @default(0)
-  kredit               Int      @default(0)
-  utang               Int      @default(0)
+  debit  Int @default(0)
+  kredit Int @default(0)
+  utang  Int @default(0)
 
-  divisi              Divisi?
-  pic                 String?
+  divisi Divisi?
+  pic    String?
 
-  pengajuanId         String?  @unique
-  pengajuan           PengajuanAnggaran? @relation(fields: [pengajuanId], references: [id])
+  pengajuanId String?            @unique
+  pengajuan   PengajuanAnggaran? @relation(fields: [pengajuanId], references: [id])
 
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("transaksi_keuangan")
 }
+
 enum StatusPengajuan {
   MENUNGGU
   DISETUJUI
@@ -351,42 +353,42 @@ enum StatusPengajuan {
 }
 
 model PengajuanAnggaran {
-  id               String   @id @default(cuid())
-  nomorPengajuan   String   @unique
+  id             String @id @default(cuid())
+  nomorPengajuan String @unique
 
-  namaKoordinator  String
-  divisi           Divisi
-  noHp             String
+  namaKoordinator String
+  divisi          Divisi
+  noHp            String
 
   totalJenisBarang Int
   totalKuantitas   Int
   totalPengajuan   Int
 
-  tandaTanganUrl   String?  @db.Text
-  pdfUrl           String?  @db.Text
+  tandaTanganUrl String? @db.Text
+  pdfUrl         String? @db.Text
 
-  status           StatusPengajuan @default(MENUNGGU)
-  catatanAdmin     String?  @db.Text
-  diprosesPada     DateTime?
+  status       StatusPengajuan @default(MENUNGGU)
+  catatanAdmin String?         @db.Text
+  diprosesPada DateTime?
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  items            PengajuanItem[]
-  transaksi        TransaksiKeuangan?
+  items     PengajuanItem[]
+  transaksi TransaksiKeuangan?
 
   @@map("pengajuan_anggaran")
 }
 
 model PengajuanItem {
-  id           String   @id @default(cuid())
-  pengajuanId  String
-  namaBarang   String
-  qty          Int
-  hargaSatuan  Int
-  total        Int
+  id          String @id @default(cuid())
+  pengajuanId String
+  namaBarang  String
+  qty         Int
+  hargaSatuan Int
+  total       Int
 
-  pengajuan    PengajuanAnggaran @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
+  pengajuan PengajuanAnggaran @relation(fields: [pengajuanId], references: [id], onDelete: Cascade)
 
   @@map("pengajuan_item")
 }
@@ -407,48 +409,48 @@ enum RiwayatPenyakit {
 }
 
 model AdminLog {
-  id           String      @id @default(cuid())
-  adminId      String?
-  adminName    String
-  adminRole    AdminRole?
-  action       String
-  targetType   String?
-  targetId     String?
-  metadata     Json?
-  ip           String?
-  userAgent    String?
-  createdAt    DateTime    @default(now())
-  admin        Admin?      @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  id         String     @id @default(cuid())
+  adminId    String?
+  adminName  String
+  adminRole  AdminRole?
+  action     String
+  targetType String?
+  targetId   String?
+  metadata   Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime   @default(now())
+  admin      Admin?     @relation(fields: [adminId], references: [id], onDelete: SetNull)
 
   @@map("admin_log")
 }
 
 model ReservasiTenda {
-  id                String   @id
-  namaSekolah       String
-  kategori          KategoriSekolah
-  namaPembina       String
-  noWhatsappPembina String
+  id                        String          @id
+  namaSekolah               String
+  kategori                  KategoriSekolah
+  namaPembina               String
+  noWhatsappPembina         String
   estimasiPesertaPendamping Int
-  expiresAt         DateTime
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  expiresAt                 DateTime
+  createdAt                 DateTime        @default(now())
+  updatedAt                 DateTime        @updatedAt
 
-  items             ReservasiTendaItem[]
+  items ReservasiTendaItem[]
 
   @@index([expiresAt])
   @@map("reservasi_tenda")
 }
 
 model ReservasiTendaItem {
-  id             String @id @default(cuid())
-  reservasiId    String
-  tendaJenisId   String
-  jumlah         Int
-  hargaSatuan    Int
+  id           String @id @default(cuid())
+  reservasiId  String
+  tendaJenisId String
+  jumlah       Int
+  hargaSatuan  Int
 
-  reservasi      ReservasiTenda @relation(fields: [reservasiId], references: [id], onDelete: Cascade)
-  tendaJenis     TendaJenis     @relation(fields: [tendaJenisId], references: [id])
+  reservasi  ReservasiTenda @relation(fields: [reservasiId], references: [id], onDelete: Cascade)
+  tendaJenis TendaJenis     @relation(fields: [tendaJenisId], references: [id])
 
   @@unique([reservasiId, tendaJenisId])
   @@map("reservasi_tenda_item")

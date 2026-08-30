@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
@@ -14,6 +15,7 @@ import { tendaJenisSchema, TendaJenisFormValues } from '@/lib/validations/tenda-
 export interface TendaData {
   id: string
   nama: string
+  gambarUrl: string | null
   namaVendor: string | null
   kapasitasMin: number
   kapasitasMax: number
@@ -28,6 +30,7 @@ export function TendaManager({ initialTenda }: { initialTenda: TendaData[] }) {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTenda, setEditingTenda] = useState<TendaData | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [gambarFile, setGambarFile] = useState<File | null>(null)
 
   const {
     register,
@@ -40,12 +43,14 @@ export function TendaManager({ initialTenda }: { initialTenda: TendaData[] }) {
 
 function openCreateModal() {
   setEditingTenda(null)
+  setGambarFile(null)
   reset({ nama: '', namaVendor: '', kapasitasMin: '', kapasitasMax: '', harga: '', hargaVendor: '', stokTotal: '' })
   setIsModalOpen(true)
 }
 
 function openEditModal(tenda: TendaData) {
   setEditingTenda(tenda)
+  setGambarFile(null)
   reset({
     nama: tenda.nama,
     namaVendor: tenda.namaVendor ?? '',
@@ -70,20 +75,19 @@ async function onSubmit(values: TendaJenisFormValues) {
     const url = editingTenda ? `/api/tenda/${editingTenda.id}` : '/api/tenda'
     const method = editingTenda ? 'PATCH' : 'POST'
 
-const payload = {
-  nama: values.nama,
-  namaVendor: values.namaVendor,
-  kapasitasMin: Number(values.kapasitasMin),
-  kapasitasMax: Number(values.kapasitasMax),
-  harga: Number(values.harga),
-  hargaVendor: Number(values.hargaVendor),
-  stokTotal: Number(values.stokTotal),
-}
+    const payload = new FormData()
+    payload.append('nama', values.nama)
+    payload.append('namaVendor', values.namaVendor)
+    payload.append('kapasitasMin', values.kapasitasMin)
+    payload.append('kapasitasMax', values.kapasitasMax)
+    payload.append('harga', values.harga)
+    payload.append('hargaVendor', values.hargaVendor)
+    payload.append('stokTotal', values.stokTotal)
+    if (gambarFile) payload.append('gambar', gambarFile)
 
     const res = await fetch(url, {
       method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body: payload,
     })
     const result = await res.json()
 
@@ -140,6 +144,15 @@ const payload = {
 
           return (
             <div key={tenda.id} className="border-2 border-event-navy/20 p-3 flex flex-col gap-2">
+              <div className="relative aspect-[16/9] w-full overflow-hidden border-2 border-event-navy/15 bg-event-cream">
+                {tenda.gambarUrl ? (
+                  <Image src={tenda.gambarUrl} alt={tenda.nama} fill className="object-cover" sizes="(max-width: 640px) 100vw, 50vw" />
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <Tent size={30} className="text-event-navy/25" />
+                  </div>
+                )}
+              </div>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-8 h-8 bg-event-navy/10 border-2 border-event-navy flex items-center justify-center shrink-0">
@@ -255,6 +268,19 @@ const payload = {
             error={errors.stokTotal?.message}
             {...register('stokTotal')}
           />
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="gambar-tenda" className="font-body font-medium text-sm text-event-navy">
+              Gambar Tenda <span className="font-normal text-event-navy/50">(opsional)</span>
+            </label>
+            <input
+              id="gambar-tenda"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={(event) => setGambarFile(event.target.files?.[0] ?? null)}
+              className="font-body w-full text-sm text-event-navy file:mr-3 file:border-2 file:border-event-navy file:bg-event-cream file:px-3 file:py-2 file:font-semibold file:text-event-navy"
+            />
+            <p className="font-body text-[10px] text-event-navy/50">JPG, PNG, atau WebP maksimal 5 MB. Saat edit, pilih gambar baru untuk mengganti gambar lama.</p>
+          </div>
           {editingTenda && (
             <p className="font-body text-[11px] text-event-navy/60">
               ⚠️ Mengubah stok total di bawah jumlah yang sudah terpakai ({editingTenda.stokTotal - editingTenda.stokTersisa}) bisa membuat sistem menghitung stok tersisa jadi negatif — hindari itu.

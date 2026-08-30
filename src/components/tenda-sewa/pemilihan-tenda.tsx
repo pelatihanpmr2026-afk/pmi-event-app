@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import { toast } from 'sonner'
 import { Tent } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { QuantityStepper } from '@/components/ui/quantity-stepper'
 import type { DataSekolahMiniValues } from '@/lib/validations/sekolah'
 
-interface TendaData { id: string; nama: string; kapasitasMin: number; kapasitasMax: number; harga: number; stokTersisa: number }
+interface TendaData { id: string; nama: string; gambarUrl: string | null; kapasitasMin: number; kapasitasMax: number; harga: number; stokTersisa: number }
 interface KapasitasInfo {
   namaLengkap: string; kodePendaftaran: string; jumlahAktual: number; estimasi: number; efektifJumlahOrang: number
   batasKapasitas: number; terkunci: boolean; reservasiAktif: boolean; reservasiBerakhirPada: string | null
@@ -147,18 +148,22 @@ export function PemilihanTenda({ sekolahId, draftSekolah, onSuccess }: { sekolah
         {rekomendasi && <p className="font-body text-[11px] text-green-700">Rekomendasi: {Math.ceil(kapasitas.efektifJumlahOrang / rekomendasi.kapasitasMax)} {rekomendasi.nama} (kapasitas hingga {Math.ceil(kapasitas.efektifJumlahOrang / rekomendasi.kapasitasMax) * rekomendasi.kapasitasMax} orang).</p>}
       </div>
       {kapasitas.reservasiAktif && kapasitas.reservasiBerakhirPada && <div className="border-3 border-event-blue bg-event-blue/10 shadow-pixel-sm p-3"><p className="font-body text-xs text-event-navy">Reservasi aktif sampai {new Date(kapasitas.reservasiBerakhirPada).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}. Upload bukti pembayaran sebelum waktu ini agar stok tetap terkunci.</p></div>}
-      <div className="flex flex-col gap-3">{tendaList.map((tenda) => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{tendaList.map((tenda) => {
         const jumlah = selection[tenda.id] ?? 0
         const stokSetelahPilihan = Math.max(0, tenda.stokTersisa + (kapasitas.reservasiAktif ? (pilihanTersimpan[tenda.id] ?? 0) : 0) - jumlah)
         const habis = stokSetelahPilihan === 0 && jumlah === 0
-        return <div key={tenda.id} className={`border-3 p-4 flex flex-col sm:flex-row sm:items-center gap-3 shadow-pixel-sm ${jumlah > 0 ? 'border-event-blue bg-event-blue/5' : 'border-event-navy bg-white'}`}>
-          <div className="w-10 h-10 bg-event-navy/10 border-2 border-event-navy flex items-center justify-center shrink-0"><Tent size={18} className="text-event-navy" /></div>
-          <div className="flex-1"><p className="font-body font-bold text-sm text-event-navy">{tenda.nama}</p><p className="font-body text-xs text-event-navy/60">Kapasitas {tenda.kapasitasMin}-{tenda.kapasitasMax} orang · Rp{tenda.harga.toLocaleString('id-ID')}/unit</p><div className="mt-1"><Badge variant={habis ? 'warning' : 'info'}>{habis ? 'Stok habis' : `Stok tersisa: ${stokSetelahPilihan}`}</Badge></div></div>
-          <QuantityStepper value={jumlah} onChange={(value) => setSelection((current) => ({ ...current, [tenda.id]: value }))} max={maxUntuk(tenda)} disabled={habis} />
+        return <div key={tenda.id} className={`border-3 overflow-hidden flex flex-col shadow-pixel-sm ${jumlah > 0 ? 'border-event-blue bg-event-blue/5' : 'border-event-navy bg-white'}`}>
+          <div className="relative aspect-[16/9] w-full bg-event-cream">
+            {tenda.gambarUrl ? <Image src={tenda.gambarUrl} alt={tenda.nama} fill className="object-cover" sizes="(max-width: 640px) 100vw, 50vw" /> : <div className="h-full flex items-center justify-center"><Tent size={42} className="text-event-navy/20" /></div>}
+          </div>
+          <div className="p-4 flex flex-col gap-3">
+            <div className="flex-1"><p className="font-body font-bold text-sm text-event-navy">{tenda.nama}</p><p className="font-body text-xs text-event-navy/60">Kapasitas {tenda.kapasitasMin}-{tenda.kapasitasMax} orang · Rp{tenda.harga.toLocaleString('id-ID')}/unit</p><div className="mt-1"><Badge variant={habis ? 'warning' : 'info'}>{habis ? 'Stok habis' : `Stok tersisa: ${stokSetelahPilihan}`}</Badge></div></div>
+            <div className="flex items-center justify-between gap-3 border-t border-event-navy/10 pt-3"><span className="font-body text-xs font-semibold text-event-navy/70">Jumlah unit</span><QuantityStepper value={jumlah} onChange={(value) => setSelection((current) => ({ ...current, [tenda.id]: value }))} max={maxUntuk(tenda)} disabled={habis} /></div>
+          </div>
         </div>
       })}</div>
       <div className={`border-3 p-4 flex flex-col gap-2 sticky bottom-2 shadow-pixel-sm ${kondisiKapasitas === 'cukup' ? 'border-green-600 bg-green-50' : kondisiKapasitas === 'berlebih' ? 'border-event-yellow bg-event-yellow/20' : 'border-pmi-red bg-pmi-red/10'}`}><div className="flex justify-between font-body text-xs text-event-navy"><span>Kapasitas dipilih</span><span className="font-bold">{totalKapasitas} / kebutuhan {kapasitas.efektifJumlahOrang}</span></div><p className="font-body text-[11px] text-event-navy/70">{kondisiKapasitas === 'kurang' ? 'Kapasitas masih kurang. Tambahkan tenda sebelum melanjutkan pembayaran.' : kondisiKapasitas === 'berlebih' ? 'Kapasitas lebih besar dari kebutuhan, tetapi tetap diperbolehkan.' : 'Kapasitas pilihan mencukupi kebutuhan.'}</p><div className="flex justify-between font-heading text-xs text-event-navy pt-2 border-t-2 border-event-navy/20"><span>TOTAL BIAYA TENDA</span><span>Rp{totalBiaya.toLocaleString('id-ID')}</span></div></div>
-      <Button type="button" pixel variant={jumlahUnit > 0 ? 'primary' : 'outline'} onClick={simpanPilihan} isLoading={isSubmitting} disabled={jumlahUnit > 0 && kondisiKapasitas === 'kurang'}>{jumlahUnit > 0 ? 'Simpan & Lanjut Pembayaran' : 'Batalkan Pilihan Tenda'}</Button>
+      <Button type="button" pixel variant={jumlahUnit > 0 ? 'primary' : 'outline'} onClick={simpanPilihan} isLoading={isSubmitting} disabled={jumlahUnit > 0 && kondisiKapasitas === 'kurang'} className="w-full">{jumlahUnit > 0 ? 'Simpan & Lanjut Pembayaran' : 'Batalkan Pilihan Tenda'}</Button>
     </>}
   </div>
 }

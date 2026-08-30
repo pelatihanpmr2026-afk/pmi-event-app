@@ -1,9 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { nanoid } from 'nanoid'
 import { prisma } from '@/lib/prisma'
 import { tendaJenisApiSchema } from '@/lib/validations/tenda-jenis'
 import { TENDA_RESERVASI_JAM } from '@/lib/constants-sekolah'
 import { getSession } from '@/lib/get-session'
 import { requireRole } from '@/lib/api-guard'
+import { saveUploadedFile } from '@/lib/save-file'
+
+const MAX_TENDA_IMAGE_SIZE = 5 * 1024 * 1024
+
+async function parseTendaRequest(req: NextRequest): Promise<{ data: unknown; gambar: File | null }> {
+  const contentType = req.headers.get('content-type') ?? ''
+  if (contentType.includes('multipart/form-data')) {
+    const form = await req.formData()
+    return {
+      data: {
+        nama: form.get('nama')?.toString() ?? '',
+        namaVendor: form.get('namaVendor')?.toString() ?? '',
+        kapasitasMin: Number(form.get('kapasitasMin')),
+        kapasitasMax: Number(form.get('kapasitasMax')),
+        harga: Number(form.get('harga')),
+        hargaVendor: Number(form.get('hargaVendor')),
+        stokTotal: Number(form.get('stokTotal')),
+      },
+      gambar: form.get('gambar') instanceof File ? form.get('gambar') as File : null,
+    }
+  }
+  return { data: await req.json(), gambar: null }
+}
+
+async function saveTendaImage(file: File | null): Promise<string | undefined> {
+  if (!file || file.size === 0) return undefined
+  if (file.size > MAX_TENDA_IMAGE_SIZE || !['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    throw new Error('Gambar tenda harus JPG, PNG, atau WebP dan maksimal 5 MB')
+  }
+  const extension = file.type === 'image/png' ? '.png' : file.type === 'image/webp' ? '.webp' : '.jpg'
+  return saveUploadedFile(file, 'tenda', `tenda-${nanoid(16)}${extension}`)
+}
 
 export async function GET() {
   try {
@@ -46,6 +79,7 @@ export async function GET() {
 const data = tendaList.map((t) => ({
   id: t.id,
   nama: t.nama,
+  gambarUrl: t.gambarUrl,
   namaVendor: isAdmin ? t.namaVendor : undefined,
   kapasitasMin: t.kapasitasMin,
   kapasitasMax: t.kapasitasMax,
@@ -70,7 +104,7 @@ export async function POST(req: NextRequest) {
     const guard = await requireRole('KESEKRETARIATAN')
     if (!guard.ok) return guard.response
 
-    const body = await req.json()
+    const { data: body, gambar } = await parseTendaRequest(req)
     const parsed = tendaJenisApiSchema.safeParse(body)
 
     if (!parsed.success) {
@@ -80,7 +114,8 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const tenda = await prisma.tendaJenis.create({ data: parsed.data })
+    const gambarUrl = await saveTendaImage(gambar)
+    const tenda = await prisma.tendaJenis.create({ data: { ...parsed.data, gambarUrl } })
 
     return NextResponse.json({ success: true, data: tenda }, { status: 201 })
   } catch (error) {
