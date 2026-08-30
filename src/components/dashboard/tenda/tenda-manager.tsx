@@ -17,6 +17,7 @@ export interface TendaData {
   nama: string
   gambarUrl: string | null
   namaVendor: string | null
+  noWhatsappVendor: string | null
   kapasitasMin: number
   kapasitasMax: number
   harga: number
@@ -44,7 +45,7 @@ export function TendaManager({ initialTenda }: { initialTenda: TendaData[] }) {
 function openCreateModal() {
   setEditingTenda(null)
   setGambarFile(null)
-  reset({ nama: '', namaVendor: '', kapasitasMin: '', kapasitasMax: '', harga: '', hargaVendor: '', stokTotal: '' })
+  reset({ nama: '', namaVendor: '', noWhatsappVendor: '', kapasitasMin: '', kapasitasMax: '', harga: '', hargaVendor: '', stokTotal: '' })
   setIsModalOpen(true)
 }
 
@@ -54,6 +55,7 @@ function openEditModal(tenda: TendaData) {
   reset({
     nama: tenda.nama,
     namaVendor: tenda.namaVendor ?? '',
+    noWhatsappVendor: tenda.noWhatsappVendor ?? '',
     kapasitasMin: String(tenda.kapasitasMin),
     kapasitasMax: String(tenda.kapasitasMax),
     harga: String(tenda.harga),
@@ -78,6 +80,7 @@ async function onSubmit(values: TendaJenisFormValues) {
     const payload = new FormData()
     payload.append('nama', values.nama)
     payload.append('namaVendor', values.namaVendor)
+    payload.append('noWhatsappVendor', values.noWhatsappVendor)
     payload.append('kapasitasMin', values.kapasitasMin)
     payload.append('kapasitasMax', values.kapasitasMax)
     payload.append('harga', values.harga)
@@ -169,6 +172,17 @@ async function onSubmit(values: TendaJenisFormValues) {
                         Vendor: {tenda.namaVendor}
                       </p>
                     )}
+                    {tenda.noWhatsappVendor && (
+                      <a
+                        href={`https://wa.me/${tenda.noWhatsappVendor.replace(/\D/g, '').replace(/^0/, '62')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-body text-[10px] text-green-700 hover:underline"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        WhatsApp: {tenda.noWhatsappVendor}
+                      </a>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-1.5 shrink-0">
@@ -227,6 +241,14 @@ async function onSubmit(values: TendaJenisFormValues) {
             placeholder="Contoh: CV Sejahtera Tenda"
             error={errors.namaVendor?.message}
             {...register('namaVendor')}
+          />
+          <Input
+            label="No. WhatsApp Vendor"
+            type="tel"
+            placeholder="081234567890"
+            error={errors.noWhatsappVendor?.message}
+            hint="Opsional. Gunakan nomor yang aktif menerima WhatsApp."
+            {...register('noWhatsappVendor')}
           />
           <div className="grid grid-cols-2 gap-3">
             <Input

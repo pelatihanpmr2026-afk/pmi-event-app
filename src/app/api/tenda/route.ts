@@ -17,6 +17,7 @@ async function parseTendaRequest(req: NextRequest): Promise<{ data: unknown; gam
       data: {
         nama: form.get('nama')?.toString() ?? '',
         namaVendor: form.get('namaVendor')?.toString() ?? '',
+        noWhatsappVendor: form.get('noWhatsappVendor')?.toString() ?? '',
         kapasitasMin: Number(form.get('kapasitasMin')),
         kapasitasMax: Number(form.get('kapasitasMax')),
         harga: Number(form.get('harga')),
@@ -81,6 +82,7 @@ const data = tendaList.map((t) => ({
   nama: t.nama,
   gambarUrl: t.gambarUrl,
   namaVendor: isAdmin ? t.namaVendor : undefined,
+  noWhatsappVendor: isAdmin ? t.noWhatsappVendor : undefined,
   kapasitasMin: t.kapasitasMin,
   kapasitasMax: t.kapasitasMax,
   harga: t.harga,

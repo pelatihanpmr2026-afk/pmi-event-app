@@ -14,6 +14,7 @@ Dokumen ini adalah panduan maintenance dan deployment production untuk project P
 - Port internal aplikasi: `3000` — jangan dibuka ke internet
 - File upload: `storage/uploads`
 - File environment production: `.env` di root project
+- Timezone aplikasi: `Asia/Jakarta` melalui konfigurasi PM2
 
 Alur request:
 
@@ -53,6 +54,8 @@ next.config.ts            Konfigurasi Next.js
 
 Catatan: kode penyimpanan file saat ini menggunakan `storage/uploads` relatif terhadap root project. Variabel `UPLOAD_DIR` yang mungkin ada di `.env` tidak menjadi sumber lokasi penyimpanan saat ini.
 
+Data `TendaJenis` memiliki `gambarUrl` untuk gambar publik dan `noWhatsappVendor` untuk kontak internal admin. Nomor WhatsApp vendor tidak dikirim ke tampilan publik sewa tenda.
+
 ## 4. Konfigurasi `.env` production
 
 Contoh minimal:
@@ -60,7 +63,7 @@ Contoh minimal:
 ```env
 NODE_ENV=production
 DATABASE_URL="mysql://pmi_app:PASSWORD@127.0.0.1:3306/pmi_event"
-NEXT_PUBLIC_BASE_URL="https://domain-anda.tld"
+NEXT_PUBLIC_BASE_URL="https://pmi-cianjur.com"
 
 JWT_SECRET="secret-acak-panjang"
 SUSULAN_JWT_SECRET="secret-acak-lain"
@@ -124,6 +127,8 @@ pm2 logs pmi-event --lines 100
 
 Konfigurasi `ecosystem.config.js` production hanya menjalankan `pmi-event` pada `127.0.0.1:3000`. Nginx menjadi satu-satunya service yang menerima traffic publik.
 
+Timezone PM2 harus tetap `Asia/Jakarta` karena jadwal sesi absensi menggunakan waktu WIB. Jangan menghapus variable `TZ` dari konfigurasi PM2.
+
 ## 6. Update aplikasi setelah perubahan kode
 
 ### 6.1 Sebelum update
@@ -154,6 +159,8 @@ pm2 save
 ```
 
 Jika tidak ada migration baru, `npx prisma migrate deploy` tetap aman dijalankan.
+
+Migration gambar dan nomor WhatsApp vendor menambahkan kolom nullable, sehingga data tenda lama tetap dapat digunakan. Setelah migration, isi nomor vendor melalui menu `Dashboard → Kelola Tenda`.
 
 ### 6.3 Verifikasi setelah update
 
@@ -354,7 +361,7 @@ Jika `curl` gagal, masalah ada di Next.js/PM2. Jika `curl` berhasil tetapi domai
 ```bash
 sudo ufw status
 sudo ss -tulpn
-nslookup domain-anda.tld
+nslookup pmi-cianjur.com
 ```
 
 Pastikan firewall provider juga mengizinkan `80` dan `443`, bukan hanya UFW di dalam VPS.

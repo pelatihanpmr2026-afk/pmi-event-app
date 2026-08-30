@@ -229,6 +229,7 @@ model TendaJenis {
   nama         String
   gambarUrl    String? @db.Text
   namaVendor   String?
+  noWhatsappVendor String?
   kapasitasMin Int
   kapasitasMax Int
   harga        Int

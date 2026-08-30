@@ -16,6 +16,7 @@ async function parseTendaRequest(req: NextRequest): Promise<{ data: unknown; gam
       data: {
         nama: form.get('nama')?.toString() ?? '',
         namaVendor: form.get('namaVendor')?.toString() ?? '',
+        noWhatsappVendor: form.get('noWhatsappVendor')?.toString() ?? '',
         kapasitasMin: Number(form.get('kapasitasMin')),
         kapasitasMax: Number(form.get('kapasitasMax')),
         harga: Number(form.get('harga')),

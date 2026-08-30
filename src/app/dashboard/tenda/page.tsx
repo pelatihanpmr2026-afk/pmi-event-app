@@ -35,6 +35,7 @@ const data: TendaData[] = tendaList.map((t) => ({
   nama: t.nama,
   gambarUrl: t.gambarUrl,
   namaVendor: t.namaVendor,
+  noWhatsappVendor: t.noWhatsappVendor,
   kapasitasMin: t.kapasitasMin,
   kapasitasMax: t.kapasitasMax,
   harga: t.harga,
