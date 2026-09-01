@@ -343,7 +343,77 @@ Port yang perlu terbuka di firewall VPS dan firewall provider:
 
 Jangan membuka port `3000` atau `3306` ke internet.
 
-## 11. Troubleshooting cepat
+## 11. Cron cleanup reservasi dan pembayaran tenda
+
+Endpoint cleanup sudah tersedia di:
+
+```text
+POST /api/cron/cleanup-tenda
+```
+
+Endpoint ini menghapus:
+
+- `ReservasiTenda` yang sudah melewati `expiresAt`.
+- Pembayaran tenda berstatus `BELUM_BAYAR` yang tidak diperbarui selama `TENDA_RESERVASI_JAM` (saat ini 2 jam).
+- `TendaSewa` terkait pembayaran `BELUM_BAYAR` yang sudah expired.
+
+Status `MENUNGGU_KONFIRMASI`, `LUNAS`, dan `DITOLAK` tidak dihapus oleh aturan pembayaran ini.
+
+### 11.1 Siapkan secret cron
+
+Gunakan nilai `CRON_SECRET` yang sama dengan `.env` aplikasi. Simpan salinannya di file terpisah yang hanya bisa dibaca user `deploy`:
+
+```bash
+mkdir -p /home/deploy/bin /home/deploy/logs
+printf '%s\n' 'ISI_DENGAN_NILAI_CRON_SECRET_YANG_SAMA_DENGAN_ENV' > /home/deploy/.pmi-cron-secret
+chmod 600 /home/deploy/.pmi-cron-secret
+```
+
+Jangan menulis secret langsung di baris crontab karena dapat terlihat saat maintenance atau tercatat di backup konfigurasi.
+
+### 11.2 Tes manual
+
+Jalankan di VPS:
+
+```bash
+curl -fsS -X POST \\
+  -H "Authorization: Bearer $(cat /home/deploy/.pmi-cron-secret)" \\
+  https://pmi-cianjur.com/api/cron/cleanup-tenda
+```
+
+Response sukses memiliki format JSON dengan `success: true`, jumlah reservasi sementara yang dihapus, dan jumlah pembayaran tenda yang dibersihkan.
+
+### 11.3 Tambahkan cron setiap 10 menit
+
+Buka crontab user `deploy`:
+
+```bash
+crontab -e
+```
+
+Tambahkan satu baris:
+
+```cron
+*/10 * * * * /usr/bin/flock -n /tmp/pmi-cleanup-tenda.lock /bin/sh -c '/usr/bin/curl -fsS -X POST -H "Authorization: Bearer $(/bin/cat /home/deploy/.pmi-cron-secret)" https://pmi-cianjur.com/api/cron/cleanup-tenda >> /home/deploy/logs/cleanup-tenda.log 2>&1'
+```
+
+`flock` mencegah dua proses cleanup berjalan bersamaan jika request sebelumnya belum selesai. Interval 10 menit cukup karena masa reservasi dan grace period menggunakan hitungan jam.
+
+Periksa cron yang terpasang:
+
+```bash
+crontab -l
+```
+
+Lihat log:
+
+```bash
+tail -n 100 /home/deploy/logs/cleanup-tenda.log
+```
+
+Jika memakai systemd timer atau panel provider sebagai scheduler, gunakan endpoint dan header yang sama. Jangan memanggil endpoint tanpa `Authorization: Bearer ...`.
+
+## 12. Troubleshooting cepat
 
 ### Website 502 Bad Gateway
 
@@ -395,7 +465,7 @@ pm2 restart pmi-event
 
 Jangan menampilkan nilai secret saat meminta bantuan; cukup tampilkan nama variable dan pesan error.
 
-## 12. Checklist sebelum setiap release
+## 13. Checklist sebelum setiap release
 
 - [ ] Perubahan diuji di komputer development.
 - [ ] `npm run build` berhasil.
@@ -411,7 +481,7 @@ Jangan menampilkan nilai secret saat meminta bantuan; cukup tampilkan nama varia
 - [ ] PM2 direstart dan statusnya `online`.
 - [ ] Login, upload, download, dan fitur utama sudah diuji.
 
-## 13. Rollback aplikasi
+## 14. Rollback aplikasi
 
 Jika release baru bermasalah pada kode aplikasi:
 
@@ -426,7 +496,7 @@ pm2 restart pmi-event
 
 Jangan melakukan rollback schema database secara manual tanpa memahami migration yang sudah berjalan. Untuk migration yang sudah diterapkan, simpan backup database dan lakukan analisis sebelum membuat migration kompensasi.
 
-## 14. Upgrade dependency
+## 15. Upgrade dependency
 
 Jangan menjalankan upgrade besar langsung di production. Lakukan di development:
 
@@ -444,7 +514,7 @@ git commit -m "Perbarui dependency"
 
 Deploy ke VPS melalui prosedur update standar. Untuk upgrade Next.js, Prisma, Node.js, atau React, baca changelog versi target dan lakukan backup terlebih dahulu.
 
-## 15. Referensi resmi
+## 16. Referensi resmi
 
 - [Next.js self-hosting](https://nextjs.org/docs/app/guides/self-hosting)
 - [Next.js CLI dan `next start`](https://nextjs.org/docs/app/api-reference/cli/next)

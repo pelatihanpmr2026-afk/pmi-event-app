@@ -18,7 +18,7 @@ import { BIAYA_PESERTA, BIAYA_PENDAMPING } from '@/lib/constants-sekolah'
 export const dynamic = 'force-dynamic'
 
 // TODO: Sesuaikan dengan tanggal event yang sebenarnya
-const EVENT_DATE = '2026-09-15T07:00:00'
+const EVENT_DATE = '2026-09-18T07:00:00'
 
 const MARQUEE_ITEMS = [
   'PENDAFTARAN DIBUKA',

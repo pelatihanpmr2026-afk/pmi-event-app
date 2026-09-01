@@ -9,6 +9,7 @@ module.exports = {
         NODE_ENV: 'production',
         HOSTNAME: '127.0.0.1',
         PORT: '3000',
+        TZ: 'Asia/Jakarta',
       },
       autorestart: true,
       watch: false,
