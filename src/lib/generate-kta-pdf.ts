@@ -1,7 +1,7 @@
 import path from 'path'
 import { readFile } from 'fs/promises'
 import { createCanvas, loadImage, type SKRSContext2D } from '@napi-rs/canvas'
-import { PDFDocument } from 'pdf-lib'
+import { PDFDocument, rgb } from 'pdf-lib'
 import QRCode from 'qrcode'
 import sharp from 'sharp'
 import { registerFonts } from './register-fonts'
@@ -16,6 +16,13 @@ const SCALE_X = WIDTH / TEMPLATE_WIDTH
 const SCALE_Y = HEIGHT / TEMPLATE_HEIGHT
 const ID_CARD_WIDTH_PT = (85.6 / 25.4) * 72
 const ID_CARD_HEIGHT_PT = (54 / 25.4) * 72
+const A4_WIDTH_PT = (210 / 25.4) * 72
+const A4_HEIGHT_PT = (297 / 25.4) * 72
+const CARDS_PER_PAGE = 10
+const CARD_COLUMNS = 2
+const CARD_ROWS = 5
+const PAGE_MARGIN_X = (A4_WIDTH_PT - CARD_COLUMNS * ID_CARD_WIDTH_PT) / 2
+const PAGE_MARGIN_Y = (A4_HEIGHT_PT - CARD_ROWS * ID_CARD_HEIGHT_PT) / 2
 
 export interface KtaParticipant {
   noPeserta: string | null
@@ -217,16 +224,55 @@ export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
   pdf.setSubject('Kartu Tanda Anggota Palang Merah Remaja')
   pdf.setProducer('Sistem Pendaftaran PMR 2026')
 
-  // Urutan setiap peserta: depan lalu belakang, agar siap dicetak dua sisi.
-  for (const participant of peserta) {
-    const frontBuffer = await renderFront(namaSekolah, participant)
-    const frontImage = await pdf.embedPng(frontBuffer)
-    const frontPage = pdf.addPage([ID_CARD_WIDTH_PT, ID_CARD_HEIGHT_PT])
-    frontPage.drawImage(frontImage, { x: 0, y: 0, width: ID_CARD_WIDTH_PT, height: ID_CARD_HEIGHT_PT })
+  const backImage = await pdf.embedPng(backTemplateBuffer)
 
-    const backImage = await pdf.embedPng(backTemplateBuffer)
-    const backPage = pdf.addPage([ID_CARD_WIDTH_PT, ID_CARD_HEIGHT_PT])
-    backPage.drawImage(backImage, { x: 0, y: 0, width: ID_CARD_WIDTH_PT, height: ID_CARD_HEIGHT_PT })
+  // Satu paket cetak terdiri dari halaman depan dan belakang yang posisinya sama.
+  // Dengan demikian halaman kedua dapat dipakai untuk cetak duplex.
+  for (let batchStart = 0; batchStart < peserta.length; batchStart += CARDS_PER_PAGE) {
+    const batch = peserta.slice(batchStart, batchStart + CARDS_PER_PAGE)
+    const frontPage = pdf.addPage([A4_WIDTH_PT, A4_HEIGHT_PT])
+    const backPage = pdf.addPage([A4_WIDTH_PT, A4_HEIGHT_PT])
+
+    for (let index = 0; index < batch.length; index += 1) {
+      const participant = batch[index]
+      const column = index % CARD_COLUMNS
+      const row = Math.floor(index / CARD_COLUMNS)
+      const cardX = PAGE_MARGIN_X + column * ID_CARD_WIDTH_PT
+      const cardY = A4_HEIGHT_PT - PAGE_MARGIN_Y - (row + 1) * ID_CARD_HEIGHT_PT
+      const frontBuffer = await renderFront(namaSekolah, participant)
+      const frontImage = await pdf.embedPng(frontBuffer)
+
+      frontPage.drawImage(frontImage, {
+        x: cardX,
+        y: cardY,
+        width: ID_CARD_WIDTH_PT,
+        height: ID_CARD_HEIGHT_PT,
+      })
+      backPage.drawImage(backImage, {
+        x: cardX,
+        y: cardY,
+        width: ID_CARD_WIDTH_PT,
+        height: ID_CARD_HEIGHT_PT,
+      })
+
+      // Garis bantu potong tipis, tidak menutupi desain maupun teks kartu.
+      frontPage.drawRectangle({
+        x: cardX,
+        y: cardY,
+        width: ID_CARD_WIDTH_PT,
+        height: ID_CARD_HEIGHT_PT,
+        borderColor: rgb(0.72, 0.72, 0.72),
+        borderWidth: 0.35,
+      })
+      backPage.drawRectangle({
+        x: cardX,
+        y: cardY,
+        width: ID_CARD_WIDTH_PT,
+        height: ID_CARD_HEIGHT_PT,
+        borderColor: rgb(0.72, 0.72, 0.72),
+        borderWidth: 0.35,
+      })
+    }
   }
 
   return Buffer.from(await pdf.save())
