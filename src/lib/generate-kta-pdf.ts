@@ -2,6 +2,7 @@ import path from 'path'
 import { readFile } from 'fs/promises'
 import { createCanvas, loadImage, type SKRSContext2D } from '@napi-rs/canvas'
 import { PDFDocument } from 'pdf-lib'
+import QRCode from 'qrcode'
 import sharp from 'sharp'
 import { registerFonts } from './register-fonts'
 
@@ -50,8 +51,14 @@ function y(value: number) {
   return value * SCALE_Y
 }
 
+function titleCase(value: string) {
+  return value
+    .toLocaleLowerCase('id-ID')
+    .replace(/(^|[\s/-])[a-zà-ÿ]/g, (letter) => letter.toLocaleUpperCase('id-ID'))
+}
+
 function formatEnum(value: string) {
-  return value === 'TIDAK_TAHU' ? 'Tidak tahu' : value.replaceAll('_', ' ')
+  return titleCase(value === 'TIDAK_TAHU' ? 'Tidak tahu' : value.replaceAll('_', ' '))
 }
 
 function formatTanggalLahir(value: Date) {
@@ -87,29 +94,50 @@ function drawCoverFit(ctx: SKRSContext2D, image: Awaited<ReturnType<typeof loadI
   ctx.restore()
 }
 
+async function removeTemplatePlaceholders(buffer: Buffer) {
+  const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const left = 40
+  const right = 735
+  const top = 205
+  const bottom = 490
+  const isPlaceholderPixel = (pixelX: number, pixelY: number) => {
+    const offset = (pixelY * info.width + pixelX) * info.channels
+    const red = data[offset]
+    const green = data[offset + 1]
+    const blue = data[offset + 2]
+    return Math.min(red, green, blue) > 145 && Math.max(red, green, blue) - Math.min(red, green, blue) < 45
+  }
+
+  // Menghapus piksel putih placeholder dengan piksel latar terdekat.
+  // Tidak menggambar panel, warna baru, atau blur di belakang teks.
+  for (let pixelY = top; pixelY < bottom; pixelY += 1) {
+    for (let pixelX = left; pixelX < right; pixelX += 1) {
+      if (!isPlaceholderPixel(pixelX, pixelY)) continue
+      let sourceX = pixelX - 1
+      while (sourceX >= left && isPlaceholderPixel(sourceX, pixelY)) sourceX -= 1
+      if (sourceX < left) {
+        sourceX = pixelX + 1
+        while (sourceX < right && isPlaceholderPixel(sourceX, pixelY)) sourceX += 1
+      }
+      if (sourceX < left || sourceX >= right) continue
+      const targetOffset = (pixelY * info.width + pixelX) * info.channels
+      const sourceOffset = (pixelY * info.width + sourceX) * info.channels
+      data[targetOffset] = data[sourceOffset]
+      data[targetOffset + 1] = data[sourceOffset + 1]
+      data[targetOffset + 2] = data[sourceOffset + 2]
+    }
+  }
+
+  return sharp(data, { raw: info }).png().toBuffer()
+}
+
 async function renderFront(namaSekolah: string, participant: KtaParticipant) {
   registerFonts()
   const canvas = createCanvas(WIDTH, HEIGHT)
   const ctx = canvas.getContext('2d')
   const templatePath = path.join(process.cwd(), 'public', 'assets', 'template_kta_front.png')
   const templateBuffer = await readFile(templatePath)
-  // Bersihkan placeholder lama per baris, bukan dengan panel. Dengan begitu
-  // foto/latar tetap terlihat di antara teks dan tidak ada background kotak.
-  const placeholderStrips = await Promise.all(
-    [300, 342, 384, 426, 468, 510].map(async (top) => ({
-      input: await sharp(templateBuffer)
-        .extract({ left: 24, top, width: 700, height: 34 })
-        .blur(12)
-        .png()
-        .toBuffer(),
-      left: 24,
-      top,
-    }))
-  )
-  const cleanedTemplateBuffer = await sharp(templateBuffer)
-    .composite(placeholderStrips)
-    .png()
-    .toBuffer()
+  const cleanedTemplateBuffer = await removeTemplatePlaceholders(templateBuffer)
   const template = await loadImage(cleanedTemplateBuffer)
   ctx.drawImage(template, 0, 0, WIDTH, HEIGHT)
 
@@ -117,44 +145,65 @@ async function renderFront(namaSekolah: string, participant: KtaParticipant) {
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
 
-  const schoolName = namaSekolah.toUpperCase()
+  const schoolName = titleCase(namaSekolah)
+  const labelFontSize = y(25)
+  const valueFontSize = y(25)
+
+  // Bagian bawah template memang berwarna putih secara desain; area ini
+  // dipakai untuk mengganti placeholder QR dan identitas sekolah.
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(x(48), y(145), x(630), y(52))
-  fitFont(ctx, `UNIT ${schoolName}`, x(590), y(32), 'Arial')
-  ctx.fillStyle = '#e30613'
-  ctx.fillText(`UNIT ${schoolName}`, x(56), y(178))
+  ctx.fillRect(x(45), y(510), x(600), y(126))
 
   const values = [
     ['No. Reg. Induk', participant.noPeserta ?? '-'],
-    ['Nama', participant.namaLengkap],
-    ['TTL', `${participant.tempatLahir}, ${formatTanggalLahir(participant.tanggalLahir)}`],
+    ['Nama', titleCase(participant.namaLengkap)],
+    ['Tempat, Tanggal Lahir', `${titleCase(participant.tempatLahir)}, ${formatTanggalLahir(participant.tanggalLahir)}`],
     ['Gol Darah', formatEnum(participant.golonganDarah)],
     ['Agama', formatEnum(participant.agama)],
-    ['Alamat', participant.alamat],
+    ['Alamat', titleCase(participant.alamat)],
   ]
 
   values.forEach(([label, value], index) => {
-    const lineY = 327 + index * 42
-    ctx.font = `${y(27)}px Arial`
+    const lineY = 241 + index * 42
+    ctx.font = `${labelFontSize}px Arial`
     ctx.fillStyle = '#ffffff'
     ctx.fillText(label, x(55), y(lineY))
-    ctx.fillText(':', x(274), y(lineY))
-    const valueSize = fitFont(ctx, value, x(445), y(27), 'Arial')
+    ctx.fillText(':', x(320), y(lineY))
+    const valueSize = fitFont(ctx, value, x(415), valueFontSize, 'Arial')
     ctx.font = `${valueSize}px Arial`
-    ctx.fillText(value, x(296), y(lineY))
+    ctx.fillText(value, x(345), y(lineY))
   })
 
   if (participant.fotoBuffer) {
     const photo = await loadImage(participant.fotoBuffer)
-    drawCoverFit(ctx, photo, x(770), y(271), x(190), y(283))
+    drawCoverFit(ctx, photo, x(770), y(200), x(190), y(283))
   } else {
     ctx.fillStyle = '#e30613'
-    ctx.fillRect(x(770), y(271), x(190), y(283))
+    ctx.fillRect(x(770), y(200), x(190), y(283))
     ctx.fillStyle = '#ffffff'
     ctx.font = `${y(24)}px Arial-Bold`
     ctx.textAlign = 'center'
-    ctx.fillText('FOTO TIDAK ADA', x(865), y(413))
+    ctx.fillText('Foto tidak ada', x(865), y(342))
   }
+
+  const qrBuffer = await QRCode.toBuffer(participant.noPeserta ?? participant.namaLengkap, {
+    type: 'png',
+    width: 256,
+    margin: 1,
+    errorCorrectionLevel: 'H',
+    color: { dark: '#ffffff', light: '#e30613' },
+  })
+  const qrImage = await loadImage(qrBuffer)
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(qrImage, x(55), y(524), x(104), y(96))
+
+  ctx.textAlign = 'left'
+  ctx.fillStyle = '#111111'
+  ctx.font = `bold ${y(31)}px Arial-Bold`
+  ctx.fillText('Palang Merah Remaja', x(177), y(544))
+  ctx.font = `${y(30)}px Arial`
+  ctx.fillText('PMI Cianjur', x(177), y(578))
+  ctx.fillText(`Unit ${schoolName}`, x(177), y(611))
 
   return canvas.toBuffer('image/png')
 }
