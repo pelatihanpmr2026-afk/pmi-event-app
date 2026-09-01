@@ -76,7 +76,7 @@ async function renderFront(namaSekolah: string, participant: KtaParticipant) {
   registerFonts()
   const canvas = createCanvas(WIDTH, HEIGHT)
   const ctx = canvas.getContext('2d')
-  const template = await loadImage(path.join(process.cwd(), 'public', 'assets', 'template-kta-front.png'))
+  const template = await loadImage(path.join(process.cwd(), 'public', 'assets', 'template_kta_front.png'))
   ctx.drawImage(template, 0, 0, WIDTH, HEIGHT)
 
   // Menutup placeholder pada template dengan panel yang tetap menyatu dengan foto latar.

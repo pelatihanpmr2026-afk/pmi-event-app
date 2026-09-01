@@ -192,7 +192,7 @@ PDF menggunakan ukuran kartu ID standar 85,6 × 54 mm. Foto diambil dari `fotoUr
 Template berada di:
 
 ```text
-public/assets/template-kta-front.png
+public/assets/template_kta_front.png
 public/assets/template-kta-back.png
 ```
 
