@@ -14,6 +14,7 @@ import { SectionHeader } from '@/components/home/section-header'
 import { Reveal } from '@/components/home/scroll-reveal'
 import { prisma } from '@/lib/prisma'
 import { BIAYA_PESERTA, BIAYA_PENDAMPING } from '@/lib/constants-sekolah'
+import { TendaInfoCards } from '@/components/public/tenda-info-cards'
 
 export const dynamic = 'force-dynamic'
 
@@ -104,15 +105,20 @@ const FEATURES = [
 const NAV_LINKS_FOOTER = [
   { href: '#tentang', label: 'Tentang' },
   { href: '#daftar', label: 'Daftar' },
+  { href: '#tenda', label: 'Sewa Tenda' },
   { href: '#timeline', label: 'Timeline' },
   { href: '#faq', label: 'FAQ' },
 ]
 
 export default async function HomePage() {
   // Hapus query panitia
-  const [totalSekolah, totalPeserta] = await Promise.all([
+  const [totalSekolah, totalPeserta, tendaList] = await Promise.all([
     prisma.sekolah.count(),
     prisma.peserta.count({ where: { tipe: 'PESERTA' } }),
+    prisma.tendaJenis.findMany({
+      orderBy: { kapasitasMin: 'asc' },
+      select: { id: true, nama: true, gambarUrl: true, kapasitasMin: true, kapasitasMax: true, harga: true, stokTotal: true },
+    }),
   ])
 
   return (
@@ -319,6 +325,10 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        <PixelMarquee items={['PILIH TENDA', 'KAPASITAS NYAMAN', 'HARGA TRANSPARAN']} variant="blue" />
+
+        <TendaInfoCards tendaList={tendaList} />
 
         {/* ===== TIMELINE ===== */}
         <section id="timeline" className="px-4 sm:px-6 py-12 sm:py-16 scroll-mt-20 relative">

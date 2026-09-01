@@ -8,6 +8,7 @@ import { Menu, X } from 'lucide-react'
 const NAV_LINKS = [
   { href: '#tentang', label: 'Tentang' },
   { href: '#daftar', label: 'Daftar' },
+  { href: '#tenda', label: 'Sewa Tenda' },
   { href: '#timeline', label: 'Timeline' },
   { href: '#faq', label: 'FAQ' },
 ]
