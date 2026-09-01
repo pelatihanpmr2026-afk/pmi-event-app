@@ -221,6 +221,15 @@ function viewProof(url: string) {
               <FileSpreadsheet size={14} />
               Download Excel
             </a>
+            <a
+              href={`/api/sekolah/${s.id}/kta/pdf`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-[var(--radius-btn)] bg-pmi-red text-white text-xs font-medium hover:bg-event-navy transition-colors"
+            >
+              <FileText size={14} />
+              Download KTA PDF
+            </a>
             <button
               type="button"
               onClick={() => void toggleCetak(s.id, s.sudahCetak)}

@@ -183,6 +183,21 @@ Kemudian cek dari browser:
 - modul anggaran
 - WhatsApp jika diaktifkan
 
+### 6.4 Generate KTA per sekolah
+
+Role `KTA` dapat membuka `Dashboard → Sekolah`, lalu memilih `Download KTA PDF` pada sekolah yang diinginkan. Sistem menghasilkan satu PDF untuk seluruh peserta sekolah tersebut, dengan urutan dua halaman per peserta: depan lalu belakang.
+
+PDF menggunakan ukuran kartu ID standar 85,6 × 54 mm. Foto diambil dari `fotoUrl` peserta dan file fisiknya harus tetap tersedia di `storage/uploads`. Jika foto tidak ditemukan, kartu tetap dibuat dengan placeholder `FOTO TIDAK ADA` agar peserta mudah diperbaiki datanya.
+
+Template berada di:
+
+```text
+public/assets/template-kta-front.png
+public/assets/template-kta-back.png
+```
+
+Setelah update kode di VPS, jalankan `npm ci`, `npx prisma migrate deploy`, `npm run build`, lalu restart PM2 seperti langkah di atas. Tidak ada migration database khusus untuk fitur KTA ini.
+
 ## 7. Aturan Prisma dan database
 
 ### Perubahan schema di komputer development
