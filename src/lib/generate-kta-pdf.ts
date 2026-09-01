@@ -4,8 +4,14 @@ import { createCanvas, loadImage, type SKRSContext2D } from '@napi-rs/canvas'
 import { PDFDocument } from 'pdf-lib'
 import { registerFonts } from './register-fonts'
 
-const WIDTH = 1019
-const HEIGHT = 643
+// 85,6 x 54 mm pada 300 DPI. PDF tetap memakai ukuran fisik kartu ID,
+// sehingga printer dapat mencetak 100% tanpa scaling.
+const WIDTH = Math.round((85.6 / 25.4) * 300)
+const HEIGHT = Math.round((54 / 25.4) * 300)
+const TEMPLATE_WIDTH = 1019
+const TEMPLATE_HEIGHT = 643
+const SCALE_X = WIDTH / TEMPLATE_WIDTH
+const SCALE_Y = HEIGHT / TEMPLATE_HEIGHT
 const ID_CARD_WIDTH_PT = (85.6 / 25.4) * 72
 const ID_CARD_HEIGHT_PT = (54 / 25.4) * 72
 
@@ -33,6 +39,14 @@ function fitFont(ctx: SKRSContext2D, text: string, maxWidth: number, size: numbe
     ctx.font = `${nextSize}px ${family}`
   }
   return nextSize
+}
+
+function x(value: number) {
+  return value * SCALE_X
+}
+
+function y(value: number) {
+  return value * SCALE_Y
 }
 
 function formatEnum(value: string) {
@@ -81,17 +95,17 @@ async function renderFront(namaSekolah: string, participant: KtaParticipant) {
 
   // Menutup placeholder pada template dengan panel yang tetap menyatu dengan foto latar.
   ctx.fillStyle = 'rgba(30, 18, 15, 1)'
-  ctx.fillRect(20, 292, 690, 276)
+  ctx.fillRect(x(24), y(298), x(700), y(256))
   ctx.fillStyle = '#ffffff'
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
 
   const schoolName = namaSekolah.toUpperCase()
   ctx.fillStyle = '#ffffff'
-  ctx.fillRect(18, 102, 500, 62)
-  fitFont(ctx, schoolName, 475, 39, 'Arial-Bold')
+  ctx.fillRect(x(48), y(145), x(630), y(52))
+  fitFont(ctx, `UNIT ${schoolName}`, x(590), y(32), 'Arial')
   ctx.fillStyle = '#e30613'
-  ctx.fillText(schoolName, 24, 122)
+  ctx.fillText(`UNIT ${schoolName}`, x(56), y(178))
 
   const values = [
     ['No. Reg. Induk', participant.noPeserta ?? '-'],
@@ -99,31 +113,30 @@ async function renderFront(namaSekolah: string, participant: KtaParticipant) {
     ['TTL', `${participant.tempatLahir}, ${formatTanggalLahir(participant.tanggalLahir)}`],
     ['Gol Darah', formatEnum(participant.golonganDarah)],
     ['Agama', formatEnum(participant.agama)],
-    ['Unit Sekolah', namaSekolah],
     ['Alamat', participant.alamat],
   ]
 
   values.forEach(([label, value], index) => {
-    const y = 314 + index * 35
-    ctx.font = '27px Arial'
+    const lineY = 327 + index * 42
+    ctx.font = `${y(27)}px Arial`
     ctx.fillStyle = '#ffffff'
-    ctx.fillText(label, 38, y)
-    ctx.fillText(':', 270, y)
-    const valueSize = fitFont(ctx, value, 400, 27, 'Arial')
+    ctx.fillText(label, x(55), y(lineY))
+    ctx.fillText(':', x(274), y(lineY))
+    const valueSize = fitFont(ctx, value, x(445), y(27), 'Arial')
     ctx.font = `${valueSize}px Arial`
-    ctx.fillText(value, 300, y)
+    ctx.fillText(value, x(296), y(lineY))
   })
 
   if (participant.fotoBuffer) {
     const photo = await loadImage(participant.fotoBuffer)
-    drawCoverFit(ctx, photo, 731, 271, 224, 332)
+    drawCoverFit(ctx, photo, x(770), y(271), x(190), y(283))
   } else {
     ctx.fillStyle = '#e30613'
-    ctx.fillRect(731, 271, 224, 332)
+    ctx.fillRect(x(770), y(271), x(190), y(283))
     ctx.fillStyle = '#ffffff'
-    ctx.font = '24px Arial-Bold'
+    ctx.font = `${y(24)}px Arial-Bold`
     ctx.textAlign = 'center'
-    ctx.fillText('FOTO TIDAK ADA', 843, 437)
+    ctx.fillText('FOTO TIDAK ADA', x(865), y(413))
   }
 
   return canvas.toBuffer('image/png')
