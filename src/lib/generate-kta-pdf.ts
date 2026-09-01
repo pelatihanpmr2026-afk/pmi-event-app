@@ -2,6 +2,7 @@ import path from 'path'
 import { readFile } from 'fs/promises'
 import { createCanvas, loadImage, type SKRSContext2D } from '@napi-rs/canvas'
 import { PDFDocument } from 'pdf-lib'
+import sharp from 'sharp'
 import { registerFonts } from './register-fonts'
 
 // 85,6 x 54 mm pada 300 DPI. PDF tetap memakai ukuran fisik kartu ID,
@@ -90,12 +91,28 @@ async function renderFront(namaSekolah: string, participant: KtaParticipant) {
   registerFonts()
   const canvas = createCanvas(WIDTH, HEIGHT)
   const ctx = canvas.getContext('2d')
-  const template = await loadImage(path.join(process.cwd(), 'public', 'assets', 'template_kta_front.png'))
+  const templatePath = path.join(process.cwd(), 'public', 'assets', 'template_kta_front.png')
+  const templateBuffer = await readFile(templatePath)
+  // Bersihkan placeholder lama per baris, bukan dengan panel. Dengan begitu
+  // foto/latar tetap terlihat di antara teks dan tidak ada background kotak.
+  const placeholderStrips = await Promise.all(
+    [300, 342, 384, 426, 468, 510].map(async (top) => ({
+      input: await sharp(templateBuffer)
+        .extract({ left: 24, top, width: 700, height: 34 })
+        .blur(12)
+        .png()
+        .toBuffer(),
+      left: 24,
+      top,
+    }))
+  )
+  const cleanedTemplateBuffer = await sharp(templateBuffer)
+    .composite(placeholderStrips)
+    .png()
+    .toBuffer()
+  const template = await loadImage(cleanedTemplateBuffer)
   ctx.drawImage(template, 0, 0, WIDTH, HEIGHT)
 
-  // Menutup placeholder pada template dengan panel yang tetap menyatu dengan foto latar.
-  ctx.fillStyle = 'rgba(30, 18, 15, 1)'
-  ctx.fillRect(x(24), y(298), x(700), y(256))
   ctx.fillStyle = '#ffffff'
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
