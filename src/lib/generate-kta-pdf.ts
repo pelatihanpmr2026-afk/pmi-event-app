@@ -183,14 +183,14 @@ async function renderFront(namaSekolah: string, participant: KtaParticipant) {
 
   if (participant.fotoBuffer) {
     const photo = await loadImage(participant.fotoBuffer)
-    drawCoverFit(ctx, photo, x(770), y(200), x(190), y(283))
+    drawCoverFit(ctx, photo, x(744), y(163), x(236), y(355))
   } else {
     ctx.fillStyle = '#e30613'
-    ctx.fillRect(x(770), y(200), x(190), y(283))
+    ctx.fillRect(x(744), y(163), x(236), y(355))
     ctx.fillStyle = '#ffffff'
     ctx.font = `${y(24)}px Arial-Bold`
     ctx.textAlign = 'center'
-    ctx.fillText('Foto tidak ada', x(865), y(342))
+    ctx.fillText('Foto tidak ada', x(862), y(341))
   }
 
   const qrBuffer = await QRCode.toBuffer(participant.noPeserta ?? participant.namaLengkap, {
