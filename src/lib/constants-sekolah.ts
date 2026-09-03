@@ -37,7 +37,7 @@ export const GOLONGAN_DARAH_OPTIONS = [
 export const BIAYA_PESERTA = 50000
 export const BIAYA_PENDAMPING = 40000
 
-export const TENDA_TOLERANSI = 10 // toleransi kapasitas tambahan dari panitia
+export const TENDA_TOLERANSI = 12 // toleransi kapasitas tambahan dari panitia
 export const TENDA_RESERVASI_JAM = 2
 export const TENDA_RESERVASI_SEMENTARA_MENIT = 60
 

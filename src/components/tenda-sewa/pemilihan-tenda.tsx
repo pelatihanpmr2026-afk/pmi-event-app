@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { QuantityStepper } from '@/components/ui/quantity-stepper'
 import type { DataSekolahMiniValues } from '@/lib/validations/sekolah'
+import { TENDA_TOLERANSI } from '@/lib/constants-sekolah'
 
 interface TendaData { id: string; nama: string; gambarUrl: string | null; kapasitasMin: number; kapasitasMax: number; harga: number; stokTersisa: number }
 interface KapasitasInfo {
@@ -58,7 +59,7 @@ export function PemilihanTenda({ sekolahId, draftSekolah, onSuccess }: { sekolah
       if (tendaResult.success) setTendaList(tendaResult.data)
       if (draftSekolah) {
         const estimasi = Number(draftSekolah.estimasiPesertaPendamping)
-        setKapasitas({ namaLengkap: draftSekolah.namaSekolah.trim().replace(/\s+/g, ' ').toLocaleUpperCase('id-ID'), kodePendaftaran: 'Akan dibuat setelah bukti pembayaran dikirim', jumlahAktual: 0, estimasi, efektifJumlahOrang: estimasi, batasKapasitas: estimasi + 10, terkunci: false, reservasiAktif: false, reservasiBerakhirPada: null, pilihanSaatIni: [] })
+        setKapasitas({ namaLengkap: draftSekolah.namaSekolah.trim().replace(/\s+/g, ' ').toLocaleUpperCase('id-ID'), kodePendaftaran: 'Akan dibuat setelah bukti pembayaran dikirim', jumlahAktual: 0, estimasi, efektifJumlahOrang: estimasi, batasKapasitas: estimasi + TENDA_TOLERANSI, terkunci: false, reservasiAktif: false, reservasiBerakhirPada: null, pilihanSaatIni: [] })
         // Sekolah baru belum punya reservasi server — pulihkan pilihan dari localStorage.
         const saved = loadSelection()
         if (saved) setSelection(saved)
@@ -98,8 +99,7 @@ export function PemilihanTenda({ sekolahId, draftSekolah, onSuccess }: { sekolah
   const totalBiaya = tendaList.reduce((total, tenda) => total + (selection[tenda.id] ?? 0) * tenda.harga, 0)
   const jumlahUnit = Object.values(selection).reduce((total, jumlah) => total + jumlah, 0)
   const kapasitasAktif = kapasitas!
-  const kondisiKapasitas = jumlahUnit === 0 || totalKapasitas < kapasitas.efektifJumlahOrang ? 'kurang' : totalKapasitas > kapasitas.efektifJumlahOrang + 5 ? 'berlebih' : 'cukup'
-  const rekomendasi = [...tendaList].filter((tenda) => tenda.stokTersisa > 0).sort((a, b) => a.kapasitasMax - b.kapasitasMax).find((tenda) => Math.ceil(kapasitas.efektifJumlahOrang / tenda.kapasitasMax) <= tenda.stokTersisa)
+  const kondisiKapasitas = jumlahUnit === 0 || totalKapasitas < kapasitas.efektifJumlahOrang ? 'kurang' : totalKapasitas > kapasitas.batasKapasitas ? 'berlebih' : 'cukup'
 
   function maxUntuk(tenda: TendaData) {
     const saatIni = selection[tenda.id] ?? 0
@@ -145,7 +145,6 @@ export function PemilihanTenda({ sekolahId, draftSekolah, onSuccess }: { sekolah
       <div className="border-3 border-event-navy bg-event-cream shadow-pixel-sm p-4 flex flex-col gap-1">
         <p className="font-body text-xs text-event-navy">Jumlah orang yang perlu ditampung: <span className="font-bold">{kapasitas.efektifJumlahOrang}</span>. Batas maksimal berdasarkan kebijakan panitia: <span className="font-bold">{kapasitas.batasKapasitas} orang</span>.</p>
         <p className="font-body text-[11px] text-event-navy/70">Kapasitas minimum pada tiap tenda adalah informasi dari vendor. Pilih kapasitas yang cukup agar seluruh rombongan tertampung.</p>
-        {rekomendasi && <p className="font-body text-[11px] text-green-700">Rekomendasi: {Math.ceil(kapasitas.efektifJumlahOrang / rekomendasi.kapasitasMax)} {rekomendasi.nama} (kapasitas hingga {Math.ceil(kapasitas.efektifJumlahOrang / rekomendasi.kapasitasMax) * rekomendasi.kapasitasMax} orang).</p>}
       </div>
       {kapasitas.reservasiAktif && kapasitas.reservasiBerakhirPada && <div className="border-3 border-event-blue bg-event-blue/10 shadow-pixel-sm p-3"><p className="font-body text-xs text-event-navy">Reservasi aktif sampai {new Date(kapasitas.reservasiBerakhirPada).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}. Upload bukti pembayaran sebelum waktu ini agar stok tetap terkunci.</p></div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{tendaList.map((tenda) => {
