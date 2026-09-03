@@ -1,19 +1,11 @@
 import path from 'path'
 import { readFile } from 'fs/promises'
-import { createCanvas, loadImage, type SKRSContext2D } from '@napi-rs/canvas'
-import { PDFDocument, rgb } from 'pdf-lib'
+import { PDFDocument, PDFFont, PDFImage, PDFPage, rgb, StandardFonts } from 'pdf-lib'
 import QRCode from 'qrcode'
 import sharp from 'sharp'
-import { registerFonts } from './register-fonts'
 
-// 85,6 x 54 mm pada 300 DPI. PDF tetap memakai ukuran fisik kartu ID,
-// sehingga printer dapat mencetak 100% tanpa scaling.
-const WIDTH = Math.round((85.6 / 25.4) * 300)
-const HEIGHT = Math.round((54 / 25.4) * 300)
 const TEMPLATE_WIDTH = 1019
 const TEMPLATE_HEIGHT = 643
-const SCALE_X = WIDTH / TEMPLATE_WIDTH
-const SCALE_Y = HEIGHT / TEMPLATE_HEIGHT
 const ID_CARD_WIDTH_PT = (85.6 / 25.4) * 72
 const ID_CARD_HEIGHT_PT = (54 / 25.4) * 72
 const A4_WIDTH_PT = (210 / 25.4) * 72
@@ -21,8 +13,8 @@ const A4_HEIGHT_PT = (297 / 25.4) * 72
 const CARDS_PER_PAGE = 10
 const CARD_COLUMNS = 2
 const CARD_ROWS = 5
-const CARD_GAP_X = 10
-const CARD_GAP_Y = 10
+const CARD_GAP_X = 18
+const CARD_GAP_Y = 18
 const PAGE_MARGIN_X = (A4_WIDTH_PT - CARD_COLUMNS * ID_CARD_WIDTH_PT - (CARD_COLUMNS - 1) * CARD_GAP_X) / 2
 const PAGE_MARGIN_Y = (A4_HEIGHT_PT - CARD_ROWS * ID_CARD_HEIGHT_PT - (CARD_ROWS - 1) * CARD_GAP_Y) / 2
 const PHOTO_X = 760
@@ -31,6 +23,9 @@ const PHOTO_WIDTH = 220
 const PHOTO_HEIGHT = 355
 const VALUE_X = 345
 const VALUE_MAX_WIDTH = PHOTO_X - VALUE_X - 16
+
+const pxToPtX = (value: number) => value * ID_CARD_WIDTH_PT / TEMPLATE_WIDTH
+const pxToPtY = (value: number) => value * ID_CARD_HEIGHT_PT / TEMPLATE_HEIGHT
 
 export interface KtaParticipant {
   noPeserta: string | null
@@ -48,50 +43,8 @@ interface KtaPdfParams {
   peserta: KtaParticipant[]
 }
 
-function fitFont(ctx: SKRSContext2D, text: string, maxWidth: number, size: number, family: string) {
-  let nextSize = size
-  ctx.font = `${nextSize}px ${family}`
-  while (ctx.measureText(text).width > maxWidth && nextSize > 12) {
-    nextSize -= 1
-    ctx.font = `${nextSize}px ${family}`
-  }
-  return nextSize
-}
-
-function fitSingleLineText(
-  ctx: SKRSContext2D,
-  text: string,
-  maxWidth: number,
-  size: number,
-  family: string
-) {
-  let fittedText = text
-  let fittedSize = fitFont(ctx, fittedText, maxWidth, size, family)
-  ctx.font = `${fittedSize}px ${family}`
-
-  // Setelah font mencapai ukuran minimum, potong teks agar tidak masuk ke foto.
-  if (ctx.measureText(fittedText).width > maxWidth) {
-    fittedText = `${text.slice(0, Math.max(0, text.length - 3))}...`
-    while (fittedText.length > 3 && ctx.measureText(fittedText).width > maxWidth) {
-      fittedText = `${fittedText.slice(0, -4)}...`
-    }
-  }
-
-  return { text: fittedText, size: fittedSize }
-}
-
-function x(value: number) {
-  return value * SCALE_X
-}
-
-function y(value: number) {
-  return value * SCALE_Y
-}
-
 function titleCase(value: string) {
-  return value
-    .toLocaleLowerCase('id-ID')
-    .replace(/(^|[\s/-])[a-zà-ÿ]/g, (letter) => letter.toLocaleUpperCase('id-ID'))
+  return value.toLocaleLowerCase('id-ID').replace(/(^|[\s/-])[a-zà-ÿ]/g, (letter) => letter.toLocaleUpperCase('id-ID'))
 }
 
 function formatEnum(value: string) {
@@ -99,39 +52,19 @@ function formatEnum(value: string) {
 }
 
 function formatTanggalLahir(value: Date) {
-  return new Intl.DateTimeFormat('id-ID', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'Asia/Jakarta',
-  }).format(value)
+  return new Intl.DateTimeFormat('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Jakarta' }).format(value)
 }
 
-function drawCoverFit(ctx: SKRSContext2D, image: Awaited<ReturnType<typeof loadImage>>, x: number, y: number, width: number, height: number) {
-  const imageRatio = image.width / image.height
-  const boxRatio = width / height
-  let drawWidth = width
-  let drawHeight = height
-  let offsetX = 0
-  let offsetY = 0
-
-  if (imageRatio > boxRatio) {
-    drawWidth = height * imageRatio
-    offsetX = (width - drawWidth) / 2
-  } else {
-    drawHeight = width / imageRatio
-    offsetY = (height - drawHeight) / 2
-  }
-
-  ctx.save()
-  ctx.beginPath()
-  ctx.rect(x, y, width, height)
-  ctx.clip()
-  ctx.drawImage(image, x + offsetX, y + offsetY, drawWidth, drawHeight)
-  ctx.restore()
+function fitPdfText(font: PDFFont, text: string, maxWidth: number, size: number) {
+  let fittedSize = size
+  while (font.widthOfTextAtSize(text, fittedSize) > maxWidth && fittedSize > 4.5) fittedSize -= 0.25
+  if (font.widthOfTextAtSize(text, fittedSize) <= maxWidth) return { text, size: fittedSize }
+  let fittedText = `${text.slice(0, Math.max(0, text.length - 3))}...`
+  while (fittedText.length > 3 && font.widthOfTextAtSize(fittedText, fittedSize) > maxWidth) fittedText = `${fittedText.slice(0, -4)}...`
+  return { text: fittedText, size: fittedSize }
 }
 
-async function removeTemplatePlaceholders(buffer: Buffer) {
+async function cleanTemplatePlaceholders(buffer: Buffer) {
   const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
   const left = 40
   const right = 735
@@ -145,8 +78,6 @@ async function removeTemplatePlaceholders(buffer: Buffer) {
     return Math.min(red, green, blue) > 145 && Math.max(red, green, blue) - Math.min(red, green, blue) < 45
   }
 
-  // Menghapus piksel putih placeholder dengan piksel latar terdekat.
-  // Tidak menggambar panel, warna baru, atau blur di belakang teks.
   for (let pixelY = top; pixelY < bottom; pixelY += 1) {
     for (let pixelX = left; pixelX < right; pixelX += 1) {
       if (!isPlaceholderPixel(pixelX, pixelY)) continue
@@ -164,147 +95,78 @@ async function removeTemplatePlaceholders(buffer: Buffer) {
       data[targetOffset + 2] = data[sourceOffset + 2]
     }
   }
-
   return sharp(data, { raw: info }).png().toBuffer()
 }
 
-async function renderFront(namaSekolah: string, participant: KtaParticipant) {
-  registerFonts()
-  const canvas = createCanvas(WIDTH, HEIGHT)
-  const ctx = canvas.getContext('2d')
-  const templatePath = path.join(process.cwd(), 'public', 'assets', 'template_kta_front.png')
-  const templateBuffer = await readFile(templatePath)
-  const cleanedTemplateBuffer = await removeTemplatePlaceholders(templateBuffer)
-  const template = await loadImage(cleanedTemplateBuffer)
-  ctx.drawImage(template, 0, 0, WIDTH, HEIGHT)
+function drawTopText(page: PDFPage, text: string, x: number, topY: number, size: number, font: PDFFont, color: ReturnType<typeof rgb>, cardX: number, cardY: number) {
+  page.drawText(text, { x: cardX + pxToPtX(x), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(topY) - size * 0.78, size, font, color })
+}
 
-  ctx.fillStyle = '#ffffff'
-  ctx.textBaseline = 'middle'
-  ctx.textAlign = 'left'
+async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDFImage, regularFont: PDFFont, boldFont: PDFFont, namaSekolah: string, participant: KtaParticipant, cardX: number, cardY: number) {
+  page.drawImage(templateImage, { x: cardX, y: cardY, width: ID_CARD_WIDTH_PT, height: ID_CARD_HEIGHT_PT })
+  page.drawRectangle({ x: cardX + pxToPtX(45), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(636), width: pxToPtX(600), height: pxToPtY(126), color: rgb(1, 1, 1) })
 
-  const schoolName = titleCase(namaSekolah)
-  const labelFontSize = y(25)
-  const valueFontSize = y(25)
+  if (participant.fotoBuffer) {
+    const photoBuffer = await sharp(participant.fotoBuffer).rotate().resize({ width: PHOTO_WIDTH, height: PHOTO_HEIGHT, fit: 'cover' }).png().toBuffer()
+    const photoImage = await pdf.embedPng(photoBuffer)
+    page.drawImage(photoImage, { x: cardX + pxToPtX(PHOTO_X), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(PHOTO_Y + PHOTO_HEIGHT), width: pxToPtX(PHOTO_WIDTH), height: pxToPtY(PHOTO_HEIGHT) })
+  }
 
-  // Bagian bawah template memang berwarna putih secara desain; area ini
-  // dipakai untuk mengganti placeholder QR dan identitas sekolah.
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(x(45), y(510), x(600), y(126))
-
+  const white = rgb(1, 1, 1)
+  const black = rgb(0.067, 0.067, 0.067)
+  const red = rgb(0.89, 0.024, 0.075)
+  const textSize = pxToPtY(25)
   const values = [
     ['No. Reg. Induk', participant.noPeserta ?? '-'],
     ['Nama', titleCase(participant.namaLengkap)],
     ['Tempat, Tanggal Lahir', `${titleCase(participant.tempatLahir)}, ${formatTanggalLahir(participant.tanggalLahir)}`],
-    ['Gol Darah', formatEnum(participant.golonganDarah)],
+    ['Gol. Darah', formatEnum(participant.golonganDarah)],
     ['Agama', formatEnum(participant.agama)],
     ['Alamat', titleCase(participant.alamat)],
   ]
-
   values.forEach(([label, value], index) => {
     const lineY = 241 + index * 42
-    ctx.font = `${labelFontSize}px Arial`
-    ctx.fillStyle = '#ffffff'
-    ctx.fillText(label, x(55), y(lineY))
-    ctx.fillText(':', x(320), y(lineY))
-    const fittedValue = fitSingleLineText(ctx, value, x(VALUE_MAX_WIDTH), valueFontSize, 'Arial')
-    ctx.font = `${fittedValue.size}px Arial`
-    ctx.fillText(fittedValue.text, x(VALUE_X), y(lineY))
+    drawTopText(page, label, 55, lineY, textSize, regularFont, white, cardX, cardY)
+    drawTopText(page, ':', 320, lineY, textSize, regularFont, white, cardX, cardY)
+    const fittedValue = fitPdfText(regularFont, value, pxToPtX(VALUE_MAX_WIDTH), textSize)
+    drawTopText(page, fittedValue.text, VALUE_X, lineY, fittedValue.size, regularFont, white, cardX, cardY)
   })
 
-  if (participant.fotoBuffer) {
-    // Foto dipakai apa adanya; hanya diskalakan dan disesuaikan ke kotak foto.
-    const photo = await loadImage(participant.fotoBuffer)
-    drawCoverFit(ctx, photo, x(PHOTO_X), y(PHOTO_Y), x(PHOTO_WIDTH), y(PHOTO_HEIGHT))
-  } else {
-    ctx.fillStyle = '#e30613'
-    ctx.fillRect(x(PHOTO_X), y(PHOTO_Y), x(PHOTO_WIDTH), y(PHOTO_HEIGHT))
-    ctx.fillStyle = '#ffffff'
-    ctx.font = `${y(24)}px Arial-Bold`
-    ctx.textAlign = 'center'
-    ctx.fillText('Foto tidak ada', x(PHOTO_X + PHOTO_WIDTH / 2), y(PHOTO_Y + PHOTO_HEIGHT / 2))
-  }
-
-  const qrBuffer = await QRCode.toBuffer(participant.noPeserta ?? participant.namaLengkap, {
-    type: 'png',
-    width: 256,
-    margin: 1,
-    errorCorrectionLevel: 'H',
-    color: { dark: '#ffffff', light: '#e30613' },
-  })
-  const qrImage = await loadImage(qrBuffer)
-  ctx.imageSmoothingEnabled = false
-  ctx.drawImage(qrImage, x(55), y(524), x(104), y(96))
-
-  ctx.textAlign = 'left'
-  ctx.fillStyle = '#111111'
-  ctx.font = `bold ${y(31)}px Arial-Bold`
-  ctx.fillText('Palang Merah Remaja', x(177), y(544))
-  ctx.font = `${y(30)}px Arial`
-  ctx.fillText('PMI Cianjur', x(177), y(578))
-  ctx.fillText(`Unit ${schoolName}`, x(177), y(611))
-
-  return canvas.toBuffer('image/png')
+  const qrBuffer = await QRCode.toBuffer(participant.noPeserta ?? participant.namaLengkap, { type: 'png', width: 256, margin: 1, errorCorrectionLevel: 'H', color: { dark: '#ffffff', light: '#e30613' } })
+  const qrImage = await pdf.embedPng(qrBuffer)
+  page.drawImage(qrImage, { x: cardX + pxToPtX(55), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(620), width: pxToPtX(104), height: pxToPtY(96) })
+  drawTopText(page, 'Palang Merah Remaja', 177, 544, pxToPtY(31), boldFont, black, cardX, cardY)
+  drawTopText(page, 'PMI Kab. Cianjur', 177, 578, pxToPtY(30), regularFont, red, cardX, cardY)
+  const unit = fitPdfText(regularFont, `Unit ${titleCase(namaSekolah)}`, pxToPtX(400), pxToPtY(30))
+  drawTopText(page, unit.text, 177, 611, unit.size, regularFont, red, cardX, cardY)
 }
 
 export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
   if (peserta.length === 0) throw new Error('Sekolah belum memiliki peserta')
-
+  const templateBuffer = await readFile(path.join(process.cwd(), 'public', 'assets', 'template_kta_front_3.png'))
+  const cleanedTemplateBuffer = await cleanTemplatePlaceholders(templateBuffer)
   const backTemplateBuffer = await readFile(path.join(process.cwd(), 'public', 'assets', 'template-kta-back.png'))
   const pdf = await PDFDocument.create()
+  const [regularFont, boldFont] = await Promise.all([pdf.embedFont(StandardFonts.Helvetica), pdf.embedFont(StandardFonts.HelveticaBold)])
+  const frontTemplateImage = await pdf.embedPng(cleanedTemplateBuffer)
+  const backImage = await pdf.embedPng(backTemplateBuffer)
   pdf.setTitle(`KTA PMR - ${namaSekolah}`)
   pdf.setSubject('Kartu Tanda Anggota Palang Merah Remaja')
   pdf.setProducer('Sistem Pendaftaran PMR 2026')
 
-  const backImage = await pdf.embedPng(backTemplateBuffer)
-
-  // Satu paket cetak terdiri dari halaman depan dan belakang yang posisinya sama.
-  // Dengan demikian halaman kedua dapat dipakai untuk cetak duplex.
   for (let batchStart = 0; batchStart < peserta.length; batchStart += CARDS_PER_PAGE) {
     const batch = peserta.slice(batchStart, batchStart + CARDS_PER_PAGE)
     const frontPage = pdf.addPage([A4_WIDTH_PT, A4_HEIGHT_PT])
     const backPage = pdf.addPage([A4_WIDTH_PT, A4_HEIGHT_PT])
-
     for (let index = 0; index < batch.length; index += 1) {
-      const participant = batch[index]
       const column = index % CARD_COLUMNS
       const row = Math.floor(index / CARD_COLUMNS)
       const cardX = PAGE_MARGIN_X + column * (ID_CARD_WIDTH_PT + CARD_GAP_X)
       const cardY = A4_HEIGHT_PT - PAGE_MARGIN_Y - (row + 1) * ID_CARD_HEIGHT_PT - row * CARD_GAP_Y
-      const frontBuffer = await renderFront(namaSekolah, participant)
-      const frontImage = await pdf.embedPng(frontBuffer)
-
-      frontPage.drawImage(frontImage, {
-        x: cardX,
-        y: cardY,
-        width: ID_CARD_WIDTH_PT,
-        height: ID_CARD_HEIGHT_PT,
-      })
-      backPage.drawImage(backImage, {
-        x: cardX,
-        y: cardY,
-        width: ID_CARD_WIDTH_PT,
-        height: ID_CARD_HEIGHT_PT,
-      })
-
-      // Garis bantu potong tipis, tidak menutupi desain maupun teks kartu.
-      frontPage.drawRectangle({
-        x: cardX,
-        y: cardY,
-        width: ID_CARD_WIDTH_PT,
-        height: ID_CARD_HEIGHT_PT,
-        borderColor: rgb(0.72, 0.72, 0.72),
-        borderWidth: 0.35,
-      })
-      backPage.drawRectangle({
-        x: cardX,
-        y: cardY,
-        width: ID_CARD_WIDTH_PT,
-        height: ID_CARD_HEIGHT_PT,
-        borderColor: rgb(0.72, 0.72, 0.72),
-        borderWidth: 0.35,
-      })
+      await drawFrontCard(pdf, frontPage, frontTemplateImage, regularFont, boldFont, namaSekolah, batch[index], cardX, cardY)
+      backPage.drawImage(backImage, { x: cardX, y: cardY, width: ID_CARD_WIDTH_PT, height: ID_CARD_HEIGHT_PT })
+      for (const page of [frontPage, backPage]) page.drawRectangle({ x: cardX, y: cardY, width: ID_CARD_WIDTH_PT, height: ID_CARD_HEIGHT_PT, borderColor: rgb(0.72, 0.72, 0.72), borderWidth: 0.35 })
     }
   }
-
   return Buffer.from(await pdf.save())
 }
