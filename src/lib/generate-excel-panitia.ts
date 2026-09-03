@@ -81,7 +81,7 @@ export async function generateExcelPanitiaPerDivisiBuffer(rows: PanitiaExcelRow[
     sheet.views = [{ state: 'frozen', ySplit: 1 }]
     sheet.autoFilter = 'A1:I1'
 
-    divisionRows.forEach((row, index) => {
+    for (const [index, row] of divisionRows.entries()) {
       const rowNumber = index + 2
       const excelRow = sheet.getRow(rowNumber)
       excelRow.values = [
@@ -111,7 +111,7 @@ export async function generateExcelPanitiaPerDivisiBuffer(rows: PanitiaExcelRow[
           })
         }
       }
-    })
+    }
   }
 
   if (orderedGroups.length === 0) {
