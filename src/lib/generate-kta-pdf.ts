@@ -21,8 +21,10 @@ const A4_HEIGHT_PT = (297 / 25.4) * 72
 const CARDS_PER_PAGE = 10
 const CARD_COLUMNS = 2
 const CARD_ROWS = 5
-const PAGE_MARGIN_X = (A4_WIDTH_PT - CARD_COLUMNS * ID_CARD_WIDTH_PT) / 2
-const PAGE_MARGIN_Y = (A4_HEIGHT_PT - CARD_ROWS * ID_CARD_HEIGHT_PT) / 2
+const CARD_GAP_X = 10
+const CARD_GAP_Y = 10
+const PAGE_MARGIN_X = (A4_WIDTH_PT - CARD_COLUMNS * ID_CARD_WIDTH_PT - (CARD_COLUMNS - 1) * CARD_GAP_X) / 2
+const PAGE_MARGIN_Y = (A4_HEIGHT_PT - CARD_ROWS * ID_CARD_HEIGHT_PT - (CARD_ROWS - 1) * CARD_GAP_Y) / 2
 const PHOTO_X = 760
 const PHOTO_Y = 163
 const PHOTO_WIDTH = 220
@@ -166,82 +168,6 @@ async function removeTemplatePlaceholders(buffer: Buffer) {
   return sharp(data, { raw: info }).png().toBuffer()
 }
 
-async function replacePhotoBackgroundWithRed(buffer: Buffer) {
-  const { data, info } = await sharp(buffer)
-    .rotate()
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true })
-  const pixelCount = info.width * info.height
-  const visited = new Uint8Array(pixelCount)
-  const queue: number[] = []
-  const backgroundSamples: [number, number, number][] = []
-
-  const pixelOffset = (pixelIndex: number) => pixelIndex * info.channels
-  const addSample = (pixelIndex: number) => {
-    const offset = pixelOffset(pixelIndex)
-    backgroundSamples.push([data[offset], data[offset + 1], data[offset + 2]])
-  }
-
-  // Sampel dari sudut dan tepi dipakai untuk mengenali warna background.
-  for (let xPos = 0; xPos < info.width; xPos += Math.max(1, Math.floor(info.width / 20))) {
-    addSample(xPos)
-    addSample((info.height - 1) * info.width + xPos)
-  }
-  for (let yPos = 0; yPos < info.height; yPos += Math.max(1, Math.floor(info.height / 20))) {
-    addSample(yPos * info.width)
-    addSample(yPos * info.width + info.width - 1)
-  }
-
-  const background = backgroundSamples.reduce(
-    (sum, sample) => [sum[0] + sample[0], sum[1] + sample[1], sum[2] + sample[2]],
-    [0, 0, 0]
-  ).map((value) => value / backgroundSamples.length)
-  const colorDistance = (pixelIndex: number) => {
-    const offset = pixelOffset(pixelIndex)
-    return Math.hypot(
-      data[offset] - background[0],
-      data[offset + 1] - background[1],
-      data[offset + 2] - background[2]
-    )
-  }
-  const addIfBackground = (pixelIndex: number) => {
-    if (visited[pixelIndex] || colorDistance(pixelIndex) > 72) return
-    visited[pixelIndex] = 1
-    queue.push(pixelIndex)
-  }
-
-  for (let xPos = 0; xPos < info.width; xPos += 1) {
-    addIfBackground(xPos)
-    addIfBackground((info.height - 1) * info.width + xPos)
-  }
-  for (let yPos = 1; yPos < info.height - 1; yPos += 1) {
-    addIfBackground(yPos * info.width)
-    addIfBackground(yPos * info.width + info.width - 1)
-  }
-
-  while (queue.length > 0) {
-    const pixelIndex = queue.pop()!
-    const pixelX = pixelIndex % info.width
-    const pixelY = Math.floor(pixelIndex / info.width)
-    if (pixelX > 0) addIfBackground(pixelIndex - 1)
-    if (pixelX < info.width - 1) addIfBackground(pixelIndex + 1)
-    if (pixelY > 0) addIfBackground(pixelIndex - info.width)
-    if (pixelY < info.height - 1) addIfBackground(pixelIndex + info.width)
-  }
-
-  for (let pixelIndex = 0; pixelIndex < pixelCount; pixelIndex += 1) {
-    if (!visited[pixelIndex]) continue
-    const offset = pixelOffset(pixelIndex)
-    data[offset] = 227
-    data[offset + 1] = 6
-    data[offset + 2] = 19
-    data[offset + 3] = 255
-  }
-
-  return sharp(data, { raw: info }).png().toBuffer()
-}
-
 async function renderFront(namaSekolah: string, participant: KtaParticipant) {
   registerFonts()
   const canvas = createCanvas(WIDTH, HEIGHT)
@@ -286,8 +212,8 @@ async function renderFront(namaSekolah: string, participant: KtaParticipant) {
   })
 
   if (participant.fotoBuffer) {
-    const photoWithRedBackground = await replacePhotoBackgroundWithRed(participant.fotoBuffer)
-    const photo = await loadImage(photoWithRedBackground)
+    // Foto dipakai apa adanya; hanya diskalakan dan disesuaikan ke kotak foto.
+    const photo = await loadImage(participant.fotoBuffer)
     drawCoverFit(ctx, photo, x(PHOTO_X), y(PHOTO_Y), x(PHOTO_WIDTH), y(PHOTO_HEIGHT))
   } else {
     ctx.fillStyle = '#e30613'
@@ -342,8 +268,8 @@ export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
       const participant = batch[index]
       const column = index % CARD_COLUMNS
       const row = Math.floor(index / CARD_COLUMNS)
-      const cardX = PAGE_MARGIN_X + column * ID_CARD_WIDTH_PT
-      const cardY = A4_HEIGHT_PT - PAGE_MARGIN_Y - (row + 1) * ID_CARD_HEIGHT_PT
+      const cardX = PAGE_MARGIN_X + column * (ID_CARD_WIDTH_PT + CARD_GAP_X)
+      const cardY = A4_HEIGHT_PT - PAGE_MARGIN_Y - (row + 1) * ID_CARD_HEIGHT_PT - row * CARD_GAP_Y
       const frontBuffer = await renderFront(namaSekolah, participant)
       const frontImage = await pdf.embedPng(frontBuffer)
 
