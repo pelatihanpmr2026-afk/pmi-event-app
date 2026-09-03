@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { Search, Eye, Trash2, FileDown } from 'lucide-react'
+import { Search, Eye, Trash2, FileDown, FileSpreadsheet } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -84,6 +84,11 @@ export function PanitiaTable({
     link.download = `data-panitia-${new Date().toISOString().slice(0, 10)}.csv`
     link.click()
     URL.revokeObjectURL(url)
+  }
+
+  function handleExportExcel() {
+    const query = filterDivisi ? `?divisi=${encodeURIComponent(filterDivisi)}` : ''
+    window.open(`/api/panitia/export${query}`, '_blank', 'noopener,noreferrer')
   }
 
   const columns: ResponsiveTableColumn<PanitiaData>[] = [
@@ -202,6 +207,10 @@ export function PanitiaTable({
         <Button variant="secondary" onClick={handleExportCsv} className="flex items-center gap-1.5">
           <FileDown size={14} />
           Export CSV
+        </Button>
+        <Button variant="primary" onClick={handleExportExcel} className="flex items-center gap-1.5">
+          <FileSpreadsheet size={14} />
+          Export Excel per Divisi
         </Button>
       </div>
 
