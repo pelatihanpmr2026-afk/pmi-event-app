@@ -23,6 +23,12 @@ const CARD_COLUMNS = 2
 const CARD_ROWS = 5
 const PAGE_MARGIN_X = (A4_WIDTH_PT - CARD_COLUMNS * ID_CARD_WIDTH_PT) / 2
 const PAGE_MARGIN_Y = (A4_HEIGHT_PT - CARD_ROWS * ID_CARD_HEIGHT_PT) / 2
+const PHOTO_X = 760
+const PHOTO_Y = 163
+const PHOTO_WIDTH = 220
+const PHOTO_HEIGHT = 355
+const VALUE_X = 345
+const VALUE_MAX_WIDTH = PHOTO_X - VALUE_X - 16
 
 export interface KtaParticipant {
   noPeserta: string | null
@@ -48,6 +54,28 @@ function fitFont(ctx: SKRSContext2D, text: string, maxWidth: number, size: numbe
     ctx.font = `${nextSize}px ${family}`
   }
   return nextSize
+}
+
+function fitSingleLineText(
+  ctx: SKRSContext2D,
+  text: string,
+  maxWidth: number,
+  size: number,
+  family: string
+) {
+  let fittedText = text
+  let fittedSize = fitFont(ctx, fittedText, maxWidth, size, family)
+  ctx.font = `${fittedSize}px ${family}`
+
+  // Setelah font mencapai ukuran minimum, potong teks agar tidak masuk ke foto.
+  if (ctx.measureText(fittedText).width > maxWidth) {
+    fittedText = `${text.slice(0, Math.max(0, text.length - 3))}...`
+    while (fittedText.length > 3 && ctx.measureText(fittedText).width > maxWidth) {
+      fittedText = `${fittedText.slice(0, -4)}...`
+    }
+  }
+
+  return { text: fittedText, size: fittedSize }
 }
 
 function x(value: number) {
@@ -176,21 +204,21 @@ async function renderFront(namaSekolah: string, participant: KtaParticipant) {
     ctx.fillStyle = '#ffffff'
     ctx.fillText(label, x(55), y(lineY))
     ctx.fillText(':', x(320), y(lineY))
-    const valueSize = fitFont(ctx, value, x(415), valueFontSize, 'Arial')
-    ctx.font = `${valueSize}px Arial`
-    ctx.fillText(value, x(345), y(lineY))
+    const fittedValue = fitSingleLineText(ctx, value, x(VALUE_MAX_WIDTH), valueFontSize, 'Arial')
+    ctx.font = `${fittedValue.size}px Arial`
+    ctx.fillText(fittedValue.text, x(VALUE_X), y(lineY))
   })
 
   if (participant.fotoBuffer) {
     const photo = await loadImage(participant.fotoBuffer)
-    drawCoverFit(ctx, photo, x(744), y(163), x(236), y(355))
+    drawCoverFit(ctx, photo, x(PHOTO_X), y(PHOTO_Y), x(PHOTO_WIDTH), y(PHOTO_HEIGHT))
   } else {
     ctx.fillStyle = '#e30613'
-    ctx.fillRect(x(744), y(163), x(236), y(355))
+    ctx.fillRect(x(PHOTO_X), y(PHOTO_Y), x(PHOTO_WIDTH), y(PHOTO_HEIGHT))
     ctx.fillStyle = '#ffffff'
     ctx.font = `${y(24)}px Arial-Bold`
     ctx.textAlign = 'center'
-    ctx.fillText('Foto tidak ada', x(862), y(341))
+    ctx.fillText('Foto tidak ada', x(PHOTO_X + PHOTO_WIDTH / 2), y(PHOTO_Y + PHOTO_HEIGHT / 2))
   }
 
   const qrBuffer = await QRCode.toBuffer(participant.noPeserta ?? participant.namaLengkap, {
