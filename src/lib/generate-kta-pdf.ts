@@ -17,10 +17,10 @@ const CARD_GAP_X = 18
 const CARD_GAP_Y = 18
 const PAGE_MARGIN_X = (A4_WIDTH_PT - CARD_COLUMNS * ID_CARD_WIDTH_PT - (CARD_COLUMNS - 1) * CARD_GAP_X) / 2
 const PAGE_MARGIN_Y = (A4_HEIGHT_PT - CARD_ROWS * ID_CARD_HEIGHT_PT - (CARD_ROWS - 1) * CARD_GAP_Y) / 2
-const PHOTO_X = 760
-const PHOTO_Y = 163
-const PHOTO_WIDTH = 220
-const PHOTO_HEIGHT = 355
+const PHOTO_X = 767
+const PHOTO_Y = 198
+const PHOTO_WIDTH = 189
+const PHOTO_HEIGHT = 283
 const VALUE_X = 345
 const VALUE_MAX_WIDTH = PHOTO_X - VALUE_X - 16
 
@@ -75,21 +75,23 @@ async function cleanTemplatePlaceholders(buffer: Buffer) {
     const red = data[offset]
     const green = data[offset + 1]
     const blue = data[offset + 2]
-    return Math.min(red, green, blue) > 145 && Math.max(red, green, blue) - Math.min(red, green, blue) < 45
+    // Label bawaan template berwarna putih/abu-abu terang di atas foto merah.
+    // Ambang diperlebar agar anti-aliasing teks lama tidak meninggalkan bayangan.
+    return Math.min(red, green, blue) > 90 && Math.max(red, green, blue) - Math.min(red, green, blue) < 100
   }
 
   for (let pixelY = top; pixelY < bottom; pixelY += 1) {
     for (let pixelX = left; pixelX < right; pixelX += 1) {
       if (!isPlaceholderPixel(pixelX, pixelY)) continue
-      let sourceX = pixelX - 1
-      while (sourceX >= left && isPlaceholderPixel(sourceX, pixelY)) sourceX -= 1
-      if (sourceX < left) {
-        sourceX = pixelX + 1
-        while (sourceX < right && isPlaceholderPixel(sourceX, pixelY)) sourceX += 1
+      let sourceY = pixelY - 1
+      while (sourceY >= top && isPlaceholderPixel(pixelX, sourceY)) sourceY -= 1
+      if (sourceY < top) {
+        sourceY = pixelY + 1
+        while (sourceY < bottom && isPlaceholderPixel(pixelX, sourceY)) sourceY += 1
       }
-      if (sourceX < left || sourceX >= right) continue
+      if (sourceY < top || sourceY >= bottom) continue
       const targetOffset = (pixelY * info.width + pixelX) * info.channels
-      const sourceOffset = (pixelY * info.width + sourceX) * info.channels
+      const sourceOffset = (sourceY * info.width + pixelX) * info.channels
       data[targetOffset] = data[sourceOffset]
       data[targetOffset + 1] = data[sourceOffset + 1]
       data[targetOffset + 2] = data[sourceOffset + 2]
@@ -135,10 +137,10 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
   const qrBuffer = await QRCode.toBuffer(participant.noPeserta ?? participant.namaLengkap, { type: 'png', width: 256, margin: 1, errorCorrectionLevel: 'H', color: { dark: '#ffffff', light: '#e30613' } })
   const qrImage = await pdf.embedPng(qrBuffer)
   page.drawImage(qrImage, { x: cardX + pxToPtX(55), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(620), width: pxToPtX(104), height: pxToPtY(96) })
-  drawTopText(page, 'Palang Merah Remaja', 177, 544, pxToPtY(31), boldFont, black, cardX, cardY)
-  drawTopText(page, 'PMI Kab. Cianjur', 177, 578, pxToPtY(30), regularFont, red, cardX, cardY)
+  drawTopText(page, 'Palang Merah Remaja', 177, 532, pxToPtY(31), boldFont, black, cardX, cardY)
+  drawTopText(page, 'PMI Kab. Cianjur', 177, 565, pxToPtY(30), regularFont, red, cardX, cardY)
   const unit = fitPdfText(regularFont, `Unit ${titleCase(namaSekolah)}`, pxToPtX(400), pxToPtY(30))
-  drawTopText(page, unit.text, 177, 611, unit.size, regularFont, red, cardX, cardY)
+  drawTopText(page, unit.text, 177, 598, unit.size, regularFont, red, cardX, cardY)
 }
 
 export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
