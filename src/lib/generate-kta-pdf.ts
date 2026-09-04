@@ -143,7 +143,7 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
 
 export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
   if (peserta.length === 0) throw new Error('Sekolah belum memiliki peserta')
-  const templateBuffer = await readFile(path.join(process.cwd(), 'public', 'assets', 'template_kta_front_3.png'))
+  const templateBuffer = await readFile(path.join(process.cwd(), 'public', 'assets', 'template_kta_front.png'))
   const cleanedTemplateBuffer = await cleanTemplatePlaceholders(templateBuffer)
   const backTemplateBuffer = await readFile(path.join(process.cwd(), 'public', 'assets', 'template-kta-back.png'))
   const pdf = await PDFDocument.create()
