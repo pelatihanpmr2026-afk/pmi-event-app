@@ -21,6 +21,7 @@ const PHOTO_X = 767
 const PHOTO_Y = 198
 const PHOTO_WIDTH = 189
 const PHOTO_HEIGHT = 283
+const PHOTO_RENDER_SCALE = 4
 const VALUE_X = 345
 const VALUE_MAX_WIDTH = PHOTO_X - VALUE_X - 16
 
@@ -109,8 +110,14 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
   page.drawRectangle({ x: cardX + pxToPtX(45), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(636), width: pxToPtX(600), height: pxToPtY(126), color: rgb(1, 1, 1) })
 
   if (participant.fotoBuffer) {
-    const photoBuffer = await sharp(participant.fotoBuffer).rotate().resize({ width: PHOTO_WIDTH, height: PHOTO_HEIGHT, fit: 'cover' }).png().toBuffer()
-    const photoImage = await pdf.embedPng(photoBuffer)
+    // Render pada resolusi 4x agar foto tetap tajam saat PDF dizoom/cetak.
+    // Ukuran fisik di kartu tetap mengikuti PHOTO_WIDTH/PHOTO_HEIGHT.
+    const photoBuffer = await sharp(participant.fotoBuffer)
+      .rotate()
+      .resize({ width: PHOTO_WIDTH * PHOTO_RENDER_SCALE, height: PHOTO_HEIGHT * PHOTO_RENDER_SCALE, fit: 'cover', withoutEnlargement: true })
+      .jpeg({ quality: 95, chromaSubsampling: '4:4:4', mozjpeg: true })
+      .toBuffer()
+    const photoImage = await pdf.embedJpg(photoBuffer)
     page.drawImage(photoImage, { x: cardX + pxToPtX(PHOTO_X), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(PHOTO_Y + PHOTO_HEIGHT), width: pxToPtX(PHOTO_WIDTH), height: pxToPtY(PHOTO_HEIGHT) })
   }
 

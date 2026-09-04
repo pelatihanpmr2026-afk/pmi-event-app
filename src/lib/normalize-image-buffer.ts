@@ -21,7 +21,7 @@ export function isLikelyNonRasterImage(buffer: Buffer): boolean {
 }
 
 /**
- * Normalisasi foto peserta ke JPEG saat upload.
+ * Normalisasi foto peserta ke JPEG kualitas tinggi saat upload.
  * Menolak file non-raster; toleran terhadap JPEG/PNG sedikit korup.
  */
 export async function normalizeParticipantPhotoBuffer(buffer: Buffer): Promise<Buffer> {
@@ -31,7 +31,7 @@ export async function normalizeParticipantPhotoBuffer(buffer: Buffer): Promise<B
 
   const normalized = await sharp(buffer, { failOn: 'none', limitInputPixels: 40_000_000 })
     .rotate()
-    .jpeg({ quality: 85, mozjpeg: true })
+    .jpeg({ quality: 95, mozjpeg: true, chromaSubsampling: '4:4:4' })
     .toBuffer()
 
   const meta = await sharp(normalized).metadata()
