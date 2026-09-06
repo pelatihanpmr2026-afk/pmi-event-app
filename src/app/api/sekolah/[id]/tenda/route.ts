@@ -4,6 +4,61 @@ import { tendaSelectionSchema } from '@/lib/validations/tenda'
 import { TENDA_TOLERANSI } from '@/lib/constants-sekolah'
 import { lockDanValidasiStokTenda } from '@/lib/tenda-stock'
 import { hasTendaSession, TENDA_SESSION_COOKIE } from '@/lib/tenda-session'
+import { deleteFileByUrl } from '@/lib/save-file'
+import { logAdminAction } from '@/lib/admin-log'
+import { requireRole } from '@/lib/api-guard'
+
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const guard = await requireRole('KESEKRETARIATAN')
+  if (!guard.ok) return guard.response
+
+  try {
+    const { id } = await params
+    const sekolah = await prisma.sekolah.findUnique({
+      where: { id },
+      select: {
+        namaLengkap: true,
+        kodePendaftaran: true,
+        tendaSewa: { select: { id: true } },
+        pembayaran: {
+          where: { tipe: 'TENDA' },
+          select: { buktiTransferUrl: true, kwitansiUrl: true },
+        },
+      },
+    })
+
+    if (!sekolah) {
+      return NextResponse.json({ success: false, message: 'Sekolah tidak ditemukan' }, { status: 404 })
+    }
+    if (sekolah.tendaSewa.length === 0) {
+      return NextResponse.json({ success: false, message: 'Data sewa tenda tidak ditemukan' }, { status: 404 })
+    }
+
+    const files = sekolah.pembayaran
+      .flatMap((pembayaran) => [pembayaran.buktiTransferUrl, pembayaran.kwitansiUrl])
+      .filter((url): url is string => Boolean(url))
+
+    await prisma.$transaction([
+      prisma.tendaSewa.deleteMany({ where: { sekolahId: id } }),
+      prisma.pembayaran.deleteMany({ where: { sekolahId: id, tipe: 'TENDA' } }),
+    ])
+    await Promise.all(files.map((url) => deleteFileByUrl(url)))
+
+    await logAdminAction(guard.session.adminId, guard.session.nama, guard.session.role, 'HAPUS_SEWA_TENDA', {
+      targetType: 'SEWA_TENDA',
+      targetId: id,
+      metadata: { targetName: sekolah.namaLengkap, kodePendaftaran: sekolah.kodePendaftaran },
+    })
+
+    return NextResponse.json({ success: true, message: 'Sewa tenda berhasil dihapus' })
+  } catch (error) {
+    console.error('[DELETE /api/sekolah/:id/tenda]', error)
+    return NextResponse.json({ success: false, message: 'Gagal menghapus sewa tenda' }, { status: 500 })
+  }
+}
 
 export async function POST(
   req: NextRequest,

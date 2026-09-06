@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { Loader2, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface SewaRow {
   id: string
@@ -19,19 +21,38 @@ function rp(n: number) {
 export function TendaSewaList() {
   const [data, setData] = useState<SewaRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  async function fetchData() {
+    try {
+      const res = await fetch('/api/tenda/sewa-list')
+      const result = await res.json()
+      if (result.success) setData(result.data)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await fetch('/api/tenda/sewa-list')
-        const result = await res.json()
-        if (result.success) setData(result.data)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchData()
+    void fetchData()
   }, [])
+
+  async function deleteSewa(row: SewaRow) {
+    if (!window.confirm(`Hapus sewa tenda dari ${row.namaSekolah}? Data tenda dan pembayaran sewa terkait akan dihapus permanen.`)) return
+
+    setDeletingId(row.id)
+    try {
+      const res = await fetch(`/api/sekolah/${row.id}/tenda`, { method: 'DELETE' })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result?.message || 'Gagal menghapus sewa tenda')
+      toast.success('Sewa tenda berhasil dihapus')
+      await fetchData()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   if (isLoading) {
     return <p className="font-body text-sm text-event-navy/50 text-center py-8">Memuat data...</p>
@@ -47,7 +68,7 @@ export function TendaSewaList() {
         </div>
       ) : (
         <div className="border-3 border-event-navy overflow-x-auto bg-white">
-          <table className="w-full min-w-[700px]">
+          <table className="w-full min-w-[760px]">
             <thead>
               <tr className="bg-event-navy text-white">
                 <th className="font-body text-xs px-3 py-3 text-left">Nama Sekolah</th>
@@ -55,6 +76,7 @@ export function TendaSewaList() {
                 <th className="font-body text-xs px-3 py-3 text-center">Total Unit</th>
                 <th className="font-body text-xs px-3 py-3 text-right">Total Biaya</th>
                 <th className="font-body text-xs px-3 py-3 text-left">Tgl Konfirmasi</th>
+                <th className="font-body text-xs px-3 py-3 text-center">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -73,6 +95,18 @@ export function TendaSewaList() {
                     {s.tanggalSewa
                       ? new Date(s.tanggalSewa).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
                       : '-'}
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <button
+                      type="button"
+                      title="Hapus sewa tenda"
+                      aria-label={`Hapus sewa tenda ${s.namaSekolah}`}
+                      onClick={() => void deleteSewa(s)}
+                      disabled={deletingId !== null}
+                      className="inline-flex h-8 w-8 items-center justify-center border-2 border-pmi-red text-pmi-red hover:bg-pmi-red hover:text-white disabled:opacity-50"
+                    >
+                      {deletingId === s.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                    </button>
                   </td>
                 </tr>
               ))}
