@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Eye, Check, Loader2, MoreVertical, ExternalLink, FileSpreadsheet, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Eye, Check, X, Trash2, Loader2, MoreVertical, ExternalLink, FileSpreadsheet, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -60,6 +60,7 @@ export function SekolahTable({
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [confirmingPaymentId, setConfirmingPaymentId] = useState<string | null>(null)
+  const [deletingSchoolId, setDeletingSchoolId] = useState<string | null>(null)
   const [markingPrintedId, setMarkingPrintedId] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -138,9 +139,51 @@ export function SekolahTable({
     }
   }
 
-function viewProof(url: string) {
+  async function rejectPayment(paymentId: string, label: string) {
+    const reason = window.prompt(`Alasan penolakan ${label}:`, 'Bukti transfer tidak sesuai')?.trim() ?? ''
+    if (reason.length < 5) {
+      if (reason !== '') toast.error('Alasan penolakan minimal 5 karakter')
+      return
+    }
+
+    setConfirmingPaymentId(paymentId)
+    try {
+      const res = await fetch(`/api/pembayaran/${paymentId}/konfirmasi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aksi: 'DITOLAK', catatanAdmin: reason }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result?.message || 'Gagal menolak pembayaran')
+      toast.success(`Pembayaran ${label} ditolak`)
+      await refreshList()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
+    } finally {
+      setConfirmingPaymentId(null)
+    }
+  }
+
+  function viewProof(url: string) {
     setOpenMenuId(null)
     window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  async function deleteRegistration(id: string, namaSekolah: string) {
+    if (!window.confirm(`Hapus pendaftaran ${namaSekolah}? Semua peserta, pembayaran, bukti transfer, dan dokumen terkait akan dihapus permanen.`)) return
+    setOpenMenuId(null)
+    setDeletingSchoolId(id)
+    try {
+      const res = await fetch(`/api/sekolah/${id}`, { method: 'DELETE' })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result?.message || 'Gagal menghapus pendaftaran')
+      toast.success('Pendaftaran sekolah berhasil dihapus')
+      await refreshList()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
+    } finally {
+      setDeletingSchoolId(null)
+    }
   }
 
   async function toggleCetak(id: string, sudhCetak: boolean) {
@@ -328,12 +371,14 @@ function viewProof(url: string) {
             {menuOpen && <div className="absolute right-0 z-50 mt-1 w-64 overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-white py-1 text-left shadow-[var(--shadow-pixel-md)]">
               <button type="button" onClick={() => openDetail(s.id)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)]"><Eye size={14} /> Lihat Detail Sekolah</button>
               {s.pembayaranPeserta?.status === 'MENUNGGU_KONFIRMASI' && <button type="button" onClick={() => { setOpenMenuId(null); void confirmPayment(s.pembayaranPeserta!.id, 'pendaftaran') }} disabled={confirmingPaymentId !== null} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)] disabled:opacity-50"><Check size={14} /> Konfirmasi Pendaftaran</button>}
+              {s.pembayaranPeserta?.status === 'MENUNGGU_KONFIRMASI' && <button type="button" onClick={() => { setOpenMenuId(null); void rejectPayment(s.pembayaranPeserta!.id, 'pendaftaran') }} disabled={confirmingPaymentId !== null} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-pmi-red hover:bg-pmi-red/10 disabled:opacity-50"><X size={14} /> Tolak Pendaftaran</button>}
               {s.pembayaranTenda?.status === 'MENUNGGU_KONFIRMASI' && <button type="button" onClick={() => { setOpenMenuId(null); void confirmPayment(s.pembayaranTenda!.id, 'sewa tenda') }} disabled={confirmingPaymentId !== null} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)] disabled:opacity-50"><Check size={14} /> Konfirmasi Sewa Tenda</button>}
               {s.pembayaranPeserta?.buktiTransferUrl && <button type="button" onClick={() => viewProof(s.pembayaranPeserta!.buktiTransferUrl!)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)]"><ExternalLink size={14} /> Lihat Bukti Pendaftaran</button>}
 {s.pembayaranTenda?.buktiTransferUrl && <button type="button" onClick={() => viewProof(s.pembayaranTenda!.buktiTransferUrl!)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)]"><ExternalLink size={14} /> Lihat Bukti Sewa Tenda</button>}
               {s.pembayaranPeserta?.kwitansiUrl && <a href={s.pembayaranPeserta.kwitansiUrl} download target="_blank" rel="noopener noreferrer" onClick={() => setOpenMenuId(null)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)]"><FileText size={14} /> Download Kwitansi Pendaftaran</a>}
               {s.pembayaranTenda?.kwitansiUrl && <a href={s.pembayaranTenda.kwitansiUrl} download target="_blank" rel="noopener noreferrer" onClick={() => setOpenMenuId(null)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)]"><FileText size={14} /> Download Kwitansi Sewa Tenda</a>}
               <a href={`/api/sekolah/${s.id}/export`} onClick={() => setOpenMenuId(null)} className="flex w-full items-center gap-2 border-t border-[var(--color-border)] px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)]"><FileSpreadsheet size={14} /> Download Excel Peserta & Pendamping</a>
+              <button type="button" onClick={() => void deleteRegistration(s.id, s.namaLengkap)} disabled={deletingSchoolId !== null} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-pmi-red hover:bg-pmi-red/10 disabled:opacity-50"><Trash2 size={14} /> Hapus Pendaftaran</button>
             </div>}
           </div>
         )
@@ -368,6 +413,16 @@ function viewProof(url: string) {
         <DaftarUlangBadge pembayaran={row.pembayaranPeserta} />
       </div>
       <div className="grid grid-cols-1 gap-2 mt-1">
+        {row.pembayaranPeserta?.buktiTransferUrl && (
+          <button type="button" onClick={() => viewProof(row.pembayaranPeserta!.buktiTransferUrl!)} className="flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-btn)] border-2 border-event-navy text-event-navy text-xs font-medium hover:bg-event-cream transition-colors">
+            <ExternalLink size={14} /> Lihat Bukti Pendaftaran
+          </button>
+        )}
+        {row.pembayaranTenda?.buktiTransferUrl && (
+          <button type="button" onClick={() => viewProof(row.pembayaranTenda!.buktiTransferUrl!)} className="flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-btn)] border-2 border-event-navy text-event-navy text-xs font-medium hover:bg-event-cream transition-colors">
+            <ExternalLink size={14} /> Lihat Bukti Sewa Tenda
+          </button>
+        )}
         {row.pembayaranPeserta?.status === 'MENUNGGU_KONFIRMASI' && (
           <button
             type="button"
@@ -377,6 +432,12 @@ function viewProof(url: string) {
           >
             {confirmingPaymentId === row.pembayaranPeserta.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
             Konfirmasi Pendaftaran
+          </button>
+        )}
+        {row.pembayaranPeserta?.status === 'MENUNGGU_KONFIRMASI' && (
+          <button type="button" onClick={() => void rejectPayment(row.pembayaranPeserta!.id, 'pendaftaran')} disabled={confirmingPaymentId !== null} className="flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-btn)] bg-pmi-red text-white text-xs font-medium hover:bg-event-navy disabled:cursor-not-allowed disabled:opacity-60 transition-colors">
+            {confirmingPaymentId === row.pembayaranPeserta.id ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+            Tolak Pendaftaran
           </button>
         )}
         {row.pembayaranTenda?.status === 'MENUNGGU_KONFIRMASI' && (
@@ -397,6 +458,10 @@ function viewProof(url: string) {
         >
           <Eye size={14} />
           Lihat Detail
+        </button>
+        <button type="button" onClick={() => void deleteRegistration(row.id, row.namaLengkap)} disabled={deletingSchoolId !== null} className="flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-btn)] border-2 border-pmi-red text-pmi-red text-xs font-medium hover:bg-pmi-red hover:text-white disabled:cursor-not-allowed disabled:opacity-60 transition-colors">
+          {deletingSchoolId === row.id ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+          Hapus Pendaftaran
         </button>
       </div>
     </div>
