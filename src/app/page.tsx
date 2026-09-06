@@ -160,7 +160,7 @@ export default async function HomePage() {
 
             <Reveal delay={140}>
               <h1 className="font-heading gradient-text pixel-shadow-soft text-[clamp(1.35rem,1rem+4vw,3rem)] leading-tight sm:leading-[1.15]">
-                TEST PUSH - PELANTIKAN &amp; PELATIHAN
+                PELANTIKAN &amp; PELATIHAN
                 <br />
                 PMR SE-KABUPATEN CIANJUR
               </h1>
