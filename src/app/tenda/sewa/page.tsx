@@ -9,11 +9,33 @@ import { CariSekolah } from '@/components/tenda-sewa/cari-sekolah'
 import { BuatSekolahBaru } from '@/components/tenda-sewa/buat-sekolah-baru'
 import { PemilihanTenda } from '@/components/tenda-sewa/pemilihan-tenda'
 import type { DataSekolahMiniValues } from '@/lib/validations/sekolah'
+import { TENDA_RESERVASI_SEMENTARA_MENIT } from '@/lib/constants-sekolah'
 
 const CTX_KEY_SEKOLAH = 'tenda-sewa-sekolah-id'
 const CTX_KEY_DRAFT = 'tenda-sewa-draft-sekolah'
+const LOCAL_STORAGE_TTL = TENDA_RESERVASI_SEMENTARA_MENIT * 60 * 1000
 
 const MARQUEE_ITEMS = ['SEWA TENDA', 'PERKEMAHAN', 'KUOTA TERBATAS', 'JANGAN SAMPAI KETINGGALAN']
+
+function loadTimedValue<T>(key: string): T | null {
+  try {
+    const raw = window.localStorage.getItem(key)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as { data?: T; savedAt?: number }
+    if (!parsed.data || typeof parsed.savedAt !== 'number' || Date.now() - parsed.savedAt > LOCAL_STORAGE_TTL) {
+      window.localStorage.removeItem(key)
+      return null
+    }
+    return parsed.data
+  } catch {
+    window.localStorage.removeItem(key)
+    return null
+  }
+}
+
+function saveTimedValue<T>(key: string, data: T) {
+  window.localStorage.setItem(key, JSON.stringify({ data, savedAt: Date.now() }))
+}
 
 export default function SewaTendaPage() {
   const router = useRouter()
@@ -26,15 +48,15 @@ export default function SewaTendaPage() {
   // Pulihkan konteks (sekolah terpilih) dari localStorage setelah refresh (U2).
   useEffect(() => {
     const timer = setTimeout(() => {
-      const sid = window.localStorage.getItem(CTX_KEY_SEKOLAH)
-      const rawDraft = window.localStorage.getItem(CTX_KEY_DRAFT)
+      const sid = loadTimedValue<string>(CTX_KEY_SEKOLAH)
+      const draft = loadTimedValue<DataSekolahMiniValues>(CTX_KEY_DRAFT)
       if (sid) setSekolahId(sid)
-      if (rawDraft) {
-        try {
-          setDraftSekolah(JSON.parse(rawDraft) as DataSekolahMiniValues)
-        } catch {
-          window.localStorage.removeItem(CTX_KEY_DRAFT)
-        }
+      if (draft) setDraftSekolah(draft)
+      if (!sid && !draft) window.localStorage.removeItem('tenda-sewa-selection:__draft__')
+      if (!sid) {
+        const staleSelectionKey = window.localStorage.getItem('tenda-sewa-last-school-id')
+        if (staleSelectionKey) window.localStorage.removeItem(`tenda-sewa-selection:${staleSelectionKey}`)
+        window.localStorage.removeItem('tenda-sewa-last-school-id')
       }
       setHydrated(true)
     }, 0)
@@ -43,13 +65,16 @@ export default function SewaTendaPage() {
 
   useEffect(() => {
     if (!hydrated) return
-    if (sekolahId) window.localStorage.setItem(CTX_KEY_SEKOLAH, sekolahId)
+    if (sekolahId) {
+      saveTimedValue(CTX_KEY_SEKOLAH, sekolahId)
+      window.localStorage.setItem('tenda-sewa-last-school-id', sekolahId)
+    }
     else window.localStorage.removeItem(CTX_KEY_SEKOLAH)
   }, [sekolahId, hydrated])
 
   useEffect(() => {
     if (!hydrated) return
-    if (draftSekolah) window.localStorage.setItem(CTX_KEY_DRAFT, JSON.stringify(draftSekolah))
+    if (draftSekolah) saveTimedValue(CTX_KEY_DRAFT, draftSekolah)
     else window.localStorage.removeItem(CTX_KEY_DRAFT)
   }, [draftSekolah, hydrated])
 

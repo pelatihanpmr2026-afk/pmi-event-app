@@ -18,8 +18,8 @@ export async function POST(req: NextRequest) {
     if (!sekolah.success || !pilihan.success || pilihan.data.pilihan.length === 0) return NextResponse.json({ success: false, message: 'Data reservasi tidak valid' }, { status: 400 })
     const jenis = await prisma.tendaJenis.findMany({ where: { id: { in: pilihan.data.pilihan.map((p) => p.tendaJenisId) } } })
     const estimasi = Number(sekolah.data.estimasiPesertaPendamping)
-    const kapasitas = pilihan.data.pilihan.reduce((sum, p) => sum + jenis.find((t) => t.id === p.tendaJenisId)!.kapasitasMax * p.jumlah, 0)
-    if (jenis.length !== pilihan.data.pilihan.length || kapasitas < estimasi || kapasitas > estimasi + TENDA_TOLERANSI) return NextResponse.json({ success: false, message: 'Pilihan tenda tidak sesuai kebutuhan' }, { status: 400 })
+    const kapasitas = pilihan.data.pilihan.reduce((sum, p) => sum + jenis.find((t) => t.id === p.tendaJenisId)!.kapasitasMin * p.jumlah, 0)
+    if (jenis.length !== pilihan.data.pilihan.length || kapasitas > estimasi + TENDA_TOLERANSI) return NextResponse.json({ success: false, message: 'Kapasitas tenda melebihi batas kebutuhan' }, { status: 400 })
     const id = `resv_${nanoid(18)}`
     const expiresAt = new Date(Date.now() + TENDA_RESERVASI_SEMENTARA_MENIT * 60 * 1000)
     await prisma.$transaction(async (tx) => {

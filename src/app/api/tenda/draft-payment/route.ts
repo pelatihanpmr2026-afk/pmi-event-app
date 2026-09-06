@@ -43,9 +43,9 @@ export async function POST(req: NextRequest) {
 
     const jenis = await prisma.tendaJenis.findMany({ where: { id: { in: pilihan.map((p) => p.tendaJenisId) } } })
     if (jenis.length !== pilihan.length) return NextResponse.json({ success: false, message: 'Jenis tenda tidak ditemukan' }, { status: 400 })
-    const kapasitas = pilihan.reduce((total, p) => total + jenis.find((t) => t.id === p.tendaJenisId)!.kapasitasMax * p.jumlah, 0)
+    const kapasitas = pilihan.reduce((total, p) => total + jenis.find((t) => t.id === p.tendaJenisId)!.kapasitasMin * p.jumlah, 0)
     const estimasi = Number(sekolahData.data.estimasiPesertaPendamping)
-    if (kapasitas < estimasi || kapasitas > estimasi + TENDA_TOLERANSI) return NextResponse.json({ success: false, message: 'Kapasitas tenda tidak sesuai kebutuhan' }, { status: 400 })
+    if (kapasitas > estimasi + TENDA_TOLERANSI) return NextResponse.json({ success: false, message: 'Kapasitas tenda melebihi batas kebutuhan' }, { status: 400 })
 
     const buktiTransferUrl = await saveUploadedFile(file, 'bukti-transfer', `${nanoid(10)}${getFileExtension(file.name)}`)
     const kode = await generateKodePendaftaran(namaLengkap, sekolahData.data.kategori)

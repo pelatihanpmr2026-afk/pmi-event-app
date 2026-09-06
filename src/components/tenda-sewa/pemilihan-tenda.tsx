@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { QuantityStepper } from '@/components/ui/quantity-stepper'
 import type { DataSekolahMiniValues } from '@/lib/validations/sekolah'
-import { TENDA_TOLERANSI } from '@/lib/constants-sekolah'
+import { TENDA_RESERVASI_SEMENTARA_MENIT, TENDA_TOLERANSI } from '@/lib/constants-sekolah'
 
 interface TendaData { id: string; nama: string; gambarUrl: string | null; kapasitasMin: number; kapasitasMax: number; harga: number; stokTersisa: number }
 interface KapasitasInfo {
@@ -28,13 +28,21 @@ export function PemilihanTenda({ sekolahId, draftSekolah, onSuccess }: { sekolah
   // menghapus pilihan tenda yang sudah dipilih sebelumnya.
   const restoredRef = useRef(false)
 
-  const selectionKey = `tenda-sewa-selection:${sekolahId ?? '__draft__'}`
+const selectionKey = `tenda-sewa-selection:${sekolahId ?? '__draft__'}`
+  const selectionTtl = TENDA_RESERVASI_SEMENTARA_MENIT * 60 * 1000
 
   function loadSelection(): Record<string, number> | null {
     try {
       const raw = window.localStorage.getItem(selectionKey)
-      return raw ? (JSON.parse(raw) as Record<string, number>) : null
+      if (!raw) return null
+      const parsed = JSON.parse(raw) as { selection?: Record<string, number>; savedAt?: number }
+      if (!parsed.selection || typeof parsed.savedAt !== 'number' || Date.now() - parsed.savedAt > selectionTtl) {
+        window.localStorage.removeItem(selectionKey)
+        return null
+      }
+      return parsed.selection
     } catch {
+      window.localStorage.removeItem(selectionKey)
       return null
     }
   }
@@ -48,7 +56,7 @@ export function PemilihanTenda({ sekolahId, draftSekolah, onSuccess }: { sekolah
   useEffect(() => {
     if (!restoredRef.current) return
     const hasPilihan = Object.values(selection).some((jumlah) => jumlah > 0)
-    if (hasPilihan) window.localStorage.setItem(selectionKey, JSON.stringify(selection))
+    if (hasPilihan) window.localStorage.setItem(selectionKey, JSON.stringify({ selection, savedAt: Date.now() }))
     else window.localStorage.removeItem(selectionKey)
   }, [selection, selectionKey])
 
@@ -95,7 +103,9 @@ export function PemilihanTenda({ sekolahId, draftSekolah, onSuccess }: { sekolah
   if (isLoading || !kapasitas) return <div className="py-10 text-center"><p className="font-body text-sm text-event-navy/50">Memuat data...</p></div>
 
   const pilihanTersimpan = Object.fromEntries(kapasitas.pilihanSaatIni.map((item) => [item.tendaJenisId, item.jumlah]))
-  const totalKapasitas = tendaList.reduce((total, tenda) => total + (selection[tenda.id] ?? 0) * tenda.kapasitasMax, 0)
+  // Kapasitas operasional yang dijanjikan untuk setiap tenda adalah batas
+  // minimalnya. Batas maksimal hanya digunakan sebagai informasi vendor.
+  const totalKapasitas = tendaList.reduce((total, tenda) => total + (selection[tenda.id] ?? 0) * tenda.kapasitasMin, 0)
   const totalBiaya = tendaList.reduce((total, tenda) => total + (selection[tenda.id] ?? 0) * tenda.harga, 0)
   const jumlahUnit = Object.values(selection).reduce((total, jumlah) => total + jumlah, 0)
   const kapasitasAktif = kapasitas!
@@ -105,7 +115,7 @@ export function PemilihanTenda({ sekolahId, draftSekolah, onSuccess }: { sekolah
     const saatIni = selection[tenda.id] ?? 0
     const tersimpan = kapasitasAktif.reservasiAktif ? (pilihanTersimpan[tenda.id] ?? 0) : 0
     const stokEfektif = tenda.stokTersisa + tersimpan
-    const maxKapasitas = Math.floor((kapasitasAktif.batasKapasitas - totalKapasitas + saatIni * tenda.kapasitasMax) / tenda.kapasitasMax)
+    const maxKapasitas = Math.floor((kapasitasAktif.batasKapasitas - totalKapasitas + saatIni * tenda.kapasitasMin) / tenda.kapasitasMin)
     return Math.max(0, Math.min(stokEfektif, maxKapasitas))
   }
 
@@ -144,7 +154,7 @@ export function PemilihanTenda({ sekolahId, draftSekolah, onSuccess }: { sekolah
     {kapasitas.terkunci ? <div className="border-3 border-pmi-red bg-pmi-red/10 shadow-pixel-sm p-4 text-center"><p className="font-body text-sm text-event-navy">Pembayaran tenda sudah diproses sehingga pilihan tidak dapat diubah.</p></div> : <>
       <div className="border-3 border-event-navy bg-event-cream shadow-pixel-sm p-4 flex flex-col gap-1">
         <p className="font-body text-xs text-event-navy">Jumlah orang yang perlu ditampung: <span className="font-bold">{kapasitas.efektifJumlahOrang}</span>. Batas maksimal berdasarkan kebijakan panitia: <span className="font-bold">{kapasitas.batasKapasitas} orang</span>.</p>
-        <p className="font-body text-[11px] text-event-navy/70">Kapasitas minimum pada tiap tenda adalah informasi dari vendor. Pilih kapasitas yang cukup agar seluruh rombongan tertampung.</p>
+        <p className="font-body text-[11px] text-event-navy/70">Perhitungan kapasitas memakai batas minimum tenda. Anda tetap dapat melanjutkan pembayaran walaupun kapasitas yang dipilih belum mencukupi seluruh rombongan.</p>
       </div>
       {kapasitas.reservasiAktif && kapasitas.reservasiBerakhirPada && <div className="border-3 border-event-blue bg-event-blue/10 shadow-pixel-sm p-3"><p className="font-body text-xs text-event-navy">Reservasi aktif sampai {new Date(kapasitas.reservasiBerakhirPada).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}. Upload bukti pembayaran sebelum waktu ini agar stok tetap terkunci.</p></div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{tendaList.map((tenda) => {
@@ -161,8 +171,8 @@ export function PemilihanTenda({ sekolahId, draftSekolah, onSuccess }: { sekolah
           </div>
         </div>
       })}</div>
-      <div className={`border-3 p-4 flex flex-col gap-2 sticky bottom-2 shadow-pixel-sm ${kondisiKapasitas === 'cukup' ? 'border-green-600 bg-green-50' : kondisiKapasitas === 'berlebih' ? 'border-event-yellow bg-event-yellow/20' : 'border-pmi-red bg-pmi-red/10'}`}><div className="flex justify-between font-body text-xs text-event-navy"><span>Kapasitas dipilih</span><span className="font-bold">{totalKapasitas} orang</span></div><div className="flex justify-between font-body text-[11px] text-event-navy/70"><span>Kebutuhan dasar</span><span>{kapasitas.efektifJumlahOrang} orang</span></div><div className="flex justify-between font-body text-[11px] text-event-navy/70"><span>Batas maksimal dengan toleransi 10 orang</span><span>{kapasitas.batasKapasitas} orang</span></div><p className="font-body text-[11px] text-event-navy/70">{kondisiKapasitas === 'kurang' ? 'Kapasitas masih kurang. Tambahkan tenda sebelum melanjutkan pembayaran.' : kondisiKapasitas === 'berlebih' ? 'Kapasitas melebihi batas toleransi. Kurangi jumlah tenda.' : 'Kapasitas pilihan mencukupi kebutuhan.'}</p><div className="flex justify-between font-heading text-xs text-event-navy pt-2 border-t-2 border-event-navy/20"><span>TOTAL BIAYA TENDA</span><span>Rp{totalBiaya.toLocaleString('id-ID')}</span></div></div>
-      <Button type="button" pixel variant={jumlahUnit > 0 ? 'primary' : 'outline'} onClick={simpanPilihan} isLoading={isSubmitting} disabled={jumlahUnit > 0 && kondisiKapasitas === 'kurang'} className="w-full">{jumlahUnit > 0 ? 'Simpan & Lanjut Pembayaran' : 'Batalkan Pilihan Tenda'}</Button>
+      <div className={`border-3 p-4 flex flex-col gap-2 sticky bottom-2 shadow-pixel-sm ${kondisiKapasitas === 'cukup' ? 'border-green-600 bg-green-50' : kondisiKapasitas === 'berlebih' ? 'border-event-yellow bg-event-yellow/20' : 'border-pmi-red bg-pmi-red/10'}`}><div className="flex justify-between font-body text-xs text-event-navy"><span>Kapasitas dipilih</span><span className="font-bold">{totalKapasitas} orang</span></div><div className="flex justify-between font-body text-[11px] text-event-navy/70"><span>Kebutuhan dasar</span><span>{kapasitas.efektifJumlahOrang} orang</span></div><div className="flex justify-between font-body text-[11px] text-event-navy/70"><span>Batas maksimal dengan toleransi 10 orang</span><span>{kapasitas.batasKapasitas} orang</span></div><p className="font-body text-[11px] text-event-navy/70">{kondisiKapasitas === 'kurang' ? 'Kapasitas masih kurang, tetapi Anda tetap dapat melanjutkan pembayaran.' : kondisiKapasitas === 'berlebih' ? 'Kapasitas melebihi batas toleransi. Kurangi jumlah tenda.' : 'Kapasitas pilihan mencukupi kebutuhan.'}</p><div className="flex justify-between font-heading text-xs text-event-navy pt-2 border-t-2 border-event-navy/20"><span>TOTAL BIAYA TENDA</span><span>Rp{totalBiaya.toLocaleString('id-ID')}</span></div></div>
+      <Button type="button" pixel variant={jumlahUnit > 0 ? 'primary' : 'outline'} onClick={simpanPilihan} isLoading={isSubmitting} disabled={jumlahUnit > 0 && kondisiKapasitas === 'berlebih'} className="w-full">{jumlahUnit > 0 ? 'Simpan & Lanjut Pembayaran' : 'Batalkan Pilihan Tenda'}</Button>
     </>}
   </div>
 }

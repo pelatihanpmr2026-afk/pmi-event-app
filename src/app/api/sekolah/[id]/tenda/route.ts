@@ -125,7 +125,7 @@ export async function POST(
       if (!jenis) {
         return NextResponse.json({ success: false, message: 'Jenis tenda tidak ditemukan' }, { status: 400 })
       }
-      totalKapasitas += jenis.kapasitasMax * p.jumlah
+      totalKapasitas += jenis.kapasitasMin * p.jumlah
       jumlahBiaya += jenis.harga * p.jumlah
     }
 
@@ -138,10 +138,6 @@ export async function POST(
         { status: 400 }
       )
     }
-    if (totalKapasitas < efektifJumlahOrang) {
-      return NextResponse.json({ success: false, message: `Kapasitas tenda (${totalKapasitas} orang) belum mencukupi kebutuhan (${efektifJumlahOrang} orang)` }, { status: 400 })
-    }
-
     try {
       const result = await prisma.$transaction(async (tx) => {
         await lockDanValidasiStokTenda(tx, id, pilihan)
