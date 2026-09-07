@@ -25,7 +25,7 @@ export async function GET() {
         id: s.id,
         namaSekolah: s.namaLengkap,
         kodePendaftaran: s.kodePendaftaran,
-        tenda: s.tendaSewa.map((t) => ({ nama: t.tendaJenis.nama, jumlah: t.jumlah })),
+        tenda: s.tendaSewa.map((t) => ({ tendaJenisId: t.tendaJenisId, nama: t.tendaJenis.nama, jumlah: t.jumlah })),
         totalUnit: s.tendaSewa.reduce((sum, t) => sum + t.jumlah, 0),
         totalBiaya: pembayaranTenda?.jumlahBiaya ?? 0,
         tanggalSewa: pembayaranTenda?.dikonfirmasiPada?.toISOString() ?? null,
