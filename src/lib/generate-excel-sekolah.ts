@@ -79,7 +79,7 @@ export async function generateExcelSekolahBuffer({
   pendamping,
 }: {
   namaSekolah: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   peserta: PesertaExcelRow[]
   pendamping: PendampingExcelRow[]
 }): Promise<Buffer> {
@@ -95,7 +95,7 @@ export async function generateExcelSekolahBuffer({
 
   sheetPeserta.insertRow(1, [])
   sheetPeserta.mergeCells(`A1:${columnLetter(pesertaColumns.length)}1`)
-  sheetPeserta.getCell('A1').value = `${namaSekolah} — ${kodePendaftaran}`
+  sheetPeserta.getCell('A1').value = `${namaSekolah} — ${kodePendaftaran ?? 'Sewa tenda (tanpa nomor pendaftaran)'}`
   sheetPeserta.getCell('A1').font = { bold: true, size: 12 }
   sheetPeserta.getRow(2).values = pesertaColumns.map((c) => c.header)
   styleHeaderRow2(sheetPeserta)
@@ -144,7 +144,7 @@ export async function generateExcelSekolahBuffer({
   sheetPendamping.columns = pendampingColumns
   sheetPendamping.insertRow(1, [])
   sheetPendamping.mergeCells(`A1:${columnLetter(pendampingColumns.length)}1`)
-  sheetPendamping.getCell('A1').value = `${namaSekolah} — ${kodePendaftaran}`
+  sheetPendamping.getCell('A1').value = `${namaSekolah} — ${kodePendaftaran ?? 'Sewa tenda (tanpa nomor pendaftaran)'}`
   sheetPendamping.getCell('A1').font = { bold: true, size: 12 }
   sheetPendamping.getRow(2).values = pendampingColumns.map((c) => c.header)
   styleHeaderRow2(sheetPendamping, HEADER_STYLE_PENDAMPING)

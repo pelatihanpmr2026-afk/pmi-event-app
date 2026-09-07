@@ -32,13 +32,14 @@ export async function GET(
       })
     )
     const pendamping = sekolah.peserta.filter((p) => p.tipe === 'PENDAMPING')
+    const kodePendaftaran = sekolah.kodePendaftaran
     const buffer = await generateExcelSekolahBuffer({
       namaSekolah: sekolah.namaLengkap,
-      kodePendaftaran: sekolah.kodePendaftaran,
+      kodePendaftaran,
       peserta,
       pendamping,
     })
-    const filename = `Data_${sanitizeFilename(sekolah.kodePendaftaran)}.xlsx`
+    const filename = `Data_${sanitizeFilename(kodePendaftaran ?? `Sewa-Tenda-${id}`)}.xlsx`
 
     await logAdminAction(guard.session.adminId, guard.session.nama, guard.session.role, 'EXPORT_SEKOLAH', {
       targetType: 'SEKOLAH',
