@@ -68,7 +68,9 @@ export function SusulanReviewPayment({
       })
       formData.append('peserta', JSON.stringify(pesertaPayload))
       formData.append('pendamping', JSON.stringify(dataPeserta.pendamping))
-      dataPeserta.peserta.forEach((p, i) => formData.append(`foto_${i}`, p.foto))
+      dataPeserta.peserta.forEach((p, i) => {
+        if (p.foto instanceof File) formData.append(`foto_${i}`, p.foto)
+      })
       formData.append('buktiTransfer', file)
 
       const res = await fetch(`/api/sekolah/${sekolahId}/susulan`, { method: 'POST', body: formData })

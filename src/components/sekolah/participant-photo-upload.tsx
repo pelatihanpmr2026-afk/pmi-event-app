@@ -39,7 +39,7 @@ useEffect(() => {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="font-body font-bold text-xs text-event-navy">Foto</span>
+      <span className="font-body font-bold text-xs text-event-navy">Foto <span className="font-normal text-event-navy/50">(opsional)</span></span>
       {!preview ? (
         <label
           className={`flex flex-col items-center justify-center gap-1.5 border-2 border-dashed py-5 cursor-pointer transition-colors ${
@@ -47,7 +47,7 @@ useEffect(() => {
           }`}
         >
           <Upload size={18} className="text-event-navy/60" />
-          <span className="font-body text-[10px] text-event-navy/60">Upload foto (JPG/PNG), wajah jelas dan pencahayaan cukup</span>
+          <span className="font-body text-[10px] text-event-navy/60">Upload jika ada (JPG/PNG), wajah jelas dan pencahayaan cukup</span>
           <input
             ref={inputRef}
             type="file"

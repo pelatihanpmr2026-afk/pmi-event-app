@@ -96,16 +96,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Format tanda tangan harus PNG atau JPG' }, { status: 400 })
     }
 
-    const fotoFiles: File[] = []
+    const fotoFiles: (File | null)[] = []
     for (let i = 0; i < pesertaList.length; i++) {
       const foto = formData.get(`foto_${i}`) as File | null
-      if (!foto || !(foto instanceof File) || foto.size === 0) {
-        return NextResponse.json(
-          { success: false, message: `Foto untuk peserta #${i + 1} tidak ditemukan` },
-          { status: 400 }
-        )
-      }
-      fotoFiles.push(foto)
+      fotoFiles.push(foto instanceof File && foto.size > 0 ? foto : null)
     }
 
     const namaLengkap = normalizeNamaSekolah(dataSekolah.namaSekolah)
@@ -160,6 +154,10 @@ export async function POST(req: NextRequest) {
 
       for (let i = 0; i < fotoFiles.length; i++) {
         const file = fotoFiles[i]
+        if (!file) {
+          pesertaFotoData.push({ url: '' })
+          continue
+        }
         let buffer: Buffer
         try {
           buffer = await normalizeParticipantPhotoBuffer(Buffer.from(await file.arrayBuffer()))
@@ -264,7 +262,7 @@ export async function POST(req: NextRequest) {
                 noHp: p.noHp || null,
                 gender: p.gender,
                 riwayatPenyakit: p.riwayatPenyakit,
-                fotoUrl: pesertaFotoData[i].url,
+                fotoUrl: pesertaFotoData[i].url || null,
               })),
               ...pendampingList.map((p) => ({
                 sekolahId: sekolah.id,

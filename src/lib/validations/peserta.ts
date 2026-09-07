@@ -51,9 +51,10 @@ const baseItemSchema = z.object({
 
 export const pesertaItemSchema = baseItemSchema.extend({
   foto: z
-    .instanceof(File, { error: 'Foto peserta wajib diupload' })
+    .instanceof(File)
     .refine((file) => file.size <= MAX_FOTO_SIZE, 'Ukuran foto maksimal 5MB')
-    .refine((file) => ACCEPTED_FOTO_TYPES.includes(file.type), 'Format foto harus JPG atau PNG'),
+    .refine((file) => ACCEPTED_FOTO_TYPES.includes(file.type), 'Format foto harus JPG atau PNG')
+    .optional(),
   riwayatPenyakit: z.enum(
     [
       'TIDAK_ADA', 'ASMA_BERAT', 'EPILEPSI', 'JANTUNG', 'DIABETES', 'HIPERTENSI_BERAT',
@@ -126,6 +127,7 @@ export function createEmptyPeserta(): PesertaItemValues {
     tanggalLahir: '',
     alamat: '',
     noHp: '',
+    foto: undefined,
   } as PesertaItemValues
 }
 

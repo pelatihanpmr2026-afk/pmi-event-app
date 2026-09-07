@@ -31,9 +31,15 @@ export function StepFinalPayment({ dataSekolah, dataPeserta, onBack, onSubmitted
     try {
       const formData = new FormData()
       formData.append('dataSekolah', JSON.stringify({ namaSekolah: dataSekolah.namaSekolah, kategori: dataSekolah.kategori, namaPembina: dataSekolah.namaPembina, noWhatsappPembina: dataSekolah.noWhatsappPembina, existingSekolahId: dataSekolah.existingSekolahId }))
-      formData.append('peserta', JSON.stringify(dataPeserta.peserta.map((peserta) => { const { foto: _foto, ...rest } = peserta; return rest })))
+      formData.append('peserta', JSON.stringify(dataPeserta.peserta.map((peserta) => {
+        const data = { ...peserta }
+        delete data.foto
+        return data
+      })))
       formData.append('pendamping', JSON.stringify(dataPeserta.pendamping))
-      dataPeserta.peserta.forEach((peserta, index) => formData.append(`foto_${index}`, peserta.foto))
+      dataPeserta.peserta.forEach((peserta, index) => {
+        if (peserta.foto instanceof File) formData.append(`foto_${index}`, peserta.foto)
+      })
       formData.append('buktiTransfer', file)
       formData.append('termsVersion', TNC_VERSION)
       if (signature) {

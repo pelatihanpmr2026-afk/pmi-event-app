@@ -131,7 +131,7 @@ export function StepReviewKonfirmasi({
   )
 }
 
-function PesertaPreviewRow({ nomor, nama, foto, gender, tempatLahir, tanggalLahir }: { nomor: number; nama: string; foto: File; gender: string; tempatLahir: string; tanggalLahir: string }) {
+function PesertaPreviewRow({ nomor, nama, foto, gender, tempatLahir, tanggalLahir }: { nomor: number; nama: string; foto?: File; gender: string; tempatLahir: string; tanggalLahir: string }) {
   const url = foto instanceof File ? URL.createObjectURL(foto) : ''
   return (
     <div className="flex items-center gap-2.5 py-1">
