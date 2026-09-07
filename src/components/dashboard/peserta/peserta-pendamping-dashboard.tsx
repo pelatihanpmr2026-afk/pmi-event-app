@@ -32,7 +32,7 @@ interface SekolahOption {
   id: string
   namaLengkap: string
   kategori: string
-  nomorPendaftaran: number
+  nomorPendaftaran: number | null
 }
 
 function findRiwayatLabel(value: string | null) {
@@ -101,7 +101,7 @@ export function PesertaPendampingDashboard({
         .filter((s) => s.kategori === tab)
         .map((s) => ({
           value: s.id,
-          label: `${String(s.nomorPendaftaran).padStart(2, '0')} - ${s.namaLengkap}`,
+          label: `${s.nomorPendaftaran == null ? '-' : String(s.nomorPendaftaran).padStart(2, '0')} - ${s.namaLengkap}`,
         })),
     [sekolahOptions, tab]
   )

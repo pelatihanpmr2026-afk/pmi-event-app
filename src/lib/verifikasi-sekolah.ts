@@ -20,7 +20,7 @@ const genericError = { success: false, message: 'No. WhatsApp pembina tidak terd
 export interface SekolahVerifikasi {
   id: string
   namaLengkap: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   namaPembina: string
   noWhatsappPembina: string
   kategori: string

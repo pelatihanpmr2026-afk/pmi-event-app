@@ -57,7 +57,7 @@ export async function GET(
       metadata: { namaSekolah: sekolah.namaLengkap, kodePendaftaran: sekolah.kodePendaftaran, jumlahPeserta: peserta.length },
     })
 
-    const safeName = sekolah.namaLengkap.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || sekolah.kodePendaftaran
+    const safeName = sekolah.namaLengkap.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || `Sekolah-${id}`
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',

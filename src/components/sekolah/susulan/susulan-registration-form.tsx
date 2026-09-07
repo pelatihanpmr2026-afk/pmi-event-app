@@ -22,7 +22,7 @@ interface RiwayatBatch {
 
 interface SusulanSummary {
   namaLengkap: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   riwayatBatch: RiwayatBatch[]
   batchBerikutnya: number
 }
@@ -77,7 +77,7 @@ export function SusulanRegistrationForm({ sekolahId }: { sekolahId: string }) {
     <div className="w-full mx-auto flex flex-col gap-6 max-w-full">
       <div className="max-w-2xl w-full mx-auto border-3 border-event-navy bg-white p-3 text-center">
         <p className="font-body font-bold text-sm text-event-navy">{summary.namaLengkap}</p>
-        <p className="font-body text-xs text-event-navy/60">{summary.kodePendaftaran}</p>
+        <p className="font-body text-xs text-event-navy/60">{summary.kodePendaftaran ?? 'Belum memiliki nomor pendaftaran'}</p>
       </div>
 
       <ProgressStepper steps={STEPS} currentStep={currentStep} />

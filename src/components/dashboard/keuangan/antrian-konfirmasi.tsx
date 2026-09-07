@@ -14,7 +14,7 @@ type Pembayaran = {
   updatedAt: string
   sekolah: {
     namaLengkap: string
-    kodePendaftaran: string
+    kodePendaftaran: string | null
     noWhatsappPembina?: string | null
   }
 }
@@ -153,7 +153,7 @@ export function AntrianKonfirmasi() {
               </span>
             </div>
             <div className="flex flex-col gap-0.5 font-body text-[11px] text-event-navy/70">
-              <span>Kode: {p.sekolah.kodePendaftaran}</span>
+              <span>Kode: {p.sekolah.kodePendaftaran ?? 'Sewa tenda tanpa nomor pendaftaran'}</span>
               {p.sekolah.noWhatsappPembina && <span>WA: {p.sekolah.noWhatsappPembina}</span>}
               <span>
                 Jumlah: <span className="font-bold text-event-navy">{formatRp(p.jumlahBiaya)}</span>

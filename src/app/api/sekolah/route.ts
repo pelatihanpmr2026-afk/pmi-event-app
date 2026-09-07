@@ -209,7 +209,7 @@ export async function POST(req: NextRequest) {
     const attemptCount = existingSekolah ? 1 : MAX_RETRY_KODE
 
     for (let attempt = 0; attempt < attemptCount; attempt++) {
-      const kodeInfo = existingSekolah
+      const kodeInfo = existingSekolah?.kodePendaftaran
         ? {
             nomorPendaftaran: existingSekolah.nomorPendaftaran,
             tahunPendaftaran: existingSekolah.tahunPendaftaran,
@@ -226,6 +226,7 @@ export async function POST(req: NextRequest) {
                   namaPembina: dataSekolah.namaPembina,
                   noWhatsappPembina: dataSekolah.noWhatsappPembina,
                   tandaTanganPenanggungJawabUrl,
+                  ...(existingSekolah?.kodePendaftaran ? {} : kodeInfo),
                   ...termsConsent,
                 },
               })
@@ -338,6 +339,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Gagal memproses pendaftaran, silakan coba lagi.' }, { status: 500 })
     }
 
+    // Alur pendaftaran peserta selalu membutuhkan kode pendaftaran. Sekolah
+    // yang sebelumnya hanya dibuat dari alur sewa tenda akan diberi kode saat
+    // pertama kali melanjutkan ke pendaftaran peserta.
+    const kodePendaftaran = createdSekolah.kodePendaftaran
+    if (!kodePendaftaran) {
+      await cleanupFiles()
+      return NextResponse.json({ success: false, message: 'Kode pendaftaran peserta gagal dibuat.' }, { status: 500 })
+    }
+
     // ===== 3) Kwitansi dibuat SETELAH transaksi sukses (non-blokir) =====
     // Gagal generate kwitansi tidak membatalkan pendaftaran yang sudah valid —
     // kwitansiUrl cukup dikosongkan dan bisa dibuat ulang oleh admin.
@@ -356,13 +366,13 @@ export async function POST(req: NextRequest) {
         { label: 'Pendamping', qty: pendampingList.length, hargaSatuan: BIAYA_PENDAMPING, subtotal: biayaPendamping },
       ].filter((item) => item.qty > 0)
 
-      const nomorKwitansi = `KW-${sanitizeFilename(createdSekolah.kodePendaftaran)}-PESERTA`
+      const nomorKwitansi = `KW-${sanitizeFilename(kodePendaftaran)}-PESERTA`
       kwitansiUrl = await generateKwitansi({
         nomorKwitansi,
         tipe: 'PESERTA',
         namaSekolah: createdSekolah.namaLengkap,
         namaPembina: createdSekolah.namaPembina,
-        kodePendaftaran: createdSekolah.kodePendaftaran,
+        kodePendaftaran,
         tanggalBayar: dibayarPada,
         items,
         total: totalBiaya,
@@ -395,10 +405,10 @@ export async function POST(req: NextRequest) {
             console.error('[POST /api/sekolah] Gagal membaca tanda tangan:', signatureError)
           }
         }
-        const suratFilename = `${sanitizeFilename(createdSekolah.kodePendaftaran)}.pdf`
+        const suratFilename = `${sanitizeFilename(kodePendaftaran)}.pdf`
         const suratUrl = await generateSuratPernyataan({
           namaSekolah: createdSekolah.namaLengkap,
-          kodePendaftaran: createdSekolah.kodePendaftaran,
+          kodePendaftaran,
           namaPembina: createdSekolah.namaPembina,
           tanggal: new Date(),
           filename: suratFilename,
@@ -417,7 +427,7 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         message: 'Pendaftaran & bukti transfer berhasil dikirim',
-        data: { sekolahId: createdSekolah.id, kodePendaftaran: createdSekolah.kodePendaftaran },
+        data: { sekolahId: createdSekolah.id, kodePendaftaran },
       },
       { status: 201 }
     )

@@ -10,7 +10,7 @@ export interface DaftarUlangResult {
   message: string
   data?: {
     namaLengkap: string
-    kodePendaftaran: string
+    kodePendaftaran: string | null
     kategori: string
     jumlahPeserta: number
     jumlahPendamping: number
@@ -43,7 +43,7 @@ export function DaftarUlangResultCard({ result, onClose }: { result: DaftarUlang
 
           <section>
             <p className="font-body font-bold text-base text-event-navy">{result.data.namaLengkap}</p>
-            <p className="font-body text-xs text-gray-400 mt-0.5">{result.data.kodePendaftaran}</p>
+            <p className="font-body text-xs text-gray-400 mt-0.5">{result.data.kodePendaftaran ?? 'Sewa tenda tanpa nomor pendaftaran'}</p>
             <div className="flex flex-wrap gap-2 mt-2">
               <Badge variant="default">{result.data.kategori}</Badge>
               <Badge variant="info">{result.data.jumlahPeserta} Peserta</Badge>

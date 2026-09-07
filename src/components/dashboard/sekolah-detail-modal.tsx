@@ -19,7 +19,7 @@ function findLabel(options: readonly { value: string; label: string }[], value: 
 interface SekolahDetail {
   id: string
   namaLengkap: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   jenjang: string
   kategori: string
   namaPembina: string
@@ -133,7 +133,7 @@ export function SekolahDetailModal({
               >
                 {data.namaLengkap}
               </motion.p>
-              <p className="font-body text-xs text-event-navy/60">{data.kodePendaftaran}</p>
+              <p className="font-body text-xs text-event-navy/60">{data.kodePendaftaran ?? 'Sewa tenda — tanpa nomor pendaftaran'}</p>
               <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <Badge variant="default">{data.kategori}</Badge>
                 {pembayaranPeserta.some((p) => p.statusPembayaran === 'LUNAS') && (
@@ -316,7 +316,7 @@ export function SekolahDetailModal({
             {data.suratPernyataanUrl && (
               <motion.a
                 href={data.suratPernyataanUrl}
-                download={`Surat-Pernyataan-${data.kodePendaftaran}.pdf`}
+                download={`Surat-Pernyataan-${data.kodePendaftaran ?? 'Sewa-Tenda'}.pdf`}
                 target="_blank"
                 rel="noopener noreferrer"
                 initial={{ opacity: 0, y: 5 }}

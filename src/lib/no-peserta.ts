@@ -70,6 +70,9 @@ async function claimNoPeserta(
 
   let urut = await findNextUrutPeserta(client, sekolah.kategori)
   for (const peserta of pesertaTanpaNomor) {
+    if (sekolah.nomorPendaftaran == null) {
+      throw new Error(`NOMOR_PENDAFTARAN_KOSONG:${sekolahId}`)
+    }
     const noPeserta = formatNoPeserta(sekolah.nomorPendaftaran, sekolah.kategori, urut)
     await client.peserta.update({
       where: { id: peserta.id },

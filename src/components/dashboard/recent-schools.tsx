@@ -7,7 +7,7 @@ import { STATUS_PEMBAYARAN_CONFIG } from '@/lib/constants-sekolah'
 interface SchoolRow {
   id: string
   namaLengkap: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   jumlahPeserta: number
   jumlahPendamping: number
   statusPembayaran: string
@@ -49,7 +49,7 @@ export function RecentSchools({ initialData }: { initialData: SchoolRow[] }) {
             >
               <div className="min-w-0 flex-1">
                 <p className="font-body font-semibold text-event-navy truncate">{s.namaLengkap}</p>
-                <p className="font-body text-xs text-gray-400">{s.kodePendaftaran}</p>
+                <p className="font-body text-xs text-gray-400">{s.kodePendaftaran ?? 'Sewa tenda — tanpa nomor pendaftaran'}</p>
               </div>
               <div className="flex items-center gap-2 sm:gap-4 shrink-0 text-xs">
                 <span className="text-gray-500 hidden sm:inline">

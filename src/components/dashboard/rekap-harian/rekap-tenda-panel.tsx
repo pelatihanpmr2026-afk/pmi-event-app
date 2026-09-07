@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 interface TendaRow {
   no: number
   namaSekolah: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   tenda: { nama: string; jumlah: number }[]
   totalUnit: number
   totalRp: number
@@ -78,7 +78,7 @@ export function RekapTendaPanel() {
             {data.rows.map((r) => (
               <div key={r.no} className="border-3 border-event-navy bg-white p-3 flex flex-col gap-2">
                 <p className="font-body text-[11px] text-event-navy/50">
-                  {r.no}. {r.kodePendaftaran}
+                  {r.no}. {r.kodePendaftaran ?? 'Tanpa nomor pendaftaran'}
                 </p>
                 <p className="font-body font-bold text-sm text-event-navy">{r.namaSekolah}</p>
                 <div className="flex flex-col gap-1.5">
@@ -126,7 +126,7 @@ export function RekapTendaPanel() {
                     <td className="px-3 py-2.5 font-body text-sm font-bold text-event-navy">
                       {r.namaSekolah}
                       <span className="block font-body text-[10px] text-event-navy/50 font-normal">
-                        {r.kodePendaftaran}
+                        {r.kodePendaftaran ?? 'Tanpa nomor pendaftaran'}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 font-body text-xs text-event-navy">

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { VerifikasiSekolahForm } from '@/components/verifikasi-sekolah-form'
 
-interface SekolahSearchResult { id: string; namaLengkap: string; kategori: string; kodePendaftaran: string; jumlahPeserta: number; estimasiPesertaPendamping: number | null; tendaTerkunci: boolean }
+interface SekolahSearchResult { id: string; namaLengkap: string; kategori: string; kodePendaftaran: string | null; jumlahPeserta: number; estimasiPesertaPendamping: number | null; tendaTerkunci: boolean }
 export function CariSekolah({ onSelect, initialQuery }: { onSelect: (sekolah: SekolahSearchResult) => void; initialQuery?: string }) {
   const [query, setQuery] = useState(initialQuery ?? ''); const [results, setResults] = useState<SekolahSearchResult[]>([]); const [isLoading, setIsLoading] = useState(false); const [selected, setSelected] = useState<SekolahSearchResult | null>(null); const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   useEffect(() => { if (debounceRef.current) clearTimeout(debounceRef.current); if (query.trim().length < 2) return; debounceRef.current = setTimeout(async () => { setIsLoading(true); try { const res = await fetch(`/api/sekolah/search?q=${encodeURIComponent(query.trim())}`); const result = await res.json(); setResults(result.success ? result.data : []) } finally { setIsLoading(false) } }, 400); return () => { if (debounceRef.current) clearTimeout(debounceRef.current) } }, [query])

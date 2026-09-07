@@ -14,9 +14,9 @@ import { isReadOnlySekolah, isKtaRole, type AdminRoleType } from '@/lib/admin-ro
 
 interface SekolahListItem {
   id: string
-  nomorPendaftaran: number
+  nomorPendaftaran: number | null
   namaLengkap: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   jenjang: string
   kategori: string
   namaPembina: string
@@ -228,7 +228,7 @@ export function SekolahTable({
 
   if (isKTA) {
     const ktaColumns: ResponsiveTableColumn<SekolahListItem>[] = [
-      { key: 'kode', header: 'Kode Pendaftaran', render: (s) => <span className="text-gray-500 break-all">{s.kodePendaftaran}</span> },
+      { key: 'kode', header: 'Kode Pendaftaran', render: (s) => <span className="text-gray-500 break-all">{s.kodePendaftaran ?? 'Tanpa nomor pendaftaran'}</span> },
       {
         key: 'nama',
         header: 'Nama Sekolah',
@@ -320,7 +320,7 @@ export function SekolahTable({
 
   if (readOnly) {
     const readonlyColumns: ResponsiveTableColumn<SekolahListItem>[] = [
-      { key: 'kode', header: 'Kode Pendaftaran', render: (s) => s.kodePendaftaran },
+      { key: 'kode', header: 'Kode Pendaftaran', render: (s) => s.kodePendaftaran ?? 'Tanpa nomor pendaftaran' },
       { key: 'nama', header: 'Nama Sekolah', render: (s) => <span className="font-semibold">{s.namaLengkap}</span> },
     ]
     return (
@@ -334,7 +334,7 @@ export function SekolahTable({
   }
 
   const columns: ResponsiveTableColumn<SekolahListItem>[] = [
-    { key: 'no', header: 'No', width: '56px', align: 'center', render: (s) => s.nomorPendaftaran },
+    { key: 'no', header: 'No', width: '56px', align: 'center', render: (s) => s.nomorPendaftaran ?? '-' },
     {
       key: 'nama',
       header: 'Nama Sekolah',
@@ -345,7 +345,7 @@ export function SekolahTable({
         </div>
       ),
     },
-    { key: 'kode', header: 'Kode Pendaftaran', render: (s) => <span className="text-gray-500">{s.kodePendaftaran}</span> },
+    { key: 'kode', header: 'Kode Pendaftaran', render: (s) => <span className="text-gray-500">{s.kodePendaftaran ?? 'Tanpa nomor pendaftaran'}</span> },
     { key: 'peserta', header: 'Peserta', align: 'center', render: (s) => s.jumlahPeserta },
     { key: 'pendamping', header: 'Pendamping', align: 'center', render: (s) => s.jumlahPendamping },
     { key: 'bayarPeserta', header: 'Bayar Peserta', align: 'center', render: (s) => <StatusBadge status={s.pembayaranPeserta?.status} /> },
@@ -392,7 +392,7 @@ export function SekolahTable({
       <div>
         <p className="font-body font-semibold text-sm text-event-navy">{row.namaLengkap}</p>
         {/* FIX: Tambahkan break-all agar teks panjang terpotong dengan rapi */}
-        <p className="font-body text-xs text-gray-400 break-all">{row.kodePendaftaran}</p>
+        <p className="font-body text-xs text-gray-400 break-all">{row.kodePendaftaran ?? 'Tanpa nomor pendaftaran'}</p>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         <Badge variant="default">{row.kategori}</Badge>

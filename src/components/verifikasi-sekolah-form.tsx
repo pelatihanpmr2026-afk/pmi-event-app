@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 interface SekolahItem {
   sekolahId: string
   namaLengkap: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   kategori: string
   batchTerakhir: number
   statusBatchTerakhir: string | null

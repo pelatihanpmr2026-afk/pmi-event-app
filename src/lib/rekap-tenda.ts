@@ -3,7 +3,7 @@ import { prisma } from './prisma'
 export interface RekapTendaRow {
   no: number
   namaSekolah: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   tenda: { nama: string; jumlah: number }[]
   totalUnit: number
   totalRp: number

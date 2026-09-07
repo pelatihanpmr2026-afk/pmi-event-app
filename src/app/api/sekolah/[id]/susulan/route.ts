@@ -54,6 +54,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     if (!sekolah) {
       return NextResponse.json({ success: false, message: 'Sekolah tidak ditemukan' }, { status: 404 })
     }
+    if (!sekolah.kodePendaftaran) {
+      return NextResponse.json({ success: false, message: 'Sekolah ini belum memiliki pendaftaran peserta. Selesaikan pendaftaran peserta terlebih dahulu.' }, { status: 409 })
+    }
 
     const batchMap = new Map<number, { peserta: number; pendamping: number }>()
     for (const p of sekolah.peserta) {
@@ -118,6 +121,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const sekolah = await prisma.sekolah.findUnique({ where: { id } })
     if (!sekolah) {
       return NextResponse.json({ success: false, message: 'Sekolah tidak ditemukan' }, { status: 404 })
+    }
+    if (!sekolah.kodePendaftaran) {
+      return NextResponse.json({ success: false, message: 'Sekolah ini belum memiliki pendaftaran peserta. Selesaikan pendaftaran peserta terlebih dahulu.' }, { status: 409 })
     }
 
     const formData = await req.formData()
