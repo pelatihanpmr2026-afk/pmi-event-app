@@ -89,6 +89,11 @@ export async function POST(
     // di-log dan surat bisa dibuat ulang.
     if (aksi === 'LUNAS' && pembayaran.tipe === 'PESERTA' && !pembayaran.sekolah.suratPernyataanUrl) {
       try {
+        const kodePendaftaran = pembayaran.sekolah.kodePendaftaran
+        if (!kodePendaftaran) {
+          throw new Error('KODE_PENDAFTARAN_PESERTA_KOSONG')
+        }
+
         let tandaTanganBuffer: Buffer | null = null
         if (pembayaran.sekolah.tandaTanganPenanggungJawabUrl) {
           try {
@@ -99,10 +104,10 @@ export async function POST(
             console.error('[konfirmasi] Gagal membaca tanda tangan sekolah:', signatureError)
           }
         }
-        const suratFilename = `${sanitizeFilename(pembayaran.sekolah.kodePendaftaran)}.pdf`
+        const suratFilename = `${sanitizeFilename(kodePendaftaran)}.pdf`
         const suratUrl = await generateSuratPernyataan({
           namaSekolah: pembayaran.sekolah.namaLengkap,
-          kodePendaftaran: pembayaran.sekolah.kodePendaftaran,
+          kodePendaftaran,
           namaPembina: pembayaran.sekolah.namaPembina,
           tanggal: new Date(),
           filename: suratFilename,
