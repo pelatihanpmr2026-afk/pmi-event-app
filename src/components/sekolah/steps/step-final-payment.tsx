@@ -41,8 +41,16 @@ export function StepFinalPayment({ dataSekolah, dataPeserta, onBack, onSubmitted
         formData.append('tandaTanganPenanggungJawab', await signatureResponse.blob(), 'ttd-penanggung-jawab.png')
       }
       const response = await fetch('/api/sekolah', { method: 'POST', body: formData })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result?.message || 'Gagal mengirim pendaftaran')
+      const contentType = response.headers.get('content-type') || ''
+      const result = contentType.includes('application/json')
+        ? await response.json().catch(() => null)
+        : null
+      if (!response.ok) {
+        throw new Error(result?.message || 'Respons server tidak valid. Muat ulang halaman lalu kirim pendaftaran kembali.')
+      }
+      if (!result?.data?.sekolahId) {
+        throw new Error('Respons server tidak lengkap. Muat ulang halaman lalu kirim pendaftaran kembali.')
+      }
       toast.success('Data dan bukti transfer berhasil dikirim')
       onSubmitted(result.data.sekolahId)
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan') } finally { setIsSubmitting(false) }

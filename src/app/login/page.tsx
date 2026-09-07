@@ -48,11 +48,16 @@ function LoginForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
       })
-      const data = await res.json()
+      const contentType = res.headers.get('content-type') || ''
+      const data = contentType.includes('application/json')
+        ? await res.json().catch(() => null)
+        : null
 
       if (!res.ok) {
-        throw new Error(data?.message || 'Login gagal')
+        throw new Error(data?.message || 'Respons server tidak valid. Muat ulang halaman lalu coba lagi.')
       }
+
+      if (!data) throw new Error('Respons server tidak valid. Muat ulang halaman lalu coba lagi.')
 
       toast.success('Login berhasil')
       const redirectTo = searchParams.get('redirect') || '/dashboard'
