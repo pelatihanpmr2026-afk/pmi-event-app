@@ -10,6 +10,7 @@ import { REKENING_INFO, ACCEPTED_BUKTI_TYPES, BIAYA_PESERTA, BIAYA_PENDAMPING } 
 import { STATUS_PEMBAYARAN_CONFIG } from '@/lib/constants-sekolah'
 import type { PesertaPendampingValues } from '@/lib/validations/peserta'
 import { compressImage } from '@/lib/compress-image'
+import { fetchJson } from '@/lib/safe-fetch'
 
 interface RiwayatBatch {
   batchKe: number
@@ -73,12 +74,19 @@ export function SusulanReviewPayment({
       })
       formData.append('buktiTransfer', file)
 
-      const res = await fetch(`/api/sekolah/${sekolahId}/susulan`, { method: 'POST', body: formData })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result?.message || 'Gagal mengirim pendaftaran susulan')
+      const { ok, data: result } = await fetchJson(`/api/sekolah/${sekolahId}/susulan`, { method: 'POST', body: formData })
+      if (!ok) {
+        throw new Error(
+          (result as { message?: string } | null)?.message ||
+            'Respons server tidak valid. Muat ulang halaman lalu kirim pendaftaran kembali.',
+        )
+      }
+      if (!(result as { data?: { pembayaranId?: string } | null } | null)?.data?.pembayaranId) {
+        throw new Error('Respons server tidak lengkap. Muat ulang halaman lalu kirim pendaftaran kembali.')
+      }
 
       toast.success('Pendaftaran susulan & bukti transfer berhasil dikirim!')
-      onSubmitted(result.data.pembayaranId)
+      onSubmitted((result as { data: { pembayaranId: string } }).data.pembayaranId)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
     } finally {

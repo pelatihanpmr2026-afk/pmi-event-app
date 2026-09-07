@@ -5,6 +5,7 @@ import { ShieldCheck, Building2 } from 'lucide-react'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { fetchJson } from '@/lib/safe-fetch'
 
 interface SekolahItem {
   sekolahId: string
@@ -65,28 +66,26 @@ export function VerifikasiSekolahForm({
 
     setIsSubmitting(true)
     try {
-      const res =
+      const { ok, data: result } =
         method === 'GET'
-          ? await fetch(`${endpoint}?${new URLSearchParams({ noWa: noWa.trim() }).toString()}`)
-          : await fetch(endpoint, {
+          ? await fetchJson(`${endpoint}?${new URLSearchParams({ noWa: noWa.trim() }).toString()}`)
+          : await fetchJson(endpoint, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(sekolahId ? { sekolahId, noWa: noWa.trim() } : { noWa: noWa.trim() }),
             })
 
-      const result = await res.json()
-
-      if (!res.ok || !result.success) {
-        setError(result?.message || 'No. WhatsApp tidak terdaftar di sistem')
+      if (!ok || !(result as { success?: boolean } | null)?.success) {
+        setError((result as { message?: string } | null)?.message || 'No. WhatsApp tidak terdaftar di sistem')
         return
       }
 
-      if (result.multi) {
-        setSekolahList(result.data?.sekolah ?? [])
+      if ((result as { multi?: boolean } | null)?.multi) {
+        setSekolahList((result as { data?: { sekolah?: SekolahItem[] } } | null)?.data?.sekolah ?? [])
         return
       }
 
-      onSuccess(result.data ?? {})
+      onSuccess((result as { data?: Record<string, unknown> } | null)?.data ?? {})
     } catch {
       setError('Terjadi kesalahan, silakan coba lagi')
     } finally {
@@ -98,19 +97,18 @@ export function VerifikasiSekolahForm({
     setIsSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(selectEndpoint ?? endpoint, {
+      const { ok, data: result } = await fetchJson(selectEndpoint ?? endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sekolahId: sekolah.sekolahId, noWa: noWa.trim() }),
       })
-      const result = await res.json()
 
-      if (!res.ok || !result.success) {
-        setError(result?.message || 'Gagal memilih sekolah')
+      if (!ok || !(result as { success?: boolean } | null)?.success) {
+        setError((result as { message?: string } | null)?.message || 'Gagal memilih sekolah')
         return
       }
 
-      onSuccess(result.data ?? {})
+      onSuccess((result as { data?: Record<string, unknown> } | null)?.data ?? {})
     } catch {
       setError('Terjadi kesalahan, silakan coba lagi')
     } finally {

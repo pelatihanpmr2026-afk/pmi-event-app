@@ -13,6 +13,7 @@ import { StepKeanggotaan } from './steps/step-keanggotaan'
 import { StepFoto } from './steps/step-foto'
 import { StepReview } from './steps/step-review'
 import { panitiaFormSchema, PanitiaFormValues } from '@/lib/validations/panitia'
+import { fetchJson } from '@/lib/safe-fetch'
 
 const STEPS = ['Biodata', 'Keanggotaan', 'Foto', 'Review']
 
@@ -64,19 +65,23 @@ export function RegistrationForm() {
       formData.append('divisi', values.divisi)
       formData.append('foto', values.foto)
 
-      const res = await fetch('/api/panitia', {
+      const { ok, data } = await fetchJson('/api/panitia', {
         method: 'POST',
         body: formData,
       })
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data?.message || 'Terjadi kesalahan saat mendaftar')
+      if (!ok) {
+        throw new Error(
+          (data as { message?: string } | null)?.message ||
+            'Respons server tidak valid. Muat ulang halaman lalu coba lagi.',
+        )
+      }
+      if (!(data as { data?: { id?: string } | null } | null)?.data?.id) {
+        throw new Error('Respons server tidak lengkap. Muat ulang halaman lalu coba lagi.')
       }
 
       toast.success('Pendaftaran berhasil!')
-      router.push(`/panitia/sukses?id=${data.data.id}`)
+      router.push(`/panitia/sukses?id=${(data as { data: { id: string } }).data.id}`)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
     } finally {

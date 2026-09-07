@@ -5,6 +5,7 @@ import { UseFormReturn } from 'react-hook-form'
 import { Select } from '@/components/ui/select'
 import { ASAL_UNIT_OPTIONS, DIVISI_OPTIONS } from '@/lib/constants'
 import { PanitiaFormValues } from '@/lib/validations/panitia'
+import { fetchJson } from '@/lib/safe-fetch'
 
 interface CapacityInfo {
   divisi: string
@@ -29,10 +30,9 @@ export function StepKeanggotaan({ form }: { form: UseFormReturn<PanitiaFormValue
   useEffect(() => {
     async function fetchCapacity() {
       try {
-        const res = await fetch('/api/panitia/capacity')
-        const result = await res.json()
-        if (result.success) {
-          setCapacity(result.data)
+        const { ok, data: result } = await fetchJson('/api/panitia/capacity')
+        if (ok && (result as { success?: boolean } | null)?.success) {
+          setCapacity((result as { data: CapacityInfo[] }).data)
         }
       } catch {
         // Diamkan — kalau gagal fetch, dropdown tetap tampil normal tanpa info kuota,

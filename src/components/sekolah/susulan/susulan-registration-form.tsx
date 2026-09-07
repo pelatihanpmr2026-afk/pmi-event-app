@@ -9,6 +9,7 @@ import { StepPeserta } from '../steps/step-peserta'
 import { StepPendamping } from '../steps/step-pendamping'
 import { SusulanReviewPayment } from './susulan-review-payment'
 import type { PesertaPendampingValues } from '@/lib/validations/peserta'
+import { fetchJson } from '@/lib/safe-fetch'
 
 const STEPS = ['Peserta Susulan', 'Pendamping Susulan', 'Review & Pembayaran']
 
@@ -38,14 +39,13 @@ export function SusulanRegistrationForm({ sekolahId }: { sekolahId: string }) {
   useEffect(() => {
     async function loadSummary() {
       try {
-        const res = await fetch(`/api/sekolah/${sekolahId}/susulan`)
-        const result = await res.json()
-        if (!res.ok || !result.success) {
-          toast.error(result?.message || 'Gagal memuat data sekolah')
+        const { ok, data: result } = await fetchJson(`/api/sekolah/${sekolahId}/susulan`)
+        if (!ok || !(result as { success?: boolean } | null)?.success) {
+          toast.error((result as { message?: string } | null)?.message || 'Gagal memuat data sekolah')
           router.push('/sekolah/susulan')
           return
         }
-        setSummary(result.data)
+        setSummary((result as { data: SusulanSummary }).data)
       } finally {
         setIsLoadingSummary(false)
       }

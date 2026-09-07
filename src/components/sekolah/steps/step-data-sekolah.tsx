@@ -10,6 +10,7 @@ import { RadioPixel } from '@/components/ui/radio-pixel'
 import { Button } from '@/components/ui/button'
 import { dataSekolahSchema, DataSekolahValues } from '@/lib/validations/sekolah'
 import { BIAYA_PENDAMPING, BIAYA_PESERTA } from '@/lib/constants-sekolah'
+import { fetchJson } from '@/lib/safe-fetch'
 
 export interface DataSekolahResult extends DataSekolahValues {
   namaLengkap: string
@@ -35,15 +36,18 @@ export function StepDataSekolah({ onComplete, defaultValues }: { onComplete: (re
     debounceRef.current = setTimeout(async () => {
       setCheckStatus('checking')
       try {
-        const res = await fetch(`/api/sekolah/check-nama?${new URLSearchParams({ namaSekolah: namaSekolah.trim() })}`)
-        const result = await res.json()
-        if (!res.ok) throw new Error(result?.message)
-        setNamaLengkap(result.data.namaLengkap)
-        setCheckStatus(result.data.status)
-        if (result.data.status === 'terpakai_tenda_saja') {
-          setExistingSekolahId(result.data.sekolahId)
-          setValue('namaPembina', result.data.namaPembina ?? '')
-          setValue('noWhatsappPembina', result.data.noWhatsappPembina ?? '')
+        const { ok, data: result } = await fetchJson(
+          `/api/sekolah/check-nama?${new URLSearchParams({ namaSekolah: namaSekolah.trim() })}`,
+        )
+        if (!ok || !(result as { success?: boolean } | null)?.success) {
+          throw new Error((result as { message?: string } | null)?.message || 'Gagal mengecek nama sekolah')
+        }
+        setNamaLengkap((result as { data: { namaLengkap: string } }).data.namaLengkap)
+        setCheckStatus((result as { data: { status: CheckStatus } }).data.status)
+        if ((result as { data: { status?: string } }).data.status === 'terpakai_tenda_saja') {
+          setExistingSekolahId((result as { data: { sekolahId?: string } }).data.sekolahId)
+          setValue('namaPembina', (result as { data: { namaPembina?: string } }).data.namaPembina ?? '')
+          setValue('noWhatsappPembina', (result as { data: { noWhatsappPembina?: string } }).data.noWhatsappPembina ?? '')
         }
       } catch { setCheckStatus('error') }
     }, 600)

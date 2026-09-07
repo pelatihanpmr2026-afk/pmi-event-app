@@ -11,6 +11,7 @@ import { compressImage } from '@/lib/compress-image'
 import { RincianBiaya } from '@/components/sekolah/biaya-rincian'
 import { VerifikasiSekolahForm } from '@/components/verifikasi-sekolah-form'
 import { PaymentStatusStepper } from './payment-status-stepper'
+import { fetchJson } from '@/lib/safe-fetch'
 
 interface PembayaranInfo { id: string; tipe: 'PESERTA' | 'TENDA'; namaLengkap: string; kodePendaftaran: string | null; jumlahBiaya: number; statusPembayaran: 'BELUM_BAYAR' | 'MENUNGGU_KONFIRMASI' | 'LUNAS' | 'DITOLAK'; buktiTransferUrl: string | null; catatanAdmin: string | null; jumlahPeserta?: number; jumlahPendamping?: number; tendaSewaList?: { nama: string; jumlah: number; hargaSatuan: number; subtotal: number }[]; kwitansiUrl?: string | null; suratPernyataanUrl?: string | null }
 const STATUS_CONFIG = { BELUM_BAYAR: { label: 'Belum Bayar', variant: 'warning' as const, icon: Clock }, MENUNGGU_KONFIRMASI: { label: 'Menunggu Konfirmasi', variant: 'info' as const, icon: Clock }, LUNAS: { label: 'Lunas', variant: 'success' as const, icon: CheckCircle2 }, DITOLAK: { label: 'Perlu diperbaiki', variant: 'default' as const, icon: XCircle } }
@@ -38,10 +39,9 @@ export function UploadBuktiTransfer({ sekolahId, tipe, title, pembayaranId }: { 
 
   const fetchInfo = useCallback(async () => {
     try {
-      const res = await fetch(`/api/sekolah/${sekolahId}/pembayaran/${tipe}${query}`)
-      const result = await res.json()
-      if (result.success) setInfo(result.data)
-      else toast.error(result.message || 'Gagal memuat data pembayaran')
+      const { ok, data: result } = await fetchJson(`/api/sekolah/${sekolahId}/pembayaran/${tipe}${query}`)
+      if (ok && (result as { success?: boolean } | null)?.success) setInfo((result as { data: PembayaranInfo }).data)
+      else toast.error((result as { message?: string } | null)?.message || 'Gagal memuat data pembayaran')
     } finally {
       setIsLoading(false)
     }
@@ -64,9 +64,13 @@ export function UploadBuktiTransfer({ sekolahId, tipe, title, pembayaranId }: { 
     setIsSubmitting(true)
     try {
       const formData = new FormData(); formData.append('buktiTransfer', file)
-      const res = await fetch(`/api/sekolah/${sekolahId}/pembayaran/${tipe}${query}`, { method: 'POST', body: formData })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result?.message || 'Gagal upload bukti transfer')
+      const { ok, data: result } = await fetchJson(`/api/sekolah/${sekolahId}/pembayaran/${tipe}${query}`, { method: 'POST', body: formData })
+      if (!ok) {
+        throw new Error(
+          (result as { message?: string } | null)?.message ||
+            'Respons server tidak valid. Muat ulang halaman lalu coba lagi.',
+        )
+      }
       toast.success('Bukti transfer berhasil dikirim'); setFile(null); if (inputRef.current) inputRef.current.value = ''; await fetchInfo()
     } catch (error) {
       const pesan = error instanceof Error ? error.message : 'Terjadi kesalahan'

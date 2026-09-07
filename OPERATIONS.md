@@ -480,6 +480,59 @@ pm2 restart pmi-event
 
 Jangan menampilkan nilai secret saat meminta bantuan; cukup tampilkan nama variable dan pesan error.
 
+### User melihat `Unexpected token '<'` atau "Respons server tidak valid" saat kirim pendaftaran
+
+Kedua pesan ini muncul ketika browser mendapat respons **HTML** padahal menunggu **JSON** dari `/api/*`. Sumber paling umum adalah halaman error **Nginx** (413/502/504) yang menghadang permintaan sebelum sampai ke Next.js — bukan bug aplikasi.
+
+Penyebab dan pemeriksaan:
+
+```bash
+# 1) Cek apakah request diteruskan Nginx sebagai JSON (harus "application/json")
+curl -I "https://pmi-cianjur.com/api/sekolah" -X POST
+
+# 2) Cek error Nginx
+sudo tail -n 100 /var/log/nginx/error.log
+```
+
+#### A. Payload terlalu besar (413 Request Entity Too Large)
+
+Pendaftaran mengirim multipart berisi banyak foto peserta (tiap foto dikompres ke ~1200px) ditambah bukti transfer. Jika `client_max_body_size` default (1MB) tidak dinaikkan, Nginx memblokir request dan mengembalikan halaman HTML 413.
+
+Tambahkan di blok server Nginx:
+
+```nginx
+client_max_body_size 20m;
+```
+
+nilai `20m` cukup untuk sekolah dengan ±30 peserta. Sesuaikan bila kuota maksimal peserta naik.
+
+#### B. Request terlalu lama (504 Gateway Timeout)
+
+Di `/api/sekolah`, setelah data tersimpan, server juga membuat kwitansi, QR code, dan Surat Pernyataan PDF. Untuk sekolah besar proses ini bisa memakan beberapa detik. Tambahkan di blok server Nginx:
+
+```nginx
+proxy_read_timeout 120s;
+proxy_send_timeout 120s;
+```
+
+Nilai `120s` memberi ruang untuk upload lambat (koneksi seluler) + pembuatan PDF. Untuk produksi Next.js melalui `next start`, nilai `proxy_buffering off;` juga umum digunakan agar respons streaming tidak tertahan buffer.
+
+#### C. Mudah-mudahan tidak terjadi: PM2/Node restart saat request di tengah jalan
+
+```bash
+pm2 status
+pm2 logs pmi-event --lines 100
+```
+
+Jika proses restart (status `restarting` atau `errored`), periksa log untuk menemukan penyebab crash. Setelah mengatur Nginx, muat ulang:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Ulangi dengan kurva besar (banyak peserta + bukti transfer dari HP) untuk memastikan tidak muncul kembali pesan "Respons server tidak valid".
+
 ## 13. Checklist sebelum setiap release
 
 - [ ] Perubahan diuji di komputer development.

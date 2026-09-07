@@ -10,6 +10,7 @@ import { ACCEPTED_BUKTI_TYPES, REKENING_INFO } from '@/lib/constants-sekolah'
 import { compressImage } from '@/lib/compress-image'
 import { RincianBiaya } from '../biaya-rincian'
 import { TNC_VERSION } from '@/lib/tnc-content'
+import { fetchJson } from '@/lib/safe-fetch'
 import type { DataSekolahResult } from './step-data-sekolah'
 import type { PesertaPendampingValues } from '@/lib/validations/peserta'
 
@@ -46,19 +47,20 @@ export function StepFinalPayment({ dataSekolah, dataPeserta, onBack, onSubmitted
         const signatureResponse = await fetch(signature)
         formData.append('tandaTanganPenanggungJawab', await signatureResponse.blob(), 'ttd-penanggung-jawab.png')
       }
-      const response = await fetch('/api/sekolah', { method: 'POST', body: formData })
-      const contentType = response.headers.get('content-type') || ''
-      const result = contentType.includes('application/json')
-        ? await response.json().catch(() => null)
-        : null
-      if (!response.ok) {
-        throw new Error(result?.message || 'Respons server tidak valid. Muat ulang halaman lalu kirim pendaftaran kembali.')
+      const { ok, data: result } = await fetchJson('/api/sekolah', { method: 'POST', body: formData })
+      if (!ok) {
+        throw new Error(
+          (result as { message?: string } | null)?.message ||
+            'Server tidak merespons dengan benar. Periksa koneksi dan ukuran berkas, lalu coba lagi. Bila tetap gagal, hubungi panitia.',
+        )
       }
-      if (!result?.data?.sekolahId) {
-        throw new Error('Respons server tidak lengkap. Muat ulang halaman lalu kirim pendaftaran kembali.')
+      if (!(result as { data?: { sekolahId?: string } | null } | null)?.data?.sekolahId) {
+        throw new Error(
+          'Respons server tidak lengkap. Muat ulang halaman lalu kirim pendaftaran kembali.',
+        )
       }
       toast.success('Data dan bukti transfer berhasil dikirim')
-      onSubmitted(result.data.sekolahId)
+      onSubmitted((result as { data: { sekolahId: string } }).data.sekolahId)
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan') } finally { setIsSubmitting(false) }
   }
 
