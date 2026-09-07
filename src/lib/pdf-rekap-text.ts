@@ -76,6 +76,82 @@ export function drawTableWithFonts(page: PDFPage, x: number, top: number, widths
   return currentTop
 }
 
+const REKAP_TABLE_BOTTOM = 760
+
+/**
+ * Menggambar tabel rekap pada beberapa halaman A4. Header tabel selalu
+ * diulang dan baris total tidak pernah diletakkan terpotong di bawah halaman.
+ */
+export function drawPaginatedTable({
+  page: firstPage,
+  top: firstTop,
+  x,
+  widths,
+  headers,
+  rows,
+  fonts,
+  totalRow,
+  rowHeight = 24,
+  createPage,
+  continuationTitle,
+}: {
+  page: PDFPage
+  top: number
+  x: number
+  widths: number[]
+  headers: string[]
+  rows: string[][]
+  fonts: { regular: PDFFont; bold: PDFFont }
+  totalRow?: string[]
+  rowHeight?: number
+  createPage: () => PDFPage
+  continuationTitle?: string
+}): { page: PDFPage; top: number } {
+  const tableWidth = widths.reduce((sum, width) => sum + width, 0)
+  const colX = (index: number) => x + widths.slice(0, index).reduce((sum, width) => sum + width, 0)
+  const drawHeader = (page: PDFPage, top: number) => {
+    rect(page, x, top, tableWidth, rowHeight, REKAP_NAVY)
+    headers.forEach((header, index) => {
+      rect(page, colX(index), top, widths[index], rowHeight, REKAP_NAVY)
+      drawFittedText(page, header, colX(index) + widths[index] / 2, top + 6, widths[index] - 8, fonts.bold, 9, rgb(1, 1, 1), 'center')
+    })
+    return top + rowHeight
+  }
+  const nextPage = () => {
+    const page = createPage()
+    if (continuationTitle) drawText(page, continuationTitle, REKAP_A4_W / 2, 96, fonts.bold, 10, REKAP_MUTED, 'center')
+    return { page, top: drawHeader(page, 116) }
+  }
+
+  let page = firstPage
+  let currentTop = drawHeader(page, firstTop)
+  const bodyRows = rows.length > 0 ? rows : [headers.map(() => '')]
+
+  bodyRows.forEach((row, rowIndex) => {
+    const reserveForTotal = totalRow && rowIndex === bodyRows.length - 1 ? rowHeight : 0
+    if (currentTop + rowHeight + reserveForTotal > REKAP_TABLE_BOTTOM) ({ page, top: currentTop } = nextPage())
+    rect(page, x, currentTop, tableWidth, rowHeight, rowIndex % 2 === 1 ? REKAP_STRIPE : rgb(1, 1, 1))
+    row.forEach((cell, index) => {
+      rect(page, colX(index), currentTop, widths[index], rowHeight, undefined)
+      if (!cell) return
+      const centered = index !== 1
+      drawFittedText(page, cell, centered ? colX(index) + widths[index] / 2 : colX(index) + 6, currentTop + 6, widths[index] - 10, fonts.regular, 9, REKAP_NAVY, centered ? 'center' : 'left')
+    })
+    currentTop += rowHeight
+  })
+
+  if (totalRow) {
+    if (currentTop + rowHeight > REKAP_TABLE_BOTTOM) ({ page, top: currentTop } = nextPage())
+    totalRow.forEach((cell, index) => {
+      rect(page, colX(index), currentTop, widths[index], rowHeight, REKAP_YELLOW)
+      if (cell) drawFittedText(page, cell, colX(index) + widths[index] / 2, currentTop + 6, widths[index] - 10, fonts.bold, 9, REKAP_NAVY, 'center')
+    })
+    currentTop += rowHeight
+  }
+
+  return { page, top: currentTop }
+}
+
 export function rp(value: number) {
   return `Rp${value.toLocaleString('id-ID')}`
 }
