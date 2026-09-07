@@ -24,7 +24,7 @@ interface GenerateKwitansiParams {
   tipe: 'PESERTA' | 'TENDA'
   namaSekolah: string
   namaPembina: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   tanggalBayar: Date
   items: KwitansiLineItem[]
   total: number
@@ -126,7 +126,9 @@ drawText(ctx, tipe === 'PESERTA' ? 'BIAYA PESERTA & PENDAMPING' : 'BIAYA SEWA TE
 
  const infoRows: [string, string][] = [
   ['No. Kwitansi', nomorKwitansi],
-  ['Kode Pendaftaran', kodePendaftaran],
+  tipe === 'TENDA'
+    ? ['Referensi Sewa Tenda', nomorKwitansi]
+    : ['Kode Pendaftaran', kodePendaftaran ?? '-'],
   ['Nama Sekolah', namaSekolah],
   ['Pembina/Pelatih', namaPembina],
   [

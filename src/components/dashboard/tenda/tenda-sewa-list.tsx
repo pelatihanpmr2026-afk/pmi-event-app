@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 interface SewaRow {
   id: string
   namaSekolah: string
-  kodePendaftaran: string
+  kodePendaftaran: string | null
   tenda: { nama: string; jumlah: number }[]
   totalUnit: number
   totalBiaya: number
@@ -84,7 +84,7 @@ export function TendaSewaList() {
                 <tr key={s.id} className={`border-t-2 border-event-navy/10 ${i % 2 === 1 ? 'bg-event-cream/40' : ''}`}>
                   <td className="px-3 py-2.5 font-body text-sm font-bold text-event-navy">
                     {s.namaSekolah}
-                    <span className="block font-body text-[10px] text-event-navy/50 font-normal">{s.kodePendaftaran}</span>
+                    <span className="block font-body text-[10px] text-event-navy/50 font-normal">{s.kodePendaftaran ?? 'Tanpa nomor pendaftaran'}</span>
                   </td>
                   <td className="px-3 py-2.5 font-body text-xs text-event-navy">
                     {s.tenda.map((t) => `${t.nama} (${t.jumlah})`).join(', ')}

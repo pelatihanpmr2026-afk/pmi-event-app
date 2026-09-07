@@ -12,17 +12,17 @@ import { RincianBiaya } from '@/components/sekolah/biaya-rincian'
 import { VerifikasiSekolahForm } from '@/components/verifikasi-sekolah-form'
 import { PaymentStatusStepper } from './payment-status-stepper'
 
-interface PembayaranInfo { id: string; tipe: 'PESERTA' | 'TENDA'; namaLengkap: string; kodePendaftaran: string; jumlahBiaya: number; statusPembayaran: 'BELUM_BAYAR' | 'MENUNGGU_KONFIRMASI' | 'LUNAS' | 'DITOLAK'; buktiTransferUrl: string | null; catatanAdmin: string | null; jumlahPeserta?: number; jumlahPendamping?: number; tendaSewaList?: { nama: string; jumlah: number; hargaSatuan: number; subtotal: number }[]; kwitansiUrl?: string | null; suratPernyataanUrl?: string | null }
+interface PembayaranInfo { id: string; tipe: 'PESERTA' | 'TENDA'; namaLengkap: string; kodePendaftaran: string | null; jumlahBiaya: number; statusPembayaran: 'BELUM_BAYAR' | 'MENUNGGU_KONFIRMASI' | 'LUNAS' | 'DITOLAK'; buktiTransferUrl: string | null; catatanAdmin: string | null; jumlahPeserta?: number; jumlahPendamping?: number; tendaSewaList?: { nama: string; jumlah: number; hargaSatuan: number; subtotal: number }[]; kwitansiUrl?: string | null; suratPernyataanUrl?: string | null }
 const STATUS_CONFIG = { BELUM_BAYAR: { label: 'Belum Bayar', variant: 'warning' as const, icon: Clock }, MENUNGGU_KONFIRMASI: { label: 'Menunggu Konfirmasi', variant: 'info' as const, icon: Clock }, LUNAS: { label: 'Lunas', variant: 'success' as const, icon: CheckCircle2 }, DITOLAK: { label: 'Perlu diperbaiki', variant: 'default' as const, icon: XCircle } }
 
 // Tombol download kwitansi + surat pernyataan — dipakai ulang di beberapa status
 // supaya tidak duplikat render (U4).
-function DownloadDokumen({ kwitansiUrl, suratPernyataanUrl, kodePendaftaran }: { kwitansiUrl?: string | null; suratPernyataanUrl?: string | null; kodePendaftaran: string }) {
+function DownloadDokumen({ kwitansiUrl, suratPernyataanUrl, kodePendaftaran }: { kwitansiUrl?: string | null; suratPernyataanUrl?: string | null; kodePendaftaran: string | null }) {
   if (!kwitansiUrl && !suratPernyataanUrl) return null
   return (
     <>
-      {kwitansiUrl && <a href={kwitansiUrl} download={`Kwitansi-${kodePendaftaran}.pdf`}><Button variant="secondary" className="w-full">Download Kwitansi</Button></a>}
-      {suratPernyataanUrl && <a href={suratPernyataanUrl} download={`Surat-Pernyataan-${kodePendaftaran}.pdf`}><Button variant="outline" className="w-full">Download Surat Pernyataan</Button></a>}
+      {kwitansiUrl && <a href={kwitansiUrl} download={`Kwitansi-${kodePendaftaran ?? 'Sewa-Tenda'}.pdf`}><Button variant="secondary" className="w-full">Download Kwitansi</Button></a>}
+      {suratPernyataanUrl && <a href={suratPernyataanUrl} download={`Surat-Pernyataan-${kodePendaftaran ?? 'Sewa-Tenda'}.pdf`}><Button variant="outline" className="w-full">Download Surat Pernyataan</Button></a>}
     </>
   )
 }
@@ -93,7 +93,7 @@ export function UploadBuktiTransfer({ sekolahId, tipe, title, pembayaranId }: { 
   const bisaUpload = info.statusPembayaran === 'BELUM_BAYAR' || info.statusPembayaran === 'DITOLAK'
 
   return <div className="flex flex-col gap-5">
-    <div className="border-3 border-event-navy bg-white p-4"><p className="font-body font-bold text-sm text-event-navy">{info.namaLengkap}</p><p className="font-body text-xs text-event-navy/60">{info.kodePendaftaran}</p><div className="mt-2"><Badge variant={status.variant}>{status.label}</Badge></div></div>
+    <div className="border-3 border-event-navy bg-white p-4"><p className="font-body font-bold text-sm text-event-navy">{info.namaLengkap}</p><p className="font-body text-xs text-event-navy/60">{info.kodePendaftaran ?? 'Sewa tenda — tanpa nomor pendaftaran sekolah'}</p><div className="mt-2"><Badge variant={status.variant}>{status.label}</Badge></div></div>
     <PaymentStatusStepper status={info.statusPembayaran} />
     <Card><CardHeader variant="yellow"><h3 className="font-heading text-[10px] text-event-navy">{title}</h3></CardHeader><CardContent>{typeof info.jumlahPeserta === 'number' ? <RincianBiaya jumlahPeserta={info.jumlahPeserta} jumlahPendamping={info.jumlahPendamping ?? 0} /> : <div className="flex flex-col gap-2">{info.tendaSewaList?.map((t) => <div key={t.nama} className="flex justify-between gap-3 font-body text-xs text-event-navy"><span>{t.nama} x {t.jumlah} unit (Rp{t.hargaSatuan.toLocaleString('id-ID')})</span><span>Rp{t.subtotal.toLocaleString('id-ID')}</span></div>)}<div className="flex justify-between border-t-2 border-event-navy/20 pt-2 font-heading text-xs text-event-navy"><span>TOTAL YANG HARUS DITRANSFER</span><span>Rp{info.jumlahBiaya.toLocaleString('id-ID')}</span></div><p className="font-body text-[11px] text-event-navy/70">Transfer tepat sesuai nominal agar verifikasi lebih cepat.</p></div>}</CardContent></Card>
     {info.statusPembayaran === 'DITOLAK' && <div className="border-3 border-pmi-red bg-pmi-red/10 p-4"><p className="font-body font-bold text-xs text-pmi-red mb-1">Alasan bukti transfer perlu diperbaiki:</p><p className="font-body text-xs text-event-navy">{info.catatanAdmin || 'Panitia meminta bukti transfer baru.'}</p></div>}

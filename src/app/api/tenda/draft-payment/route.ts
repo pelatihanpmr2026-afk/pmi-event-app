@@ -6,7 +6,7 @@ import { readFile } from 'fs/promises'
 import { prisma } from '@/lib/prisma'
 import { dataSekolahMiniSchema } from '@/lib/validations/sekolah'
 import { tendaSelectionSchema } from '@/lib/validations/tenda'
-import { normalizeNamaSekolah, namaSekolahKey, generateKodePendaftaran, sanitizeFilename } from '@/lib/sekolah'
+import { normalizeNamaSekolah, namaSekolahKey, sanitizeFilename } from '@/lib/sekolah'
 import { ACCEPTED_BUKTI_TYPES, MAX_BUKTI_SIZE, TENDA_TOLERANSI } from '@/lib/constants-sekolah'
 import { getFileExtension, saveUploadedFile, getAbsolutePathFromUrl } from '@/lib/save-file'
 import { generateQrCode } from '@/lib/generate-qrcode'
@@ -48,8 +48,8 @@ export async function POST(req: NextRequest) {
     if (kapasitas > estimasi + TENDA_TOLERANSI) return NextResponse.json({ success: false, message: 'Kapasitas tenda melebihi batas kebutuhan' }, { status: 400 })
 
     const buktiTransferUrl = await saveUploadedFile(file, 'bukti-transfer', `${nanoid(10)}${getFileExtension(file.name)}`)
-    const kode = await generateKodePendaftaran(namaLengkap, sekolahData.data.kategori)
     const dibayarPada = new Date()
+    const referensiSewa = `SEWA-TENDA-${nanoid(12)}`
 
     // Kwitansi tenda digenerate langsung setelah bukti transfer dikirim — bisa
     // didownload meski admin belum mengkonfirmasi pembayaran.
@@ -65,13 +65,13 @@ export async function POST(req: NextRequest) {
         return { label: t.nama, qty: p.jumlah, hargaSatuan: t.harga, subtotal: t.harga * p.jumlah }
       })
       const total = items.reduce((sum, i) => sum + i.subtotal, 0)
-      const nomorKwitansi = `KW-${sanitizeFilename(kode.kodePendaftaran)}-TENDA`
+      const nomorKwitansi = `KW-${sanitizeFilename(referensiSewa)}`
       kwitansiUrl = await generateKwitansi({
         nomorKwitansi,
         tipe: 'TENDA',
         namaSekolah: namaLengkap,
         namaPembina: sekolahData.data.namaPembina,
-        kodePendaftaran: kode.kodePendaftaran,
+        kodePendaftaran: null,
         tanggalBayar: dibayarPada,
         items,
         total,
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
 
     const result = await prisma.$transaction(async (tx) => {
       await lockDanValidasiStokTenda(tx, 'draft', pilihan, reservationId)
-      const sekolah = await tx.sekolah.create({ data: { jenjang: 'SMA' as Jenjang, statusSekolah: 'SWASTA' as StatusSekolah, namaInput: namaLengkap, namaLengkap, kategori: sekolahData.data.kategori, ...kode, namaPembina: sekolahData.data.namaPembina, noWhatsappPembina: sekolahData.data.noWhatsappPembina, estimasiPesertaPendamping: estimasi } })
+      const sekolah = await tx.sekolah.create({ data: { jenjang: 'SMA' as Jenjang, statusSekolah: 'SWASTA' as StatusSekolah, namaInput: namaLengkap, namaLengkap, kategori: sekolahData.data.kategori, nomorPendaftaran: null, tahunPendaftaran: null, kodePendaftaran: null, namaPembina: sekolahData.data.namaPembina, noWhatsappPembina: sekolahData.data.noWhatsappPembina, estimasiPesertaPendamping: estimasi } as unknown as Prisma.SekolahCreateInput })
       await tx.tendaSewa.createMany({ data: pilihan.map((p) => ({ sekolahId: sekolah.id, tendaJenisId: p.tendaJenisId, jumlah: p.jumlah, hargaSatuanSaatSewa: jenis.find((t) => t.id === p.tendaJenisId)!.harga })) })
       await tx.pembayaran.create({ data: { sekolahId: sekolah.id, tipe: 'TENDA', batchKe: 1, jumlahBiaya: pilihan.reduce((total, p) => total + jenis.find((t) => t.id === p.tendaJenisId)!.harga * p.jumlah, 0), statusPembayaran: 'MENUNGGU_KONFIRMASI', buktiTransferUrl, dibayarPada, qrToken, kwitansiUrl } })
       await tx.reservasiTenda.delete({ where: { id: reservationId } })

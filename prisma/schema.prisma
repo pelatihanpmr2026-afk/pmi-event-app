@@ -168,9 +168,10 @@ model Sekolah {
   namaLengkap   String          @unique
   kategori      KategoriSekolah
 
-  nomorPendaftaran Int
-  tahunPendaftaran Int
-  kodePendaftaran  String @unique
+  // Pendaftaran sewa tenda tidak memiliki nomor pendaftaran sekolah.
+  nomorPendaftaran Int?
+  tahunPendaftaran Int?
+  kodePendaftaran  String? @unique
 
   namaPembina       String
   noWhatsappPembina String

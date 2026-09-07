@@ -105,10 +105,13 @@ const pembayaran = await prisma.pembayaran.findUnique({
             <span className="text-event-navy/60">Nama Sekolah</span>
             <span className="font-bold text-right">{sekolah.namaLengkap}</span>
           </div>
-          <div className="flex justify-between font-body text-xs text-event-navy">
+          {pembayaran.tipe === 'PESERTA' ? <div className="flex justify-between font-body text-xs text-event-navy">
             <span className="text-event-navy/60">Kode Pendaftaran</span>
             <span className="font-bold">{sekolah.kodePendaftaran}</span>
-          </div>
+          </div> : <div className="flex justify-between font-body text-xs text-event-navy">
+            <span className="text-event-navy/60">Jenis Transaksi</span>
+            <span className="font-bold">Sewa Tenda</span>
+          </div>}
           <div className="flex justify-between font-body text-xs text-event-navy">
             <span className="text-event-navy/60">Pembina/Pelatih</span>
             <span className="font-bold text-right">{sekolah.namaPembina}</span>

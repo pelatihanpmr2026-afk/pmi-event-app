@@ -255,7 +255,8 @@ export async function POST(
       }
 
       const batchSuffix = pembayaran.batchKe > 1 ? `-B${pembayaran.batchKe}` : ''
-      const nomorKwitansi = `KW-${sanitizeFilename(sekolahFull.kodePendaftaran)}-${tipe}${batchSuffix}`
+      const referensi = sekolahFull.kodePendaftaran ?? `SEWA-TENDA-${sekolahFull.id}`
+      const nomorKwitansi = `KW-${sanitizeFilename(referensi)}-${tipe}${batchSuffix}`
       kwitansiUrl = await generateKwitansi({
         nomorKwitansi,
         tipe,

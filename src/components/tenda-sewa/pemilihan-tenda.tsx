@@ -12,7 +12,7 @@ import { TENDA_RESERVASI_SEMENTARA_MENIT, TENDA_TOLERANSI } from '@/lib/constant
 
 interface TendaData { id: string; nama: string; gambarUrl: string | null; kapasitasMin: number; kapasitasMax: number; harga: number; stokTersisa: number }
 interface KapasitasInfo {
-  namaLengkap: string; kodePendaftaran: string; jumlahAktual: number; estimasi: number; efektifJumlahOrang: number
+  namaLengkap: string; kodePendaftaran: string | null; jumlahAktual: number; estimasi: number; efektifJumlahOrang: number
   batasKapasitas: number; terkunci: boolean; reservasiAktif: boolean; reservasiBerakhirPada: string | null
   pilihanSaatIni: { tendaJenisId: string; jumlah: number }[]
 }
@@ -67,7 +67,7 @@ const selectionKey = `tenda-sewa-selection:${sekolahId ?? '__draft__'}`
       if (tendaResult.success) setTendaList(tendaResult.data)
       if (draftSekolah) {
         const estimasi = Number(draftSekolah.estimasiPesertaPendamping)
-        setKapasitas({ namaLengkap: draftSekolah.namaSekolah.trim().replace(/\s+/g, ' ').toLocaleUpperCase('id-ID'), kodePendaftaran: 'Akan dibuat setelah bukti pembayaran dikirim', jumlahAktual: 0, estimasi, efektifJumlahOrang: estimasi, batasKapasitas: estimasi + TENDA_TOLERANSI, terkunci: false, reservasiAktif: false, reservasiBerakhirPada: null, pilihanSaatIni: [] })
+        setKapasitas({ namaLengkap: draftSekolah.namaSekolah.trim().replace(/\s+/g, ' ').toLocaleUpperCase('id-ID'), kodePendaftaran: null, jumlahAktual: 0, estimasi, efektifJumlahOrang: estimasi, batasKapasitas: estimasi + TENDA_TOLERANSI, terkunci: false, reservasiAktif: false, reservasiBerakhirPada: null, pilihanSaatIni: [] })
         // Sekolah baru belum punya reservasi server — pulihkan pilihan dari localStorage.
         const saved = loadSelection()
         if (saved) setSelection(saved)
@@ -150,7 +150,7 @@ const selectionKey = `tenda-sewa-selection:${sekolahId ?? '__draft__'}`
   }
 
   return <div className="flex flex-col gap-5">
-    <div className="border-3 border-event-navy bg-white shadow-pixel-sm p-4"><p className="font-body font-bold text-sm text-event-navy">{kapasitas.namaLengkap}</p><p className="font-body text-xs text-event-navy/60">{kapasitas.kodePendaftaran}</p></div>
+    <div className="border-3 border-event-navy bg-white shadow-pixel-sm p-4"><p className="font-body font-bold text-sm text-event-navy">{kapasitas.namaLengkap}</p><p className="font-body text-xs text-event-navy/60">Sewa tenda — tanpa nomor pendaftaran sekolah</p></div>
     {kapasitas.terkunci ? <div className="border-3 border-pmi-red bg-pmi-red/10 shadow-pixel-sm p-4 text-center"><p className="font-body text-sm text-event-navy">Pembayaran tenda sudah diproses sehingga pilihan tidak dapat diubah.</p></div> : <>
       <div className="border-3 border-event-navy bg-event-cream shadow-pixel-sm p-4 flex flex-col gap-1">
         <p className="font-body text-xs text-event-navy">Jumlah orang yang perlu ditampung: <span className="font-bold">{kapasitas.efektifJumlahOrang}</span>. Batas maksimal berdasarkan kebijakan panitia: <span className="font-bold">{kapasitas.batasKapasitas} orang</span>.</p>
