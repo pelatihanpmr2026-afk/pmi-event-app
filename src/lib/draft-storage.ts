@@ -91,6 +91,21 @@ export async function loadPhoto(key: string): Promise<File | null> {
   }
 }
 
+export async function deletePhoto(key: string): Promise<void> {
+  try {
+    const db = await openDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite')
+      tx.objectStore(STORE_NAME).delete(key)
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+    db.close()
+  } catch {
+    // abaikan
+  }
+}
+
 export async function clearPhotos(): Promise<void> {
   try {
     const db = await openDB()

@@ -12,7 +12,7 @@ import { StepReviewKonfirmasi } from './steps/step-review-konfirmasi'
 import { StepFinalPayment } from './steps/step-final-payment'
 import { DraftBanner } from './draft-banner'
 import { TermsGate } from './terms-gate'
-import { saveDraft, loadDraft, clearDraft, savePhoto, loadPhoto } from '@/lib/draft-storage'
+import { saveDraft, loadDraft, clearDraft, savePhoto, loadPhoto, deletePhoto } from '@/lib/draft-storage'
 import type { PesertaPendampingValues } from '@/lib/validations/peserta'
 
 // PENTING: array ini harus punya 1 label untuk setiap nilai currentStep (1-5).
@@ -86,6 +86,12 @@ export function SekolahRegistrationForm() {
         void savePhoto(`peserta_${i}`, p.foto)
       }
     })
+    // Bersihkan kunci foto lama di indeks ≥ panjang daftar peserta saat ini.
+    // Tanpa ini, jika peserta dihapus/dipindah, kunci lama masih tersisa dan
+    // saat restore bisa termuat foto peserta yang salah.
+    for (let i = dataPeserta.length; i < 200; i++) {
+      void deletePhoto(`peserta_${i}`)
+    }
   }, [dataPeserta, isHydrated, draftFound])
 
   const handleRestore = useCallback(async () => {
@@ -142,6 +148,26 @@ export function SekolahRegistrationForm() {
   function handlePesertaComplete(values: Pick<PesertaPendampingValues, 'peserta'>) {
     setDataPeserta(values.peserta)
     setCurrentStep(3)
+    // Simpan foto + draft SEKARANG (bukan menunggu debounce 1 detik dari
+    // effect). Kalau user menutup browser tepat setelah selesai mengisi
+    // peserta, draft lama (tanpa peserta terbaru) bisa tersimpan lebih
+    // dulu — pas dilanjutkan, data peserta/foto tidak ke-restore.
+    values.peserta.forEach((p, i) => {
+      if (p.foto instanceof File) {
+        void savePhoto(`peserta_${i}`, p.foto)
+      }
+    })
+    for (let i = values.peserta.length; i < 200; i++) {
+      void deletePhoto(`peserta_${i}`)
+    }
+    saveDraft({
+      currentStep: 3,
+      dataSekolah,
+      dataPeserta: values.peserta.map((p) => ({ ...p, foto: undefined, _hasFoto: p.foto instanceof File })),
+      dataPendamping: dataPendamping ?? null,
+      sekolahId: null,
+    })
+    setLastSavedAt(Date.now())
   }
 
   function handlePendampingComplete(values: Pick<PesertaPendampingValues, 'pendamping'>) {

@@ -28,18 +28,27 @@ useEffect(() => {
   }
 }, [preview])
 
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    // Kompres foto dari HP agar payload pendaftaran tidak membengkak.
-    // Sebelumnya foto dikirim asli (bisa 3-8MB/file) — dengan ±60 peserta,
-    // total bisa 100-300MB sehingga ditolak Nginx (413) dan user mendapat
-    // error "Unexpected token '<'" / "Respons server tidak valid".
-    try {
-      onChange(await compressImage(file, 1200, 0.85))
-    } catch {
-      onChange(file)
-    }
+    // Simpan file asli DULU, sinkron — supaya preview muncul langsung dan
+    // value form terisi seketika. Kalau ditunggu sampai kompresi selesai
+    // (bisa 0,5-2 detik di HP lambat), user bisa menekan "Lanjut" duluan
+    // dan foto peserta jadi undefined saat dikirim → tidak pernah masuk
+    // draft → "foto hilang" saat pendaftaran dilanjutkan.
+    onChange(file)
+    // Kompresi berjalan di latar belakang untuk memperkecil payload
+    // pendaftaran (foto HP mentah bisa 3-8MB; dengan ±60 peserta total bisa
+    // 100-300MB → ditolak Nginx 413 → error "Unexpected token '<'").
+    void compressImage(file, 1200, 0.85)
+      .then((compressed) => {
+        // Ganti dengan hasil kompresi hanya kalau hasilnya lebih kecil &
+        // valid (hindari blob kosong/gagal yang bikin preview rusak).
+        if (compressed.size > 0 && compressed.size < file.size) onChange(compressed)
+      })
+      .catch(() => {
+        // Gagal kompres → pakai file asli (sudah ter-set di atas)
+      })
   }
 
   function handleRemove() {
