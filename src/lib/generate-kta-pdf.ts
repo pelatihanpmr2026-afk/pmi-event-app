@@ -169,7 +169,7 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
     height: pxToPtY(48),
     color: rgb(1, 1, 1),
   })
-  const unit = fitPdfText(regularFont, `Unit ${titleCase(namaSekolah)}`, pxToPtX(400), pxToPtY(30))
+  const unit = fitPdfText(regularFont, `UNIT ${namaSekolah.toLocaleUpperCase('id-ID')}`, pxToPtX(400), pxToPtY(30))
   drawTopText(page, unit.text, 207, 598, unit.size, regularFont, red, cardX, cardY)
 }
 
