@@ -162,6 +162,13 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
   const qrBuffer = await QRCode.toBuffer(participant.noPeserta ?? participant.namaLengkap, { type: 'png', width: 256, margin: 1, errorCorrectionLevel: 'H', color: { dark: '#ffffff', light: '#e30613' } })
   const qrImage = await pdf.embedPng(qrBuffer)
   page.drawImage(qrImage, { x: cardX + pxToPtX(55), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(620), width: pxToPtX(104), height: pxToPtY(96) })
+  page.drawRectangle({
+    x: cardX + pxToPtX(170),
+    y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(628),
+    width: pxToPtX(430),
+    height: pxToPtY(48),
+    color: rgb(1, 1, 1),
+  })
   const unit = fitPdfText(regularFont, `Unit ${titleCase(namaSekolah)}`, pxToPtX(400), pxToPtY(30))
   drawTopText(page, unit.text, 177, 598, unit.size, regularFont, red, cardX, cardY)
 }
