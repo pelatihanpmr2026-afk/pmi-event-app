@@ -170,7 +170,7 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
     color: rgb(1, 1, 1),
   })
   const unit = fitPdfText(regularFont, `Unit ${titleCase(namaSekolah)}`, pxToPtX(400), pxToPtY(30))
-  drawTopText(page, unit.text, 217, 598, unit.size, regularFont, red, cardX, cardY)
+  drawTopText(page, unit.text, 207, 598, unit.size, regularFont, red, cardX, cardY)
 }
 
 export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
