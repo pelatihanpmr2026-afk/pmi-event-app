@@ -121,7 +121,7 @@ function drawTopText(page: PDFPage, text: string, x: number, topY: number, size:
   page.drawText(text, { x: cardX + pxToPtX(x), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(topY) - size * 0.78, size, font, color })
 }
 
-async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDFImage, boldFont: PDFFont, participant: KtaParticipant, cardX: number, cardY: number) {
+async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDFImage, regularFont: PDFFont, boldFont: PDFFont, namaSekolah: string, participant: KtaParticipant, cardX: number, cardY: number) {
   page.drawImage(templateImage, { x: cardX, y: cardY, width: ID_CARD_WIDTH_PT, height: ID_CARD_HEIGHT_PT })
 
   if (participant.fotoBuffer) {
@@ -137,6 +137,7 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
   }
 
   const white = rgb(1, 1, 1)
+  const red = rgb(0.89, 0.024, 0.075)
   const textSize = pxToPtY(25)
   const values = [
     ['No. Reg. Induk', participant.noPeserta ?? '-'],
@@ -161,6 +162,8 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
   const qrBuffer = await QRCode.toBuffer(participant.noPeserta ?? participant.namaLengkap, { type: 'png', width: 256, margin: 1, errorCorrectionLevel: 'H', color: { dark: '#ffffff', light: '#e30613' } })
   const qrImage = await pdf.embedPng(qrBuffer)
   page.drawImage(qrImage, { x: cardX + pxToPtX(55), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(620), width: pxToPtX(104), height: pxToPtY(96) })
+  const unit = fitPdfText(regularFont, `Unit ${titleCase(namaSekolah)}`, pxToPtX(400), pxToPtY(30))
+  drawTopText(page, unit.text, 177, 598, unit.size, regularFont, red, cardX, cardY)
 }
 
 export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
@@ -169,7 +172,7 @@ export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
   const cleanedTemplateBuffer = await cleanTemplatePlaceholders(templateBuffer)
   const backTemplateBuffer = await readFile(path.join(process.cwd(), 'public', 'assets', 'template-kta-back.png'))
   const pdf = await PDFDocument.create()
-  const boldFont = await pdf.embedFont(StandardFonts.HelveticaBold)
+  const [regularFont, boldFont] = await Promise.all([pdf.embedFont(StandardFonts.Helvetica), pdf.embedFont(StandardFonts.HelveticaBold)])
   const frontTemplateImage = await pdf.embedPng(cleanedTemplateBuffer)
   const backImage = await pdf.embedPng(backTemplateBuffer)
   pdf.setTitle(`KTA PMR - ${namaSekolah}`)
@@ -185,7 +188,7 @@ export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
       const row = Math.floor(index / CARD_COLUMNS)
       const cardX = PAGE_MARGIN_X + column * (ID_CARD_WIDTH_PT + CARD_GAP_X)
       const cardY = A4_HEIGHT_PT - PAGE_MARGIN_Y - (row + 1) * ID_CARD_HEIGHT_PT - row * CARD_GAP_Y
-      await drawFrontCard(pdf, frontPage, frontTemplateImage, boldFont, batch[index], cardX, cardY)
+      await drawFrontCard(pdf, frontPage, frontTemplateImage, regularFont, boldFont, namaSekolah, batch[index], cardX, cardY)
       backPage.drawImage(backImage, { x: cardX, y: cardY, width: ID_CARD_WIDTH_PT, height: ID_CARD_HEIGHT_PT })
       for (const page of [frontPage, backPage]) page.drawRectangle({ x: cardX, y: cardY, width: ID_CARD_WIDTH_PT, height: ID_CARD_HEIGHT_PT, borderColor: rgb(0.72, 0.72, 0.72), borderWidth: 0.35 })
     }
