@@ -14,9 +14,11 @@ export async function GET() {
       },
       include: {
         tendaSewa: { include: { tendaJenis: { select: { nama: true } } } },
-        pembayaran: { where: { tipe: 'TENDA' } },
+        pembayaran: {
+          where: { tipe: 'TENDA', statusPembayaran: 'LUNAS' },
+          orderBy: { dikonfirmasiPada: 'desc' },
+        },
       },
-      orderBy: { namaLengkap: 'asc' },
     })
 
     const data = sekolahList.map((s) => {
@@ -30,6 +32,12 @@ export async function GET() {
         totalBiaya: pembayaranTenda?.jumlahBiaya ?? 0,
         tanggalSewa: pembayaranTenda?.dikonfirmasiPada?.toISOString() ?? null,
       }
+    }).sort((a, b) => {
+      if (!a.tanggalSewa && !b.tanggalSewa) return a.namaSekolah.localeCompare(b.namaSekolah)
+      if (!a.tanggalSewa) return 1
+      if (!b.tanggalSewa) return -1
+      const dateDifference = new Date(a.tanggalSewa).getTime() - new Date(b.tanggalSewa).getTime()
+      return dateDifference || a.namaSekolah.localeCompare(b.namaSekolah)
     })
 
     return NextResponse.json({ success: true, data })
