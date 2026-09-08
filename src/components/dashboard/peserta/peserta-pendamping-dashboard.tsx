@@ -2,13 +2,16 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
-import { Download, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Download, Search, ChevronLeft, ChevronRight, Pencil, Upload, Camera } from 'lucide-react'
+import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Tabs } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
 import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/responsive-table'
 import { RIWAYAT_PENYAKIT_OPTIONS, RIWAYAT_PENYAKIT_PERLU_PERHATIAN } from '@/lib/constants-sekolah'
+import { ACCEPTED_FOTO_TYPES } from '@/lib/constants'
 
 interface Row {
   id: string
@@ -56,6 +59,14 @@ export function PesertaPendampingDashboard({
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filterSekolah, setFilterSekolah] = useState('')
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // === State modal edit foto ==
+  const [editingRow, setEditingRow] = useState<Row | null>(null)
+  const [editFile, setEditFile] = useState<File | null>(null)
+  const [editPreview, setEditPreview] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [editError, setEditError] = useState('')
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -93,7 +104,7 @@ export function PesertaPendampingDashboard({
       }
     }
     void fetchData()
-  }, [tipe, tab, filterSekolah, page, debouncedSearch])
+  }, [tipe, tab, filterSekolah, page, debouncedSearch, refreshKey])
 
   const sekolahOptionsForTab = useMemo(
     () =>
@@ -117,6 +128,70 @@ export function PesertaPendampingDashboard({
     const params = new URLSearchParams({ tipe, kategori: tab, withPhoto: String(withPhoto) })
     if (filterSekolah) params.set('sekolahId', filterSekolah)
     window.open(`/api/peserta/export?${params.toString()}`, '_blank')
+  }
+
+  // === EDIT/HAPUS FOTO PESERTA ===
+  function openEditFoto(row: Row) {
+    setEditingRow(row)
+    setEditFile(null)
+    setEditPreview(null)
+    setEditError('')
+  }
+
+  function closeEditFoto() {
+    setEditingRow(null)
+    setEditFile(null)
+    if (editPreview) URL.revokeObjectURL(editPreview)
+    setEditPreview(null)
+    setEditError('')
+  }
+
+  function handlePickFile(file: File | null) {
+    if (!file) return
+    if (editPreview) URL.revokeObjectURL(editPreview)
+    setEditFile(file)
+    setEditPreview(URL.createObjectURL(file))
+    setEditError('')
+  }
+
+  async function submitGantiFoto() {
+    if (!editingRow || !editFile) return
+    setIsSaving(true)
+    setEditError('')
+    try {
+      const fd = new FormData()
+      fd.append('foto', editFile)
+      const res = await fetch(`/api/peserta/${editingRow.id}`, { method: 'PATCH', body: fd })
+      const result = await res.json().catch(() => null)
+      if (!res.ok || !result?.success) throw new Error(result?.message || 'Gagal mengganti foto')
+      toast.success(result.message || 'Foto berhasil diganti')
+      closeEditFoto()
+      setRefreshKey((k) => k + 1)
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : 'Terjadi kesalahan')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function submitHapusFoto() {
+    if (!editingRow) return
+    setIsSaving(true)
+    setEditError('')
+    try {
+      const fd = new FormData()
+      fd.append('removeFoto', '1')
+      const res = await fetch(`/api/peserta/${editingRow.id}`, { method: 'PATCH', body: fd })
+      const result = await res.json().catch(() => null)
+      if (!res.ok || !result?.success) throw new Error(result?.message || 'Gagal menghapus foto')
+      toast.success(result.message || 'Foto berhasil dihapus')
+      closeEditFoto()
+      setRefreshKey((k) => k + 1)
+    } catch (error) {
+      setEditError(error instanceof Error ? error.message : 'Terjadi kesalahan')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   // === KOLOM TABEL ===
@@ -186,17 +261,28 @@ export function PesertaPendampingDashboard({
       {
         key: 'foto',
         header: 'Foto',
-        width: '60px',
+        width: '90px',
         align: 'center',
         hideOnMobile: true,
-        render: (row) =>
-          row.fotoUrl ? (
-            <div className="relative w-10 h-12 border border-[var(--color-border)] rounded-[var(--radius-input)] overflow-hidden">
-              <Image src={row.fotoUrl} alt={row.namaLengkap} fill className="object-cover" />
-            </div>
-          ) : (
-            <span className="text-xs text-gray-300">-</span>
-          ),
+        render: (row) => (
+          <div className="flex flex-col items-center gap-1">
+            {row.fotoUrl ? (
+              <div className="relative w-10 h-12 border border-[var(--color-border)] rounded-[var(--radius-input)] overflow-hidden">
+                <Image src={row.fotoUrl} alt={row.namaLengkap} fill className="object-cover" />
+              </div>
+            ) : (
+              <span className="text-xs text-gray-300">-</span>
+            )}
+            <button
+              type="button"
+              onClick={() => openEditFoto(row)}
+              className="flex items-center gap-0.5 text-[10px] text-event-blue underline hover:text-event-blue-dark"
+            >
+              <Pencil size={10} />
+              Ubah
+            </button>
+          </div>
+        ),
       },
       {
         key: 'riwayatPenyakit',
@@ -230,6 +316,16 @@ export function PesertaPendampingDashboard({
           <p className="font-body text-xs text-gray-400">{row.sekolahNama}</p>
         </div>
       </div>
+      {tipe === 'PESERTA' && (
+        <button
+          type="button"
+          onClick={() => openEditFoto(row)}
+          className="flex items-center justify-center gap-1 text-xs text-event-blue underline py-1 hover:text-event-blue-dark"
+        >
+          <Pencil size={12} />
+          {row.fotoUrl ? 'Ubah Foto' : 'Tambah Foto'}
+        </button>
+      )}
       <div className="grid grid-cols-2 gap-2 text-[11px] font-body">
         <div className="bg-[var(--color-surface-muted)] px-2 py-1.5 rounded-[var(--radius-input)]">
           <span className="text-gray-400 block">Tempat, Tgl Lahir</span>
@@ -339,6 +435,78 @@ export function PesertaPendampingDashboard({
           </Button>
         </div>
       </div>
+
+      <Modal isOpen={editingRow !== null} onClose={closeEditFoto} title="Ubah Foto Peserta">
+        {editingRow && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className="font-body text-sm font-medium text-event-navy">{editingRow.namaLengkap}</p>
+              <p className="font-body text-xs text-gray-400">
+                {editingRow.noPeserta} • {editingRow.sekolahNama}
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center gap-2">
+              {editPreview || editingRow.fotoUrl ? (
+                <div className="relative w-24 h-28 border-2 border-event-navy rounded-[var(--radius-input)] overflow-hidden">
+                  <Image
+                    src={editPreview ?? editingRow.fotoUrl ?? ''}
+                    alt="Preview foto peserta"
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-24 h-28 border-2 border-dashed border-[var(--color-border)] rounded-[var(--radius-input)] flex items-center justify-center text-gray-300">
+                  <Camera size={24} />
+                </div>
+              )}
+              <label className="flex items-center gap-1.5 px-4 py-2 bg-event-blue text-white border-2 border-event-navy rounded-[var(--radius-btn)] text-xs font-medium hover:bg-event-blue-dark transition-all cursor-pointer">
+                <Upload size={14} />
+                {editFile ? 'Ganti pilihan' : 'Pilih foto baru'}
+                <input
+                  type="file"
+                  accept={ACCEPTED_FOTO_TYPES.join(',')}
+                  className="hidden"
+                  onChange={(e) => handlePickFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              {editFile && (
+                <p className="font-body text-[11px] text-gray-400">
+                  {editFile.name} ({(editFile.size / 1024).toFixed(0)} KB)
+                </p>
+              )}
+            </div>
+
+            {editError && <p className="text-xs font-medium text-pmi-red text-center">{editError}</p>}
+
+            <div className="flex items-center justify-between gap-2">
+              {editingRow.fotoUrl ? (
+                <Button type="button" variant="danger" size="sm" onClick={() => void submitHapusFoto()} isLoading={isSaving}>
+                  Hapus Foto
+                </Button>
+              ) : (
+                <span />
+              )}
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={closeEditFoto} disabled={isSaving}>
+                  Batal
+                </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  onClick={() => void submitGantiFoto()}
+                  disabled={!editFile}
+                  isLoading={isSaving}
+                >
+                  Simpan
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
