@@ -496,15 +496,13 @@ sudo tail -n 100 /var/log/nginx/error.log
 
 #### A. Payload terlalu besar (413 Request Entity Too Large)
 
-Pendaftaran mengirim multipart berisi banyak foto peserta (tiap foto dikompres ke ~1200px) ditambah bukti transfer. Jika `client_max_body_size` default (1MB) tidak dinaikkan, Nginx memblokir request dan mengembalikan halaman HTML 413.
-
-Tambahkan di blok server Nginx:
+Pendaftaran mengirim multipart berisi banyak foto peserta (kini dikompres di klien ke ~1200px/JPEG ~200-400KB per foto) ditambah bukti transfer, tanda tangan, dan metadata. Karena aplikasi juga memvalidasi ulang magic-bytes setiap file, sengaja diberi ruang untuk margin. Tambahkan di blok server Nginx:
 
 ```nginx
-client_max_body_size 20m;
+client_max_body_size 50m;
 ```
 
-nilai `20m` cukup untuk sekolah dengan ±30 peserta. Sesuaikan bila kuota maksimal peserta naik.
+Nilai `50m` cukup untuk sekolah maksimum (60 peserta + 30 pendamping). Aplikasi menolak body melebihi 40MB dengan respons JSON yang ramah (`MAX_REQUEST_BODY` di `src/lib/constants-sekolah.ts`), jadi user tidak akan melihat halaman HTML error Nginx.
 
 #### B. Request terlalu lama (504 Gateway Timeout)
 

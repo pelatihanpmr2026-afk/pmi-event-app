@@ -4,6 +4,7 @@ import { useEffect, useRef, useMemo } from 'react'
 import Image from 'next/image'
 import { Upload, X } from 'lucide-react'
 import { ACCEPTED_FOTO_TYPES } from '@/lib/constants'
+import { compressImage } from '@/lib/compress-image'
 
 export function ParticipantPhotoUpload({
   value,
@@ -27,9 +28,18 @@ useEffect(() => {
   }
 }, [preview])
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (file) onChange(file)
+    if (!file) return
+    // Kompres foto dari HP agar payload pendaftaran tidak membengkak.
+    // Sebelumnya foto dikirim asli (bisa 3-8MB/file) — dengan ±60 peserta,
+    // total bisa 100-300MB sehingga ditolak Nginx (413) dan user mendapat
+    // error "Unexpected token '<'" / "Respons server tidak valid".
+    try {
+      onChange(await compressImage(file, 1200, 0.85))
+    } catch {
+      onChange(file)
+    }
   }
 
   function handleRemove() {

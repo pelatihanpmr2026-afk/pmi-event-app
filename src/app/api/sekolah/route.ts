@@ -13,7 +13,7 @@ import { normalizeParticipantPhotoBuffer } from '@/lib/normalize-image-buffer'
 import { generateQrCode } from '@/lib/generate-qrcode'
 import { generateKwitansi, type KwitansiLineItem } from '@/lib/generate-kwitansi'
 import { generateSuratPernyataan } from '@/lib/generate-surat-pernyataan'
-import { BIAYA_PESERTA, BIAYA_PENDAMPING, ACCEPTED_BUKTI_TYPES, MAX_BUKTI_SIZE } from '@/lib/constants-sekolah'
+import { BIAYA_PESERTA, BIAYA_PENDAMPING, ACCEPTED_BUKTI_TYPES, MAX_BUKTI_SIZE, MAX_REQUEST_BODY } from '@/lib/constants-sekolah'
 import { createPaymentSessionToken, PAYMENT_SESSION_COOKIE, PAYMENT_SESSION_MAX_AGE } from '@/lib/payment-session'
 import type { Jenjang, StatusSekolah } from '@prisma/client'
 import { TNC_VERSION } from '@/lib/tnc-content'
@@ -28,6 +28,18 @@ export async function POST(req: NextRequest) {
   try {
     const rl = checkRateLimit(req, { key: 'sekolah-register', max: 15, windowMs: 60 * 60 * 1000 })
     if (rl) return rl
+
+    const contentLength = Number(req.headers.get('content-length') ?? 0)
+    if (contentLength > MAX_REQUEST_BODY) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            'Data pendaftaran terlalu besar. Kurangi jumlah atau ukuran foto peserta, lalu coba lagi.',
+        },
+        { status: 413 }
+      )
+    }
 
     const formData = await req.formData()
 

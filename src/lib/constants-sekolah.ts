@@ -70,6 +70,12 @@ export const REKENING_INFO = {
 export const ACCEPTED_BUKTI_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf']
 export const MAX_BUKTI_SIZE = 5 * 1024 * 1024 // 5MB
 
+// Batas atas payload pendaftaran (foto peserta terkompresi + bukti transfer +
+// tanda tangan). Nginx diberi client_max_body_size 50m (lihat OPERATIONS.md);
+// guard ini membalas body yang melewati batas dengan pesan JSON yang ramah
+// SEBELUM body dibaca penuh, alih-alih halaman HTML 413 dari proxy.
+export const MAX_REQUEST_BODY = 40 * 1024 * 1024 // 40MB
+
 export const STATUS_PEMBAYARAN_CONFIG = {
   BELUM_BAYAR: { label: 'Belum Bayar', variant: 'warning' },
   MENUNGGU_KONFIRMASI: { label: 'Menunggu Konfirmasi', variant: 'info' },

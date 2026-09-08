@@ -7,7 +7,7 @@ import { saveBuffer, saveUploadedFile, getFileExtension, getAbsolutePathFromUrl,
 import { normalizeParticipantPhotoBuffer } from '@/lib/normalize-image-buffer'
 import { generateQrCode } from '@/lib/generate-qrcode'
 import { generateKwitansi, type KwitansiLineItem } from '@/lib/generate-kwitansi'
-import { BIAYA_PESERTA, BIAYA_PENDAMPING, ACCEPTED_BUKTI_TYPES, MAX_BUKTI_SIZE } from '@/lib/constants-sekolah'
+import { BIAYA_PESERTA, BIAYA_PENDAMPING, ACCEPTED_BUKTI_TYPES, MAX_BUKTI_SIZE, MAX_REQUEST_BODY } from '@/lib/constants-sekolah'
 import { sanitizeFilename } from '@/lib/sekolah'
 import { SUSULAN_SESSION_COOKIE, verifySusulanSessionToken } from '@/lib/susulan-session'
 import { createPaymentSessionToken, PAYMENT_SESSION_COOKIE, PAYMENT_SESSION_MAX_AGE } from '@/lib/payment-session'
@@ -124,6 +124,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
     if (!sekolah.kodePendaftaran) {
       return NextResponse.json({ success: false, message: 'Sekolah ini belum memiliki pendaftaran peserta. Selesaikan pendaftaran peserta terlebih dahulu.' }, { status: 409 })
+    }
+
+    const contentLength = Number(req.headers.get('content-length') ?? 0)
+    if (contentLength > MAX_REQUEST_BODY) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            'Data pendaftaran terlalu besar. Kurangi jumlah atau ukuran foto peserta, lalu coba lagi.',
+        },
+        { status: 413 }
+      )
     }
 
     const formData = await req.formData()
