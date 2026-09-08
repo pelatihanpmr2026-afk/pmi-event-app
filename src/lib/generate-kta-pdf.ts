@@ -163,14 +163,14 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
   const qrImage = await pdf.embedPng(qrBuffer)
   page.drawImage(qrImage, { x: cardX + pxToPtX(55), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(620), width: pxToPtX(104), height: pxToPtY(96) })
   page.drawRectangle({
-    x: cardX + pxToPtX(190),
+    x: cardX + pxToPtX(210),
     y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(628),
-    width: pxToPtX(410),
+    width: pxToPtX(390),
     height: pxToPtY(48),
     color: rgb(1, 1, 1),
   })
   const unit = fitPdfText(regularFont, `Unit ${titleCase(namaSekolah)}`, pxToPtX(400), pxToPtY(30))
-  drawTopText(page, unit.text, 197, 598, unit.size, regularFont, red, cardX, cardY)
+  drawTopText(page, unit.text, 217, 598, unit.size, regularFont, red, cardX, cardY)
 }
 
 export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
