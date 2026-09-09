@@ -496,13 +496,24 @@ sudo tail -n 100 /var/log/nginx/error.log
 
 #### A. Payload terlalu besar (413 Request Entity Too Large)
 
-Pendaftaran mengirim multipart berisi banyak foto peserta (kini dikompres di klien ke ~1200px/JPEG ~200-400KB per foto) ditambah bukti transfer, tanda tangan, dan metadata. Karena aplikasi juga memvalidasi ulang magic-bytes setiap file, sengaja diberi ruang untuk margin. Tambahkan di blok server Nginx:
+Tanda khas di `nginx error.log`:
 
-```nginx
-client_max_body_size 50m;
+```text
+[error] ... client intended to send too large body: 80973491 bytes ... "POST /api/sekolah"
 ```
 
-Nilai `50m` cukup untuk sekolah maksimum (60 peserta + 30 pendamping). Aplikasi menolak body melebihi 40MB dengan respons JSON yang ramah (`MAX_REQUEST_BODY` di `src/lib/constants-sekolah.ts`), jadi user tidak akan melihat halaman HTML error Nginx.
+Body 81MB seperti itu berarti foto peserta sampai ke server **dalam keadaan asli (mentah)**. Periksa dua hal sebelum menaikkan batas:
+
+1. Build VPS sudah berisi **kompresi foto di sisi klien** (commit `perbaikan error unexpected token`). Tanpa build tersebut, foto dikirim ~3–8MB per peserta.
+2. Kompresi klien bisa gagal di browser dalam-aplikasi (WA/IG/Line) karena `canvas.toBlob` tidak didukung → fallback ke file asli. Kasus itu akan terlihat dari ukuran body yang tetap besar meskipun build sudah terbaru.
+
+Pendaftaran mengirim multipart berisi banyak foto peserta (idealnya dikompres di klien ke ~1200px/JPEG ~200-400KB per foto) ditambah bukti transfer, tanda tangan, dan metadata. Karena aplikasi juga memvalidasi ulang magic-bytes setiap file, sengaja diberi ruang untuk margin. Tambahkan di blok server Nginx:
+
+```nginx
+client_max_body_size 60m;
+```
+
+Nilai `60m` lebih besar dari guard aplikasi (40MB di `MAX_REQUEST_BODY`, `src/lib/constants-sekolah.ts`), sehingga kalau body tetap melebihi batas, yang menjawab user adalah **JSON jelas dari aplikasi** — bukan halaman HTML Nginx. Aplikasi menolak body melebihi 40MB dengan pesan yang ramah.
 
 #### B. Request terlalu lama (504 Gateway Timeout)
 
@@ -527,6 +538,26 @@ Jika proses restart (status `restarting` atau `errored`), periksa log untuk mene
 ```bash
 sudo nginx -t
 sudo systemctl reload nginx
+```
+
+#### D. Opsi: jadikan error halaman Nginx berupa JSON
+
+Selama batas Nginx dinaikkan ke `60m` (lebih besar dari guard 40MB), pesan ramah dari aplikasi sudah cukup. Sebagai jaring pengaman untuk body yang melewati Nginx sekalipun (foto tak terkompres pada sekolah besar), error halaman HTML Nginx bisa diubah menjadi JSON supaya user tidak lagi melihat pesan generik:
+
+```nginx
+# Di dalam blok server (atau http)
+error_page 413 = @json_413;
+error_page 408 502 503 504 = @json_5xx;
+
+location @json_413 {
+  default_type application/json;
+  return 413 '{"success":false,"message":"Ukuran data pendaftaran terlalu besar. Kurangi jumlah peserta atau ukuran foto, lalu coba lagi."}';
+}
+
+location @json_5xx {
+  default_type application/json;
+  return 504 '{"success":false,"message":"Server membutuhkan waktu terlalu lama. Periksa koneksi, lalu coba lagi. Bila tetap gagal, hubungi panitia."}';
+}
 ```
 
 Ulangi dengan kurva besar (banyak peserta + bukti transfer dari HP) untuk memastikan tidak muncul kembali pesan "Respons server tidak valid".

@@ -25,12 +25,16 @@ function getBaseUrl(): string {
 }
 
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now()
   try {
     const rl = checkRateLimit(req, { key: 'sekolah-register', max: 15, windowMs: 60 * 60 * 1000 })
     if (rl) return rl
 
     const contentLength = Number(req.headers.get('content-length') ?? 0)
     if (contentLength > MAX_REQUEST_BODY) {
+      console.warn(
+        `[POST /api/sekolah] DITOLAK body terlalu besar: ${contentLength}B (limit ${MAX_REQUEST_BODY}B)`
+      )
       return NextResponse.json(
         {
           success: false,
@@ -113,6 +117,16 @@ export async function POST(req: NextRequest) {
       const foto = formData.get(`foto_${i}`) as File | null
       fotoFiles.push(foto instanceof File && foto.size > 0 ? foto : null)
     }
+
+    const fotoCount = fotoFiles.filter((f): f is File => f !== null).length
+    const fotoBytes = fotoFiles.reduce((sum, f) => (f ? sum + f.size : sum), 0)
+    console.log(
+      `[POST /api/sekolah] terima content-length=${contentLength}B ` +
+        `peserta=${pesertaList.length} pendamping=${pendampingList.length} foto=${fotoCount} ` +
+        `fotoBytes=${fotoBytes} buktiBytes=${buktiFile.size} ttdBytes=${tandaTanganFile?.size ?? 0} ` +
+        `ip=${req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || '-'} ` +
+        `uploadMs=${Date.now() - startedAt}`
+    )
 
     const namaLengkap = normalizeNamaSekolah(dataSekolah.namaSekolah)
     const kategori = dataSekolah.kategori
@@ -453,9 +467,14 @@ export async function POST(req: NextRequest) {
       path: `/api/sekolah/${createdSekolah.id}`,
     })
 
+    console.log(
+      `[POST /api/sekolah] SUKSES ${createdSekolah.kodePendaftaran} ` +
+        `peserta=${pesertaList.length} pendamping=${pendampingList.length} totalMs=${Date.now() - startedAt}`
+    )
+
     return response
   } catch (error) {
-    console.error('[POST /api/sekolah]', error)
+    console.error(`[POST /api/sekolah] GAGAL setelah ${Date.now() - startedAt}ms`, error)
     return NextResponse.json({ success: false, message: 'Terjadi kesalahan pada server' }, { status: 500 })
   }
 }
