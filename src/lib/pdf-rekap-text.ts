@@ -2,11 +2,11 @@ import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from 'pdf-lib'
 
 export const REKAP_A4_W = 595.28
 export const REKAP_A4_H = 841.89
-export const REKAP_NAVY = rgb(0.212, 0.325, 0.647)
-export const REKAP_PINK = rgb(0.925, 0.243, 0.588)
-export const REKAP_YELLOW = rgb(0.992, 0.761, 0.059)
-export const REKAP_MUTED = rgb(0.42, 0.45, 0.5)
-export const REKAP_STRIPE = rgb(0.961, 0.969, 0.984)
+export const REKAP_NAVY = rgb(0.06, 0.06, 0.06)
+export const REKAP_PINK = rgb(0.82, 0.82, 0.82)
+export const REKAP_YELLOW = rgb(0.9, 0.9, 0.9)
+export const REKAP_MUTED = rgb(0.45, 0.45, 0.45)
+export const REKAP_STRIPE = rgb(0.95, 0.95, 0.95)
 
 export async function createRekapPdf(title: string) {
   const pdf = await PDFDocument.create()
