@@ -20,10 +20,12 @@ import { BIAYA_PESERTA } from '@/lib/constants-sekolah'
 export function StepPeserta({
   onComplete,
   onBack,
+  onSaveDraft,
   defaultValues,
 }: {
   onComplete: (values: Pick<PesertaPendampingValues, 'peserta'>) => void
   onBack: () => void
+  onSaveDraft?: (values: Pick<PesertaPendampingValues, 'peserta'>) => void
   defaultValues?: Pick<PesertaPendampingValues, 'peserta'>
 }) {
   // Step ini hanya mengurus data peserta, jadi resolver-nya juga khusus
@@ -38,7 +40,7 @@ export function StepPeserta({
     mode: 'onChange',
   })
 
-  const { control, handleSubmit, watch, formState: { errors, isValid } } = form
+  const { control, handleSubmit, watch, getValues, formState: { errors, isValid } } = form
   const pesertaArray = useFieldArray({ control, name: 'peserta' })
   const jumlahPeserta = watch('peserta')?.length ?? 0
   const totalBiayaPeserta = jumlahPeserta * BIAYA_PESERTA
@@ -72,6 +74,10 @@ export function StepPeserta({
     } else {
       toast.error('Terjadi kesalahan validasi')
     }
+  }
+
+  function handleSaveDraft() {
+    onSaveDraft?.({ peserta: getValues().peserta })
   }
 
   return (
@@ -126,13 +132,20 @@ export function StepPeserta({
           </div>
         </div>
 
-        <div className="flex justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Button type="button" variant="outline" pixel onClick={onBack}>
             Kembali
           </Button>
-          <Button type="submit" variant="primary" pixel disabled={!isValid}>
-            Lanjut ke Pendamping
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {onSaveDraft && (
+              <Button type="button" variant="secondary" pixel onClick={handleSaveDraft}>
+                Simpan Draft & Lanjut Nanti
+              </Button>
+            )}
+            <Button type="submit" variant="primary" pixel disabled={!isValid}>
+              Lanjut ke Pendamping
+            </Button>
+          </div>
         </div>
       </form>
     </FormProvider>

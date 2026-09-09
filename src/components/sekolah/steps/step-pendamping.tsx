@@ -20,10 +20,12 @@ import { BIAYA_PENDAMPING } from '@/lib/constants-sekolah'
 export function StepPendamping({
   onComplete,
   onBack,
+  onSaveDraft,
   defaultValues,
 }: {
   onComplete: (values: Pick<PesertaPendampingValues, 'pendamping'>) => void
   onBack: () => void
+  onSaveDraft?: (values: Pick<PesertaPendampingValues, 'pendamping'>) => void
   defaultValues?: Pick<PesertaPendampingValues, 'pendamping'>
 }) {
   // BUG LAMA: step ini dulu pakai `pesertaPendampingSchema` (yang mewajibkan
@@ -40,7 +42,7 @@ export function StepPendamping({
     mode: 'onChange',
   })
 
-  const { control, handleSubmit, watch, formState: { errors, isValid } } = form
+  const { control, handleSubmit, watch, getValues, formState: { errors, isValid } } = form
   const pendampingArray = useFieldArray({ control, name: 'pendamping' })
   const jumlahPendamping = watch('pendamping')?.length ?? 0
   const totalBiayaPendamping = jumlahPendamping * BIAYA_PENDAMPING
@@ -68,6 +70,10 @@ export function StepPendamping({
     } else {
       toast.error('Terjadi kesalahan validasi')
     }
+  }
+
+  function handleSaveDraft() {
+    onSaveDraft?.({ pendamping: getValues().pendamping })
   }
 
   return (
@@ -120,13 +126,20 @@ export function StepPendamping({
           </div>
         </div>
 
-        <div className="flex justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Button type="button" variant="outline" pixel onClick={onBack}>
             Kembali
           </Button>
-          <Button type="submit" variant="primary" pixel disabled={!isValid}>
-            Lanjut ke Review
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {onSaveDraft && (
+              <Button type="button" variant="secondary" pixel onClick={handleSaveDraft}>
+                Simpan Draft & Lanjut Nanti
+              </Button>
+            )}
+            <Button type="submit" variant="primary" pixel disabled={!isValid}>
+              Lanjut ke Review
+            </Button>
+          </div>
         </div>
       </form>
     </FormProvider>

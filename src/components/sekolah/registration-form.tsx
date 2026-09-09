@@ -145,34 +145,66 @@ export function SekolahRegistrationForm() {
     setCurrentStep(2)
   }
 
-  function handlePesertaComplete(values: Pick<PesertaPendampingValues, 'peserta'>) {
-    setDataPeserta(values.peserta)
-    setCurrentStep(3)
-    // Simpan foto + draft SEKARANG (bukan menunggu debounce 1 detik dari
-    // effect). Kalau user menutup browser tepat setelah selesai mengisi
-    // peserta, draft lama (tanpa peserta terbaru) bisa tersimpan lebih
-    // dulu — pas dilanjutkan, data peserta/foto tidak ke-restore.
-    values.peserta.forEach((p, i) => {
-      if (p.foto instanceof File) {
-        void savePhoto(`peserta_${i}`, p.foto)
-      }
-    })
-    for (let i = values.peserta.length; i < 200; i++) {
+  // Menyimpan peserta untuk draft: tulis SEMUA foto ke IndexedDB dulu (await)
+  // Baru simpan objek draft — supaya saat toast sukses muncul, foto sudah
+  // benar-benar tersimpan dan tidak hilang bila browser langsung ditutup.
+  function pesertaToDraft(
+    peserta: PesertaPendampingValues['peserta']
+  ): Array<Record<string, unknown> & { _hasFoto: boolean; foto?: undefined }> {
+    return peserta.map((p) => ({ ...p, foto: undefined as undefined, _hasFoto: p.foto instanceof File }))
+  }
+
+  async function persistPesertaPhotos(peserta: PesertaPendampingValues['peserta']) {
+    await Promise.all(
+      peserta.map((p, i) => (p.foto instanceof File ? savePhoto(`peserta_${i}`, p.foto) : Promise.resolve()))
+    )
+    for (let i = peserta.length; i < 200; i++) {
       void deletePhoto(`peserta_${i}`)
     }
+  }
+
+  async function simpanDraftPeserta(values: Pick<PesertaPendampingValues, 'peserta'>, step: number) {
+    setDataPeserta(values.peserta)
+    await persistPesertaPhotos(values.peserta)
     saveDraft({
-      currentStep: 3,
+      currentStep: step,
       dataSekolah,
-      dataPeserta: values.peserta.map((p) => ({ ...p, foto: undefined, _hasFoto: p.foto instanceof File })),
+      dataPeserta: pesertaToDraft(values.peserta),
       dataPendamping: dataPendamping ?? null,
       sekolahId: null,
     })
     setLastSavedAt(Date.now())
   }
 
+  function handlePesertaComplete(values: Pick<PesertaPendampingValues, 'peserta'>) {
+    setCurrentStep(3)
+    void simpanDraftPeserta(values, 3)
+  }
+
+  // Disimpan dari tombol "Simpan Draft" di Step 2 — data peserta (termasuk
+  // foto) ikut draft TANPA harus pindah dulu ke step pendamping.
+  function handleSavePesertaDraft(values: Pick<PesertaPendampingValues, 'peserta'>) {
+    void simpanDraftPeserta(values, currentStep).then(() => {
+      toast.success('Draft peserta tersimpan. Data dan foto aman — lanjutkan kapan saja.')
+    })
+  }
+
   function handlePendampingComplete(values: Pick<PesertaPendampingValues, 'pendamping'>) {
     setDataPendamping(values.pendamping)
     setCurrentStep(4)
+  }
+
+  function handleSavePendampingDraft(values: Pick<PesertaPendampingValues, 'pendamping'>) {
+    setDataPendamping(values.pendamping)
+    saveDraft({
+      currentStep,
+      dataSekolah,
+      dataPeserta: dataPeserta ? pesertaToDraft(dataPeserta) : null,
+      dataPendamping: values.pendamping ?? null,
+      sekolahId: null,
+    })
+    setLastSavedAt(Date.now())
+    toast.success('Draft pendamping tersimpan — lanjutkan kapan saja.')
   }
 
   // Step review hanya menampilkan ringkasan data, belum mengirim apa pun ke
@@ -241,6 +273,7 @@ export function SekolahRegistrationForm() {
                 key="peserta"
                 onComplete={handlePesertaComplete}
                 onBack={() => goBack(2)}
+                onSaveDraft={handleSavePesertaDraft}
                 defaultValues={dataPeserta ? { peserta: dataPeserta } : undefined}
               />
             )}
@@ -249,6 +282,7 @@ export function SekolahRegistrationForm() {
                 key="pendamping"
                 onComplete={handlePendampingComplete}
                 onBack={() => goBack(3)}
+                onSaveDraft={handleSavePendampingDraft}
                 defaultValues={dataPendamping ? { pendamping: dataPendamping } : undefined}
               />
             )}
