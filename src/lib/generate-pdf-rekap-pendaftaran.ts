@@ -1,13 +1,29 @@
 import { addRekapPage, createRekapPdf, drawPaginatedTable, drawText, rect, REKAP_A4_W, REKAP_NAVY, REKAP_YELLOW, rp } from './pdf-rekap-text'
+import type { PDFPage, PDFFont } from 'pdf-lib'
 
 interface PendaftaranRow { namaSekolah: string; jumlahPeserta: number; jumlahPendamping: number; totalRp: number }
 interface TendaRow { namaSekolah: string; namaTenda: string; jumlahTenda: number; totalRp: number }
+
+function drawSig(
+  page: PDFPage,
+  x: number,
+  top: number,
+  label: string,
+  name: string | null,
+  regular: PDFFont,
+  bold: PDFFont
+) {
+  drawText(page, label, x, top, bold, 9, REKAP_NAVY)
+  drawText(page, '_______________________', x, top + 45, regular, 10, REKAP_NAVY)
+  if (name) drawText(page, name, x, top + 60, bold, 10, REKAP_NAVY)
+}
 
 export async function generatePdfRekapPendaftaran(
   tanggal: string,
   pendaftaran: PendaftaranRow[],
   tenda: TendaRow[],
-  totals: { totalJumlahPeserta: number; totalJumlahPendamping: number; totalJumlahTenda: number; totalPendaftaran: number; totalSewaTenda: number; totalKeseluruhan: number }
+  totals: { totalJumlahPeserta: number; totalJumlahPendamping: number; totalJumlahTenda: number; totalPendaftaran: number; totalSewaTenda: number; totalKeseluruhan: number },
+  namaPetugas: string
 ): Promise<Buffer> {
   const { pdf, regular, bold } = await createRekapPdf(`Rekap Pendaftaran ${tanggal}`)
   const createPage = () => addRekapPage(pdf, 'REKAP PENDAFTARAN HARIAN', tanggal, bold, regular)
@@ -39,9 +55,11 @@ export async function generatePdfRekapPendaftaran(
   drawText(page, `TOTAL PENDAFTARAN : ${rp(totals.totalPendaftaran)}`, summaryX + 14, y, regular, 10)
   drawText(page, `TOTAL SEWA TENDA : ${rp(totals.totalSewaTenda)}`, summaryX + 14, y + 22, regular, 10)
   drawText(page, `TOTAL : ${rp(totals.totalKeseluruhan)}`, summaryX + 14, y + 44, bold, 12)
-  y += 112
-  drawText(page, 'Mengetahui,', summaryX + 140, y, regular, 10, undefined, 'center')
-  drawText(page, '_______________________', summaryX + 140, y + 55, regular, 10, undefined, 'center')
-  drawText(page, 'Koordinator Kesekretariatan', summaryX + 140, y + 77, bold, 10, undefined, 'center')
+  let sigTop = y + 112
+  const sigX = 50
+  if (sigTop + 270 > 760) { page = createPage(); sigTop = 116 }
+  drawSig(page, sigX, sigTop, 'PETUGAS / ADMIN', namaPetugas, regular, bold)
+  drawSig(page, sigX, sigTop + 95, 'KOOR. KESEKRETARIATAN', null, regular, bold)
+  drawSig(page, sigX, sigTop + 190, 'BENDAHARA', null, regular, bold)
   return Buffer.from(await pdf.save())
 }

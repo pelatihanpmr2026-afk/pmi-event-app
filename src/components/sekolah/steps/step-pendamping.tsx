@@ -76,6 +76,15 @@ export function StepPendamping({
     onSaveDraft?.({ pendamping: getValues().pendamping })
   }
 
+  // Klik "Kembali" juga menyimpan draft dulu — tanpa itu, data pendamping
+  // yang baru diketik ikut terhapus saat StepPendamping di-unmount.
+  function handleBack() {
+    if (onSaveDraft) {
+      onSaveDraft({ pendamping: getValues().pendamping })
+    }
+    onBack()
+  }
+
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit, handleFormError)} className="flex flex-col gap-5">
@@ -127,7 +136,7 @@ export function StepPendamping({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button type="button" variant="outline" pixel onClick={onBack}>
+          <Button type="button" variant="outline" pixel onClick={handleBack}>
             Kembali
           </Button>
           <div className="flex flex-wrap items-center gap-2">

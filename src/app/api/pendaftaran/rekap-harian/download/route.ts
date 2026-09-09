@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const buffer = await generatePdfRekapPendaftaran(label, pendaftaran, tenda, totals)
+    const buffer = await generatePdfRekapPendaftaran(label, pendaftaran, tenda, totals, guard.session.nama)
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',

@@ -80,6 +80,15 @@ export function StepPeserta({
     onSaveDraft?.({ peserta: getValues().peserta })
   }
 
+  // Klik "Kembali" juga menyimpan draft dulu — tanpa itu, data peserta yang
+  // baru diketik ikut terhapus karena StepPeserta di-unmount saat pindah step.
+  function handleBack() {
+    if (onSaveDraft) {
+      onSaveDraft({ peserta: getValues().peserta })
+    }
+    onBack()
+  }
+
   return (
     <FormProvider {...form}>
       <form onSubmit={handleSubmit(onSubmit, handleFormError)} className="flex flex-col gap-5">
@@ -133,7 +142,7 @@ export function StepPeserta({
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Button type="button" variant="outline" pixel onClick={onBack}>
+          <Button type="button" variant="outline" pixel onClick={handleBack}>
             Kembali
           </Button>
           <div className="flex flex-wrap items-center gap-2">

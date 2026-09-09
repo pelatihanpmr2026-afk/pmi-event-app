@@ -19,10 +19,9 @@ export async function createRekapPdf(title: string) {
 
 export function addRekapPage(pdf: PDFDocument, title: string, tanggal: string, bold: PDFFont, regular: PDFFont) {
   const page = pdf.addPage([REKAP_A4_W, REKAP_A4_H])
-  page.drawRectangle({ x: 0, y: REKAP_A4_H - 80, width: REKAP_A4_W, height: 80, color: REKAP_NAVY })
-  page.drawRectangle({ x: 0, y: REKAP_A4_H - 86, width: REKAP_A4_W, height: 6, color: REKAP_PINK })
-  drawText(page, title, REKAP_A4_W / 2, 25, bold, 19, rgb(1, 1, 1), 'center')
-  drawText(page, tanggal, REKAP_A4_W / 2, 52, regular, 11, REKAP_YELLOW, 'center')
+  drawText(page, title, REKAP_A4_W / 2, 25, bold, 19, REKAP_NAVY, 'center')
+  drawText(page, tanggal, REKAP_A4_W / 2, 52, regular, 11, REKAP_MUTED, 'center')
+  line(page, 20, 82, REKAP_A4_W - 20, 82, REKAP_NAVY, 0.5)
   return page
 }
 
@@ -49,10 +48,10 @@ export function line(page: PDFPage, x1: number, top1: number, x2: number, top2: 
 export function drawTableWithFonts(page: PDFPage, x: number, top: number, widths: number[], headers: string[], rows: string[][], fonts: { regular: PDFFont; bold: PDFFont }, totalRow?: string[], rowHeight = 24) {
   const tableWidth = widths.reduce((sum, width) => sum + width, 0)
   const colX = (index: number) => x + widths.slice(0, index).reduce((sum, width) => sum + width, 0)
-  rect(page, x, top, tableWidth, rowHeight, REKAP_NAVY)
+  rect(page, x, top, tableWidth, rowHeight, undefined, REKAP_NAVY)
   headers.forEach((header, index) => {
-    rect(page, colX(index), top, widths[index], rowHeight, REKAP_NAVY)
-    drawFittedText(page, header, colX(index) + widths[index] / 2, top + 6, widths[index] - 8, fonts.bold, 9, rgb(1, 1, 1), 'center')
+    rect(page, colX(index), top, widths[index], rowHeight, undefined, REKAP_NAVY)
+    drawFittedText(page, header, colX(index) + widths[index] / 2, top + 6, widths[index] - 8, fonts.bold, 9, REKAP_NAVY, 'center')
   })
   let currentTop = top + rowHeight
   const bodyRows = rows.length > 0 ? rows : [headers.map(() => '')]
@@ -110,10 +109,10 @@ export function drawPaginatedTable({
   const tableWidth = widths.reduce((sum, width) => sum + width, 0)
   const colX = (index: number) => x + widths.slice(0, index).reduce((sum, width) => sum + width, 0)
   const drawHeader = (page: PDFPage, top: number) => {
-    rect(page, x, top, tableWidth, rowHeight, REKAP_NAVY)
+    rect(page, x, top, tableWidth, rowHeight, undefined, REKAP_NAVY)
     headers.forEach((header, index) => {
-      rect(page, colX(index), top, widths[index], rowHeight, REKAP_NAVY)
-      drawFittedText(page, header, colX(index) + widths[index] / 2, top + 6, widths[index] - 8, fonts.bold, 9, rgb(1, 1, 1), 'center')
+      rect(page, colX(index), top, widths[index], rowHeight, undefined, REKAP_NAVY)
+      drawFittedText(page, header, colX(index) + widths[index] / 2, top + 6, widths[index] - 8, fonts.bold, 9, REKAP_NAVY, 'center')
     })
     return top + rowHeight
   }
