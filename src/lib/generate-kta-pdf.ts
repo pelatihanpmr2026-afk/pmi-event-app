@@ -4,8 +4,8 @@ import { PDFDocument, PDFFont, PDFImage, PDFPage, rgb, StandardFonts } from 'pdf
 import QRCode from 'qrcode'
 import sharp from 'sharp'
 
-const TEMPLATE_WIDTH = 1019
-const TEMPLATE_HEIGHT = 643
+const TEMPLATE_WIDTH = 1014
+const TEMPLATE_HEIGHT = 690
 const ID_CARD_WIDTH_PT = (85.6 / 25.4) * 72
 const ID_CARD_HEIGHT_PT = (54 / 25.4) * 72
 const A4_WIDTH_PT = (210 / 25.4) * 72
@@ -22,8 +22,7 @@ const PHOTO_Y = 198
 const PHOTO_WIDTH = 189
 const PHOTO_HEIGHT = 283
 const PHOTO_RENDER_SCALE = 4
-const VALUE_X = 345
-const VALUE_MAX_WIDTH = PHOTO_X - VALUE_X - 16
+const VALUE_MAX_WIDTH = PHOTO_X - 380 - 16
 
 const pxToPtX = (value: number) => value * ID_CARD_WIDTH_PT / TEMPLATE_WIDTH
 const pxToPtY = (value: number) => value * ID_CARD_HEIGHT_PT / TEMPLATE_HEIGHT
@@ -65,12 +64,29 @@ function fitPdfText(font: PDFFont, text: string, maxWidth: number, size: number)
   return { text: fittedText, size: fittedSize }
 }
 
+function wrapPdfText(font: PDFFont, text: string, maxWidth: number, size: number) {
+  const words = text.split(/\s+/)
+  const lines: string[] = []
+  let currentLine = ''
+  for (const word of words) {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word
+    if (font.widthOfTextAtSize(nextLine, size) <= maxWidth || !currentLine) {
+      currentLine = nextLine
+    } else {
+      lines.push(currentLine)
+      currentLine = word
+    }
+  }
+  if (currentLine) lines.push(currentLine)
+  return lines.slice(0, 2).map((line, index) => fitPdfText(font, line, maxWidth, size - index * 0.25))
+}
+
 async function cleanTemplatePlaceholders(buffer: Buffer) {
   const { data, info } = await sharp(buffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
   const left = 40
   const right = 735
   const top = 205
-  const bottom = 490
+  const bottom = 430
   const isPlaceholderPixel = (pixelX: number, pixelY: number) => {
     const offset = (pixelY * info.width + pixelX) * info.channels
     const red = data[offset]
@@ -107,7 +123,6 @@ function drawTopText(page: PDFPage, text: string, x: number, topY: number, size:
 
 async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDFImage, regularFont: PDFFont, boldFont: PDFFont, namaSekolah: string, participant: KtaParticipant, cardX: number, cardY: number) {
   page.drawImage(templateImage, { x: cardX, y: cardY, width: ID_CARD_WIDTH_PT, height: ID_CARD_HEIGHT_PT })
-  page.drawRectangle({ x: cardX + pxToPtX(45), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(636), width: pxToPtX(600), height: pxToPtY(126), color: rgb(1, 1, 1) })
 
   if (participant.fotoBuffer) {
     // Render pada resolusi 4x agar foto tetap tajam saat PDF dizoom/cetak.
@@ -122,7 +137,6 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
   }
 
   const white = rgb(1, 1, 1)
-  const black = rgb(0.067, 0.067, 0.067)
   const red = rgb(0.89, 0.024, 0.075)
   const textSize = pxToPtY(25)
   const values = [
@@ -134,20 +148,29 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
     ['Alamat', titleCase(participant.alamat)],
   ]
   values.forEach(([label, value], index) => {
-    const lineY = 241 + index * 42
-    drawTopText(page, label, 55, lineY, textSize, regularFont, white, cardX, cardY)
-    drawTopText(page, ':', 320, lineY, textSize, regularFont, white, cardX, cardY)
-    const fittedValue = fitPdfText(regularFont, value, pxToPtX(VALUE_MAX_WIDTH), textSize)
-    drawTopText(page, fittedValue.text, VALUE_X, lineY, fittedValue.size, regularFont, white, cardX, cardY)
+    const lineY = 250 + index * 29
+    drawTopText(page, label, 89, lineY, textSize, boldFont, white, cardX, cardY)
+    drawTopText(page, ':', 355, lineY, textSize, boldFont, white, cardX, cardY)
+    const valueLines = index === values.length - 1
+      ? wrapPdfText(boldFont, value, pxToPtX(VALUE_MAX_WIDTH), textSize)
+      : [fitPdfText(boldFont, value, pxToPtX(VALUE_MAX_WIDTH), textSize)]
+    valueLines.forEach((valueLine, lineIndex) => {
+      drawTopText(page, valueLine.text, 380, lineY + lineIndex * 22, valueLine.size, boldFont, white, cardX, cardY)
+    })
   })
 
   const qrBuffer = await QRCode.toBuffer(participant.noPeserta ?? participant.namaLengkap, { type: 'png', width: 256, margin: 1, errorCorrectionLevel: 'H', color: { dark: '#ffffff', light: '#e30613' } })
   const qrImage = await pdf.embedPng(qrBuffer)
   page.drawImage(qrImage, { x: cardX + pxToPtX(55), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(620), width: pxToPtX(104), height: pxToPtY(96) })
-  drawTopText(page, 'Palang Merah Remaja', 177, 532, pxToPtY(31), boldFont, black, cardX, cardY)
-  drawTopText(page, 'PMI Kab. Cianjur', 177, 565, pxToPtY(30), regularFont, red, cardX, cardY)
-  const unit = fitPdfText(regularFont, `Unit ${titleCase(namaSekolah)}`, pxToPtX(400), pxToPtY(30))
-  drawTopText(page, unit.text, 177, 598, unit.size, regularFont, red, cardX, cardY)
+  page.drawRectangle({
+    x: cardX + pxToPtX(210),
+    y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(628),
+    width: pxToPtX(390),
+    height: pxToPtY(48),
+    color: rgb(1, 1, 1),
+  })
+  const unit = fitPdfText(regularFont, `UNIT ${namaSekolah.toLocaleUpperCase('id-ID')}`, pxToPtX(400), pxToPtY(30))
+  drawTopText(page, unit.text, 207, 598, unit.size, regularFont, red, cardX, cardY)
 }
 
 export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
