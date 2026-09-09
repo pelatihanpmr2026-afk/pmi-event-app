@@ -39,7 +39,10 @@ export function SekolahRegistrationForm() {
   useEffect(() => {
     const timer = setTimeout(() => {
       const draft = loadDraft()
-      if (draft && draft.currentStep > 1) {
+      // Tampilkan banner selama ADA draft tersimpan, apa pun currentStep-nya.
+      // Draft kosong tidak pernah disimpan (autosave berhenti di step 1 tanpa
+      // dataSekolah), jadi draft yang ada selalu punya data untuk dipulihkan.
+      if (draft) {
         setDraftFound(draft.savedAt)
       }
       setIsHydrated(true)
