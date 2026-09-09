@@ -144,10 +144,13 @@ export async function POST(req: NextRequest) {
         { status: 409 }
       )
     }
-    if (existingSekolah && existingSekolah.id !== existingSekolahId) {
-      return NextResponse.json(
-        { success: false, message: 'Data sekolah tidak sinkron, silakan ulangi dari Step 1.' },
-        { status: 409 }
+    if (existingSekolah && existingSekolahId && existingSekolah.id !== existingSekolahId) {
+      // Sekolah dengan 0 peserta tidak memiliki data yang berisiko tertimpa,
+      // jadi record hasil pencarian nama diadopsi langsung. Kecocokan id hanya
+      // dilonggarkan di kasus ini — sekolah yang sudah punya peserta ditolak
+      // oleh cabang di atas.
+      console.warn(
+        `[POST /api/sekolah] existingSekolahId ${existingSekolahId} berbeda dengan record ${existingSekolah.id}; punya 0 peserta, diadopsi`
       )
     }
 
