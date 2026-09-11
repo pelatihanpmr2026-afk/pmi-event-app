@@ -21,6 +21,7 @@ const PUBLIC = new Set([
   'POST auth/login',
   'POST auth/logout',
   'POST sekolah', // pendaftaran publik (di-rate-limit)
+  'POST draft', // sinkronisasi draft publik (di-rate-limit)
   'GET sekolah/search',
   'GET sekolah/check-nama',
   'POST sekolah/mini',

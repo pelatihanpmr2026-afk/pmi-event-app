@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { Card, CardHeader, CardContent } from '@/components/ui/card'
 import { ProgressStepper } from '@/components/panitia/progress-stepper'
@@ -15,13 +16,25 @@ import { TermsGate } from './terms-gate'
 import { saveDraft, loadDraft, clearDraft, savePhoto, loadPhoto, deletePhoto } from '@/lib/draft-storage'
 import type { PesertaPendampingValues } from '@/lib/validations/peserta'
 
+async function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
+  const res = await fetch(dataUrl)
+  const blob = await res.blob()
+  return new File([blob], filename, { type: blob.type })
+}
+
 // PENTING: array ini harus punya 1 label untuk setiap nilai currentStep (1-5).
 // Sebelumnya cuma ada 4 label padahal currentStep bisa sampai 5 (step
 // pembayaran), jadi STEPS[currentStep - 1] jadi undefined dan
 // `.toUpperCase()` di bawah bikin halaman crash begitu masuk ke step 5.
 const STEPS = ['Data Sekolah', 'Data Peserta', 'Data Pendamping', 'Review', 'Pembayaran']
 
-export function SekolahRegistrationForm() {
+export function SekolahRegistrationForm({
+  adminDraftId,
+  onDone,
+}: {
+  adminDraftId?: string
+  onDone?: (sekolahId: string) => void
+} = {}) {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [dataSekolah, setDataSekolah] = useState<DataSekolahResult | null>(null)
@@ -33,26 +46,70 @@ export function SekolahRegistrationForm() {
   const [isHydrated, setIsHydrated] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
 
+  const [adminDraftLoading, setAdminDraftLoading] = useState(!!adminDraftId)
+  const [adminDraftError, setAdminDraftError] = useState<string | null>(null)
+
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const isAdmin = !!adminDraftId
 
   // Cek draft saat mount
   useEffect(() => {
+    if (adminDraftId) return
     const timer = setTimeout(() => {
       const draft = loadDraft()
-      // Tampilkan banner selama ADA draft tersimpan, apa pun currentStep-nya.
-      // Draft kosong tidak pernah disimpan (autosave berhenti di step 1 tanpa
-      // dataSekolah), jadi draft yang ada selalu punya data untuk dipulihkan.
       if (draft) {
         setDraftFound(draft.savedAt)
       }
       setIsHydrated(true)
     }, 0)
     return () => clearTimeout(timer)
-  }, [])
+  }, [adminDraftId, isAdmin])
+
+  // Admin mode: fetch draft dari server
+  useEffect(() => {
+    if (!adminDraftId) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/draft/${adminDraftId}`)
+        const json = await res.json()
+        if (!json.success) throw new Error(json.message)
+        const d = json.data
+
+        // Selesaikan konversi foto BERDULU, baru set semua state bersamaan —
+        // supaya step yang aktif tidak pernah mount dengan defaultValues kosong.
+        let restoredPeserta: PesertaPendampingValues['peserta'] | undefined
+        if (Array.isArray(d.dataPeserta)) {
+          restoredPeserta = await Promise.all(
+            (d.dataPeserta as Array<Record<string, unknown> & { foto?: string | null }>).map(
+              async (p, i) => {
+                const { foto, ...rest } = p
+                let fileFoto: File | undefined
+                if (foto) fileFoto = await dataUrlToFile(foto, `foto-${i}.jpg`)
+                return { ...rest, foto: fileFoto } as PesertaPendampingValues['peserta'][number]
+              }
+            )
+          )
+        }
+
+        setDataSekolah(d.dataSekolah as DataSekolahResult)
+        setCurrentStep(d.currentStep)
+        if (restoredPeserta) setDataPeserta(restoredPeserta)
+        if (d.dataPendamping) {
+          setDataPendamping(d.dataPendamping as PesertaPendampingValues['pendamping'])
+        }
+      } catch (err) {
+        if (!cancelled) setAdminDraftError(err instanceof Error ? err.message : 'Gagal memuat draft')
+      } finally {
+        if (!cancelled) setAdminDraftLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [adminDraftId, isAdmin])
 
   // Auto-save dengan debounce 1 detik
   useEffect(() => {
-    if (!isHydrated || draftFound !== null) return
+    if (isAdmin || !isHydrated || draftFound !== null) return
     if (currentStep === 1 && !dataSekolah) return
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
@@ -73,17 +130,18 @@ export function SekolahRegistrationForm() {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
     }
-  }, [currentStep, dataSekolah, dataPeserta, dataPendamping, isHydrated, draftFound])
+  }, [currentStep, dataSekolah, dataPeserta, dataPendamping, isHydrated, draftFound, isAdmin])
 
   useEffect(() => {
+    if (isAdmin) return
     const warn = (event: BeforeUnloadEvent) => { if (dataSekolah || dataPeserta || dataPendamping) { event.preventDefault(); event.returnValue = '' } }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [dataSekolah, dataPeserta, dataPendamping])
+  }, [dataSekolah, dataPeserta, dataPendamping, isAdmin])
 
   // Simpan foto peserta ke IndexedDB (hanya jika ada perubahan)
   useEffect(() => {
-    if (!isHydrated || !dataPeserta || draftFound !== null) return
+    if (isAdmin || !isHydrated || !dataPeserta || draftFound !== null) return
     dataPeserta.forEach((p, i) => {
       if (p.foto instanceof File) {
         void savePhoto(`peserta_${i}`, p.foto)
@@ -95,7 +153,7 @@ export function SekolahRegistrationForm() {
     for (let i = dataPeserta.length; i < 200; i++) {
       void deletePhoto(`peserta_${i}`)
     }
-  }, [dataPeserta, isHydrated, draftFound])
+  }, [dataPeserta, isHydrated, draftFound, isAdmin])
 
   const handleRestore = useCallback(async () => {
     setIsRestoring(true)
@@ -166,6 +224,40 @@ export function SekolahRegistrationForm() {
     }
   }
 
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function syncDraftToServer(peserta: PesertaPendampingValues['peserta'] | null, pendamping: PesertaPendampingValues['pendamping'] | null, step: number) {
+    if (!dataSekolah) return
+    try {
+      const pesertaPayload = peserta
+        ? await Promise.all(peserta.map(async (p) => ({
+            ...p,
+            foto: p.foto instanceof File ? await fileToBase64(p.foto) : null,
+          })))
+        : null
+
+      await fetch('/api/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentStep: step,
+          dataSekolah,
+          dataPeserta: pesertaPayload,
+          dataPendamping: pendamping ?? null,
+        }),
+      })
+    } catch {
+      // Sync server tidak kritis — draft lokal tetap utuh
+    }
+  }
+
   async function simpanDraftPeserta(values: Pick<PesertaPendampingValues, 'peserta'>, step: number) {
     setDataPeserta(values.peserta)
     await persistPesertaPhotos(values.peserta)
@@ -188,6 +280,7 @@ export function SekolahRegistrationForm() {
   // foto) ikut draft TANPA harus pindah dulu ke step pendamping.
   function handleSavePesertaDraft(values: Pick<PesertaPendampingValues, 'peserta'>) {
     void simpanDraftPeserta(values, currentStep).then(() => {
+      void syncDraftToServer(values.peserta, dataPendamping ?? null, currentStep)
       toast.success('Draft peserta tersimpan. Data dan foto aman — lanjutkan kapan saja.')
     })
   }
@@ -207,6 +300,7 @@ export function SekolahRegistrationForm() {
       sekolahId: null,
     })
     setLastSavedAt(Date.now())
+    void syncDraftToServer(dataPeserta ?? null, values.pendamping ?? null, currentStep)
     toast.success('Draft pendamping tersimpan — lanjutkan kapan saja.')
   }
 
@@ -223,15 +317,12 @@ export function SekolahRegistrationForm() {
   // berhasil terkirim ke server (dipanggil dari StepFinalPayment.onSubmitted).
   function handleFinalSubmitted(sekolahId: string) {
     clearDraft()
-    router.push(`/sekolah/pembayaran/${sekolahId}`)
-  }
-
-  function handleDisagreeReset() {
-    clearDraft()
-    setDataSekolah(null)
-    setDataPeserta(null)
-    setDataPendamping(null)
-    setCurrentStep(1)
+    if (isAdmin && adminDraftId) {
+      void fetch(`/api/draft/${adminDraftId}`, { method: 'DELETE' }).catch(() => {})
+      onDone?.(sekolahId)
+    } else {
+      router.push(`/sekolah/pembayaran/${sekolahId}`)
+    }
   }
 
   // Kembali ke step sebelumnya dengan tetap mempertahankan data
@@ -242,9 +333,9 @@ export function SekolahRegistrationForm() {
   }
 
   return (
-    <TermsGate>
+    <AdminModeGate isAdmin={isAdmin} loading={adminDraftLoading} error={adminDraftError}>
       <div className={`w-full mx-auto flex flex-col gap-6 ${currentStep === 2 || currentStep === 3 ? 'max-w-full' : 'max-w-2xl'}`}>
-        {draftFound !== null && (
+        {!isAdmin && draftFound !== null && (
           <div className="max-w-2xl w-full mx-auto">
             <DraftBanner savedAt={draftFound} onRestore={handleRestore} onDiscard={handleDiscard} />
           </div>
@@ -276,7 +367,7 @@ export function SekolahRegistrationForm() {
                 key="peserta"
                 onComplete={handlePesertaComplete}
                 onBack={() => goBack(2)}
-                onSaveDraft={handleSavePesertaDraft}
+                onSaveDraft={isAdmin ? undefined : handleSavePesertaDraft}
                 defaultValues={dataPeserta ? { peserta: dataPeserta } : undefined}
               />
             )}
@@ -285,7 +376,7 @@ export function SekolahRegistrationForm() {
                 key="pendamping"
                 onComplete={handlePendampingComplete}
                 onBack={() => goBack(3)}
-                onSaveDraft={handleSavePendampingDraft}
+                onSaveDraft={isAdmin ? undefined : handleSavePendampingDraft}
                 defaultValues={dataPendamping ? { pendamping: dataPendamping } : undefined}
               />
             )}
@@ -309,6 +400,39 @@ export function SekolahRegistrationForm() {
           </CardContent>
         </Card>
       </div>
-    </TermsGate>
+    </AdminModeGate>
   )
+}
+
+function AdminModeGate({
+  isAdmin,
+  loading,
+  error,
+  children,
+}: {
+  isAdmin: boolean
+  loading: boolean
+  error: string | null
+  children: React.ReactNode
+}) {
+  if (isAdmin && loading) {
+    return (
+      <div className="w-full max-w-md mx-auto flex flex-col items-center gap-4 py-16">
+        <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full" />
+        <p className="text-sm text-gray-500">Memuat draft dari server...</p>
+      </div>
+    )
+  }
+  if (isAdmin && error) {
+    return (
+      <div className="w-full max-w-md mx-auto flex flex-col items-center gap-4 py-16">
+        <p className="text-sm text-red-600">Gagal memuat draft: {error}</p>
+        <Link href="/dashboard/draft" className="text-sm text-blue-600 hover:underline">Kembali ke daftar draft</Link>
+      </div>
+    )
+  }
+  if (isAdmin) {
+    return <>{children}</>
+  }
+  return <TermsGate>{children}</TermsGate>
 }

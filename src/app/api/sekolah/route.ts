@@ -375,6 +375,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Kode pendaftaran peserta gagal dibuat.' }, { status: 500 })
     }
 
+    // Hapus draft server untuk sekolah ini — pendaftaran sudah selesai, draft
+    // tidak diperlukan lagi (user yang submit ulang akan tertolak guard unik).
+    // Non-blokir: kegagalan menghapus draft TIDAK boleh menggagalkan pendaftaran
+    // yang sudah terlanjur dibuat di transaksi di atas.
+    if (namaLengkap) {
+      try {
+        await prisma.draft.deleteMany({ where: { namaSekolahKey: namaSekolahKey(namaLengkap) } })
+      } catch (draftDeleteError) {
+        console.error('[POST /api/sekolah] Gagal menghapus draft:', draftDeleteError)
+      }
+    }
+
     // ===== 3) Kwitansi dibuat SETELAH transaksi sukses (non-blokir) =====
     // Gagal generate kwitansi tidak membatalkan pendaftaran yang sudah valid —
     // kwitansiUrl cukup dikosongkan dan bisa dibuat ulang oleh admin.

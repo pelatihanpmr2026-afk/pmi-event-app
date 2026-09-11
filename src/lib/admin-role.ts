@@ -11,10 +11,11 @@ KESEKRETARIATAN: [
     '/dashboard/panitia',
     '/dashboard/absensi',
     '/dashboard/antrian-pembayaran',
+    '/dashboard/draft',
   ],
-  KEUANGAN: ['/dashboard/sekolah', '/dashboard/keuangan', '/dashboard/rekap-harian', '/dashboard/pengajuan'],
-  ACARA: ['/dashboard/sekolah'],
-  KTA: ['/dashboard/sekolah'],
+  KEUANGAN: ['/dashboard/sekolah', '/dashboard/keuangan', '/dashboard/rekap-harian', '/dashboard/pengajuan', '/dashboard/draft'],
+  ACARA: ['/dashboard/sekolah', '/dashboard/draft'],
+  KTA: ['/dashboard/sekolah', '/dashboard/draft'],
 }
 
 export function isPathAllowedForRole(role: AdminRoleType, pathname: string): boolean {

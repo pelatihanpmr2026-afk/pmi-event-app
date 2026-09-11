@@ -1,9 +1,10 @@
-import { Users,StarIcon, ScanLine, School, Tent, ClipboardCheck, Wallet, FileSpreadsheet, UserCog, Users2, CalendarClock, History, ListChecks } from 'lucide-react'
+import { Users,StarIcon, ScanLine, School, Tent, ClipboardCheck, Wallet, FileSpreadsheet, UserCog, Users2, CalendarClock, History, ListChecks, FileText } from 'lucide-react'
 import { isPathAllowedForRole, type AdminRoleType } from '@/lib/admin-role'
 
 export const DASHBOARD_NAV_ITEMS = [
   { href: '/dashboard', label: 'Umum', icon: StarIcon },
   { href: '/dashboard/antrian-pembayaran', label: 'Antrian Pembayaran', icon: ListChecks },
+  { href: '/dashboard/draft', label: 'Draft Pendaftaran', icon: FileText },
   { href: '/dashboard/sekolah', label: 'Sekolah', icon: School },
   { href: '/dashboard/daftar-ulang', label: 'Daftar Ulang', icon: ClipboardCheck },
   { href: '/dashboard/peserta', label: 'Peserta', icon: UserCog },

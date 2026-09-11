@@ -457,3 +457,18 @@ model ReservasiTendaItem {
   @@unique([reservasiId, tendaJenisId])
   @@map("reservasi_tenda_item")
 }
+
+model Draft {
+  id             String   @id @default(cuid())
+  namaSekolahKey String   @unique
+  namaSekolah    String   @db.VarChar(255)
+  currentStep    Int      @default(1)
+  dataSekolah    Json?
+  dataPeserta    Json?
+  dataPendamping Json?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+
+  @@index([updatedAt])
+  @@map("draft")
+}
