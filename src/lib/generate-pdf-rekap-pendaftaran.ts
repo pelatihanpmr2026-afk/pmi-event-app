@@ -6,16 +6,16 @@ interface TendaRow { namaSekolah: string; namaTenda: string; jumlahTenda: number
 
 function drawSig(
   page: PDFPage,
-  x: number,
+  centerX: number,
   top: number,
   label: string,
   name: string | null,
   regular: PDFFont,
   bold: PDFFont
 ) {
-  drawText(page, label, x, top, bold, 9, REKAP_NAVY)
-  drawText(page, '_______________________', x, top + 45, regular, 10, REKAP_NAVY)
-  if (name) drawText(page, name, x, top + 60, bold, 10, REKAP_NAVY)
+  drawText(page, label, centerX, top, bold, 9, REKAP_NAVY, 'center')
+  drawText(page, '______________________________________', centerX, top + 42, regular, 9, REKAP_NAVY, 'center')
+  if (name) drawText(page, name, centerX, top + 56, bold, 10, REKAP_NAVY, 'center')
 }
 
 export async function generatePdfRekapPendaftaran(
@@ -48,18 +48,16 @@ export async function generatePdfRekapPendaftaran(
     fonts: { regular, bold }, totalRow: ['', '', 'TOTAL', String(totals.totalJumlahTenda), rp(totals.totalSewaTenda)], rowHeight: 24,
     createPage, continuationTitle: 'REKAP SEWA TENDA - LANJUTAN',
   }))
-  if (y + 142 > 760) { page = createPage(); y = 116 }
+  if (y + 175 > 760) { page = createPage(); y = 116 }
   y += 30
   const summaryX = REKAP_A4_W - 20 - 280
   rect(page, summaryX, y - 14, 280, 90, REKAP_YELLOW)
   drawText(page, `TOTAL PENDAFTARAN : ${rp(totals.totalPendaftaran)}`, summaryX + 14, y, regular, 10)
   drawText(page, `TOTAL SEWA TENDA : ${rp(totals.totalSewaTenda)}`, summaryX + 14, y + 22, regular, 10)
   drawText(page, `TOTAL : ${rp(totals.totalKeseluruhan)}`, summaryX + 14, y + 44, bold, 12)
-  let sigTop = y + 112
-  const sigX = 50
-  if (sigTop + 270 > 760) { page = createPage(); sigTop = 116 }
-  drawSig(page, sigX, sigTop, 'PETUGAS / ADMIN', namaPetugas, regular, bold)
-  drawSig(page, sigX, sigTop + 95, 'KOOR. KESEKRETARIATAN', null, regular, bold)
-  drawSig(page, sigX, sigTop + 190, 'BENDAHARA', null, regular, bold)
+  const sigTop = y + 92
+  drawSig(page, 100, sigTop, 'PETUGAS / ADMIN', namaPetugas, regular, bold)
+  drawSig(page, REKAP_A4_W / 2, sigTop, 'KOOR. KESEKRETARIATAN', null, regular, bold)
+  drawSig(page, REKAP_A4_W - 100, sigTop, 'BENDAHARA', null, regular, bold)
   return Buffer.from(await pdf.save())
 }
