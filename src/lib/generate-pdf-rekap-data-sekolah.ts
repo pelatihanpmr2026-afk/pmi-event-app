@@ -65,10 +65,5 @@ export async function generatePdfRekapDataSekolah(
   drawText(page, `TOTAL PESERTA : ${totals.totalPeserta}`, summaryX + 14, y + 22, regular, 10)
   drawText(page, `TOTAL PENDAMPING : ${totals.totalPendamping}`, summaryX + 14, y + 44, bold, 10)
 
-  const sigTop = y + 40 + 82
-  drawSig(page, 100, sigTop, 'PETUGAS / ADMIN', namaPetugas, regular, bold)
-  drawSig(page, REKAP_A4_W / 2, sigTop, 'KOOR. KESEKRETARIATAN', null, regular, bold)
-  drawSig(page, REKAP_A4_W - 100, sigTop, 'BENDAHARA', null, regular, bold)
-
   return Buffer.from(await pdf.save())
 }
