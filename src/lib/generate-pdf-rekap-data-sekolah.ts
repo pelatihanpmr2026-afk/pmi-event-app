@@ -1,9 +1,15 @@
 import { REKAP_A4_W, REKAP_NAVY, REKAP_YELLOW, addRekapPage, createRekapPdf, drawPaginatedTable, drawText, rect } from './pdf-rekap-text'
 import type { PDFPage, PDFFont } from 'pdf-lib'
-import type { RekapDataSekolahRow, RekapDataSekolahTotals } from './rekap-data-sekolah'
+import type { RekapDataSekolahRow } from './rekap-data-sekolah'
 
 const TABLE_WIDTHS = [30, 90, 210, 110, 105]
 const TABLE_HEADERS = ['NO', 'NO. PENDAFTARAN', 'NAMA SEKOLAH', 'JUMLAH PESERTA', 'JUMLAH PENDAMPING']
+
+export interface RekapSekolahTotals {
+  totalSekolah: number
+  totalPeserta: number
+  totalPendamping: number
+}
 
 function toRows(rows: RekapDataSekolahRow[]): string[][] {
   return rows.map((row, index) => [
@@ -29,54 +35,40 @@ function drawSig(
   if (name) drawText(page, name, centerX, top + 56, bold, 10, REKAP_NAVY, 'center')
 }
 
-function sectionTitle(page: PDFPage, text: string, y: number, bold: PDFFont) {
-  drawText(page, text, REKAP_A4_W / 2, y, bold, 13, REKAP_NAVY, 'center')
-  return y + 26
-}
-
 export async function generatePdfRekapDataSekolah(
   tanggal: string,
-  wira: RekapDataSekolahRow[],
-  madya: RekapDataSekolahRow[],
-  totals: RekapDataSekolahTotals,
+  kategori: 'WIRA' | 'MADYA',
+  rows: RekapDataSekolahRow[],
+  totals: RekapSekolahTotals,
   namaPetugas: string
 ): Promise<Buffer> {
-  const { pdf, regular, bold } = await createRekapPdf('Rekap Data Sekolah')
+  const { pdf, regular, bold } = await createRekapPdf(`Rekap Data Sekolah ${kategori}`)
   const createPage = () => addRekapPage(pdf, 'REKAP DATA SEKOLAH', tanggal, bold, regular)
   let page = createPage()
-  let y = sectionTitle(page, 'REKAP SEKOLAH WIRA', 106, bold)
 
+  drawText(page, `REKAP SEKOLAH ${kategori}`, REKAP_A4_W / 2, 106, bold, 13, REKAP_NAVY, 'center')
+
+  let y = 132
   ;({ page, top: y } = drawPaginatedTable({
     page, top: y, x: 20, widths: TABLE_WIDTHS,
     headers: TABLE_HEADERS,
-    rows: toRows(wira),
+    rows: toRows(rows),
     fonts: { regular, bold },
-    createPage, continuationTitle: 'REKAP SEKOLAH WIRA - LANJUTAN',
-  }))
-
-  y += 26
-  if (y + 30 > 760) { page = createPage(); y = 116 }
-  y = sectionTitle(page, 'REKAP SEKOLAH MADYA', y, bold)
-
-  ;({ page, top: y } = drawPaginatedTable({
-    page, top: y, x: 20, widths: TABLE_WIDTHS,
-    headers: TABLE_HEADERS,
-    rows: toRows(madya),
-    fonts: { regular, bold },
-    createPage, continuationTitle: 'REKAP SEKOLAH MADYA - LANJUTAN',
+    createPage, continuationTitle: `REKAP SEKOLAH ${kategori} - LANJUTAN`,
   }))
 
   y += 30
-  if (y + 190 > 760) { page = createPage(); y = 116 }
+  if (y + 180 > 760) { page = createPage(); y = 116 }
   const summaryX = REKAP_A4_W - 20 - 300
-  rect(page, summaryX, y - 14, 300, 150, REKAP_YELLOW)
-  drawText(page, `TOTAL SEKOLAH WIRA : ${totals.totalSekolahWira}`, summaryX + 14, y, regular, 10)
-  drawText(page, `TOTAL SEKOLAH MADYA : ${totals.totalSekolahMadya}`, summaryX + 14, y + 22, regular, 10)
-  drawText(page, `TOTAL PESERTA WIRA : ${totals.totalPesertaWira}`, summaryX + 14, y + 44, regular, 10)
-  drawText(page, `TOTAL PESERTA MADYA : ${totals.totalPesertaMadya}`, summaryX + 14, y + 66, regular, 10)
-  drawText(page, `TOTAL PENDAMPING WIRA : ${totals.totalPendampingWira}`, summaryX + 14, y + 88, regular, 10)
-  drawText(page, `TOTAL PENDAMPING MADYA : ${totals.totalPendampingMadya}`, summaryX + 14, y + 110, bold, 10)
-  y += 150
+  rect(page, summaryX, y - 14, 300, 82, REKAP_YELLOW)
+  drawText(page, `TOTAL SEKOLAH : ${totals.totalSekolah}`, summaryX + 14, y, regular, 10)
+  drawText(page, `TOTAL PESERTA : ${totals.totalPeserta}`, summaryX + 14, y + 22, regular, 10)
+  drawText(page, `TOTAL PENDAMPING : ${totals.totalPendamping}`, summaryX + 14, y + 44, bold, 10)
+
+  const sigTop = y + 40 + 82
+  drawSig(page, 100, sigTop, 'PETUGAS / ADMIN', namaPetugas, regular, bold)
+  drawSig(page, REKAP_A4_W / 2, sigTop, 'KOOR. KESEKRETARIATAN', null, regular, bold)
+  drawSig(page, REKAP_A4_W - 100, sigTop, 'BENDAHARA', null, regular, bold)
 
   return Buffer.from(await pdf.save())
 }
