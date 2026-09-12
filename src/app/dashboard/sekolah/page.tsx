@@ -3,6 +3,7 @@ import { getSession } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
 import { SekolahStats } from '@/components/dashboard/sekolah-stats'
 import { SekolahTable } from '@/components/dashboard/sekolah-table'
+import { RekapDataSekolahButton } from '@/components/dashboard/rekap-data-sekolah-button'
 
 export const dynamic = 'force-dynamic'
 
@@ -84,13 +85,16 @@ export default async function DashboardSekolahPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-heading text-base sm:text-lg text-event-navy leading-relaxed">
-          DASHBOARD SEKOLAH
-        </h1>
-        <p className="font-body text-xs text-[var(--color-text-muted)] mt-1">
-          Kelola pendaftaran sekolah, verifikasi pembayaran peserta & tenda.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-base sm:text-lg text-event-navy leading-relaxed">
+            DASHBOARD SEKOLAH
+          </h1>
+          <p className="font-body text-xs text-[var(--color-text-muted)] mt-1">
+            Kelola pendaftaran sekolah, verifikasi pembayaran peserta & tenda.
+          </p>
+        </div>
+        <RekapDataSekolahButton />
       </div>
       <SekolahStats
         totalSekolah={totalSekolah}
