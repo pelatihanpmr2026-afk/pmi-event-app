@@ -19,8 +19,19 @@ export function getUraianLabel(
   )
 }
 
+/**
+ * Statistik keuangan dipisah tegas menjadi dua basis yang berbeda:
+ *
+ * - `estimasi`: penghasilan yang DIPERKIRAKAN dari data pendaftaran/pembayaran
+ *   secara live (basis akrual). Belum tentu tercatat di buku kas.
+ * - `bukuKas`: catatan sebenarnya dari tabel `TransaksiKeuangan` (basis kas).
+ *   `bukuKas.saldo` dijamin SAMA dengan saldo berjalan terakhir tabel keuangan.
+ *
+ * Keduanya disandingkan lewat `keseimbangan.selisih` agar selisihnya terlihat
+ * eksplisit, bukan membuat kartu "saldo akhir" yang mencampur dua basis.
+ */
 export async function getKeuanganStatsData() {
-  // ===== 1. PEMASUKAN PENDAFTARAN (online) =====
+  // ===== 1. ESTIMASI OTOMATIS (live dari data pendaftaran/pembayaran) =====
   const sekolahPesertaLunas = await prisma.sekolah.findMany({
     where: { pembayaran: { some: { tipe: 'PESERTA', statusPembayaran: 'LUNAS' } } },
     select: {
@@ -46,18 +57,16 @@ export async function getKeuanganStatsData() {
     }
   }
 
-  const pendaftaranOnline =
+  const pemasukanPendaftaran =
     (pesertaWira + pesertaMadya) * BIAYA_PESERTA +
     (pendampingWira + pendampingMadya) * BIAYA_PENDAMPING
 
-  // ===== 2. PEMASUKAN SEWA TENDA (online, gross) =====
   const tendaLunasAgg = await prisma.pembayaran.aggregate({
     where: { tipe: 'TENDA', statusPembayaran: 'LUNAS' },
     _sum: { jumlahBiaya: true },
   })
   const sewaTendaOnline = tendaLunasAgg._sum.jumlahBiaya ?? 0
 
-  // ===== 3. HARUS DISETOR KE VENDOR =====
   const sekolahTendaLunas = await prisma.sekolah.findMany({
     where: { pembayaran: { some: { tipe: 'TENDA', statusPembayaran: 'LUNAS' } } },
     select: {
@@ -80,8 +89,12 @@ export async function getKeuanganStatsData() {
     }
   }
   const vendorBreakdown = [...vendorMap.values()].sort((a, b) => b.nominal - a.nominal)
+  const keuntunganSewaTenda = sewaTendaOnline - harusDisetorVendor
 
-  // ===== TRANSAKSI MANUAL (ledger) =====
+  const saldoBersihEstimasi = pemasukanPendaftaran + keuntunganSewaTenda
+  const saldoKotorEstimasi = pemasukanPendaftaran + sewaTendaOnline
+
+  // ===== 2. BUKU KAS (jurnal TransaksiKeuangan) =====
   const manualPemasukan = await prisma.transaksiKeuangan.groupBy({
     by: ['kategoriPemasukan'],
     where: { jenis: 'PEMASUKAN' },
@@ -92,10 +105,13 @@ export async function getKeuanganStatsData() {
     return manualPemasukan.find((m) => m.kategoriPemasukan === kategori)?._sum.debit ?? 0
   }
 
-  const pendaftaranManual = manualSum('PENDAFTARAN')
-  const sewaTendaManual = manualSum('SEWA_TENDA')
+  const pemasukanPendaftaranManual = manualSum('PENDAFTARAN')
+  const pemasukanSewaTendaManual = manualSum('SEWA_TENDA')
   const sponsorManual = manualSum('SPONSOR')
   const persentaseTendaManual = manualSum('PERSENTASE_TENDA')
+
+  const pemasukanBukuKas =
+    pemasukanPendaftaranManual + pemasukanSewaTendaManual + sponsorManual + persentaseTendaManual
 
   const totalPengeluaranAgg = await prisma.transaksiKeuangan.aggregate({
     where: { jenis: 'PENGELUARAN' },
@@ -103,16 +119,17 @@ export async function getKeuanganStatsData() {
   })
   const totalPengeluaran = totalPengeluaranAgg._sum.kredit ?? 0
 
+  const setorTendaAgg = await prisma.transaksiKeuangan.aggregate({
+    where: { jenis: 'PENGELUARAN', kategoriPengeluaran: 'SETOR_TENDA' },
+    _sum: { kredit: true },
+  })
+  const setorTendaKredit = setorTendaAgg._sum.kredit ?? 0
+
   const totalUtangAgg = await prisma.transaksiKeuangan.aggregate({
     _sum: { utang: true },
   })
   const totalUtang = totalUtangAgg._sum.utang ?? 0
 
-  // ===== OPERASIONAL DIVISI =====
-  // Disetor dari 2 sumber yang sudah menjadi TransaksiKeuangan (bukan
-  // double-count): pengajuan anggaran yang DISETUJUI (proses/route.ts
-  // membuat transaksi kategori OPERASIONAL_DIVISI) + pengeluaran manual
-  // dengan kategori OPERASIONAL_DIVISI. Dihitung per divisi.
   const operasionalDivisiAgg = await prisma.transaksiKeuangan.groupBy({
     by: ['divisi'],
     where: { jenis: 'PENGELUARAN', kategoriPengeluaran: 'OPERASIONAL_DIVISI' },
@@ -124,54 +141,56 @@ export async function getKeuanganStatsData() {
   }))
   const totalOperasionalDivisi = operasionalDivisiBreakdown.reduce((acc, m) => acc + m.nominal, 0)
 
-  // ===== GABUNGKAN =====
-  const pemasukanPendaftaran = pendaftaranOnline
-  const pemasukanSewaTenda = sewaTendaOnline
-  const keuntunganSewaTenda = pemasukanSewaTenda - harusDisetorVendor
-  const pemasukanLainLain = sponsorManual + keuntunganSewaTenda
+  const saldoBukuKas = pemasukanBukuKas - totalPengeluaran
 
-  const totalPemasukan =
-    pemasukanPendaftaran + pemasukanSewaTenda + pemasukanLainLain
-
-  const saldoBersih = pemasukanPendaftaran + pemasukanLainLain
-  const saldoKotor = pemasukanPendaftaran + pemasukanSewaTenda
-  const saldoAkhir = totalPemasukan - totalPengeluaran
+  // ===== 3. KESEIMBANGAN (selisih dua basis) =====
+  const pemasukanNetBukuKas = pemasukanBukuKas - setorTendaKredit
+  const selisih = saldoBersihEstimasi - pemasukanNetBukuKas
 
   return {
-    pemasukanPendaftaran: {
-      total: pemasukanPendaftaran,
-      breakdown: { pesertaWira, pesertaMadya, pendampingWira, pendampingMadya },
-      breakdownNominal: {
-        pesertaWira: pesertaWira * BIAYA_PESERTA,
-        pesertaMadya: pesertaMadya * BIAYA_PESERTA,
-        pendampingWira: pendampingWira * BIAYA_PENDAMPING,
-        pendampingMadya: pendampingMadya * BIAYA_PENDAMPING,
+    estimasi: {
+      pemasukanPendaftaran: {
+        total: pemasukanPendaftaran,
+        breakdown: { pesertaWira, pesertaMadya, pendampingWira, pendampingMadya },
+        breakdownNominal: {
+          pesertaWira: pesertaWira * BIAYA_PESERTA,
+          pesertaMadya: pesertaMadya * BIAYA_PESERTA,
+          pendampingWira: pendampingWira * BIAYA_PENDAMPING,
+          pendampingMadya: pendampingMadya * BIAYA_PENDAMPING,
+        },
       },
-      manual: pendaftaranManual,
+      pemasukanSewaTenda: {
+        total: sewaTendaOnline,
+      },
+      harusDisetorVendor,
+      vendorBreakdown,
+      keuntunganSewaTenda,
+      saldoBersih: saldoBersihEstimasi,
+      saldoKotor: saldoKotorEstimasi,
     },
-    pemasukanSewaTenda: {
-      total: pemasukanSewaTenda,
-      online: sewaTendaOnline,
-      manual: sewaTendaManual,
+    bukuKas: {
+      pemasukan: {
+        total: pemasukanBukuKas,
+        pendaftaran: pemasukanPendaftaranManual,
+        sewaTenda: pemasukanSewaTendaManual,
+        sponsor: sponsorManual,
+        persentaseTenda: persentaseTendaManual,
+      },
+      pengeluaran: {
+        total: totalPengeluaran,
+        setorTenda: setorTendaKredit,
+      },
+      saldo: saldoBukuKas,
+      utang: totalUtang,
+      operasionalDivisi: {
+        total: totalOperasionalDivisi,
+        breakdown: operasionalDivisiBreakdown,
+      },
     },
-    harusDisetorVendor,
-    vendorBreakdown,
-    keuntunganSewaTenda,
-    pemasukanLainLain: {
-      total: pemasukanLainLain,
-      sponsor: sponsorManual,
-      persentaseTenda: persentaseTendaManual,
-      keuntunganTenda: keuntunganSewaTenda,
-    },
-    totalPemasukan,
-    totalPengeluaran,
-    saldoBersih,
-    saldoKotor,
-    saldoAkhir,
-    totalUtang,
-    operasionalDivisi: {
-      total: totalOperasionalDivisi,
-      breakdown: operasionalDivisiBreakdown,
+    keseimbangan: {
+      estimasiPendapatan: saldoBersihEstimasi,
+      pemasukanNetBukuKas,
+      selisih,
     },
   }
 }

@@ -213,7 +213,12 @@ export function TransaksiTable({ initialData }: { initialData: TransaksiData[] }
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="font-heading text-xs text-event-navy">BUKU KAS</h2>
+        <div className="flex flex-col gap-0.5">
+          <h2 className="font-heading text-xs text-event-navy">BUKU KAS</h2>
+          <p className="font-body text-[10px] text-[var(--color-text-muted)]">
+            Saldo akhir kolom terakhir = kartu &quot;Saldo Buku Kas&quot; di atas.
+          </p>
+        </div>
         <button
           onClick={openCreate}
           className="flex items-center gap-1.5 px-3 py-2 bg-event-blue text-white rounded-[var(--radius-btn)] text-xs font-semibold hover:bg-event-blue-dark transition-colors"
