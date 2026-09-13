@@ -2,13 +2,30 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
-import { checkRateLimit } from '@/lib/rate-limit'
 import { normalizeNamaSekolah, namaSekolahKey } from '@/lib/sekolah'
 import { dataSekolahSchema } from '@/lib/validations/sekolah'
 import { pendampingArraySchema } from '@/lib/validations/peserta'
 import { MAX_REQUEST_BODY } from '@/lib/constants-sekolah'
 
 const MAX_PHOTOS = 60
+
+// Rate limit draft sync per SEKOLAH, bukan per-IP: satu sekolah (apalagi di
+// WiFi bersama) bisa menyimpan draft berkali-kali dalam sehari tanpa khawatir
+// kena batas IP global yang dipakai banyak orang.
+const DRAFT_SYNC_MAX = 300
+const DRAFT_SYNC_WINDOW_MS = 60 * 60 * 1000
+const draftSyncBuckets = new Map<string, { count: number; resetAt: number }>()
+
+function checkDraftSyncRateLimit(key: string) {
+  const now = Date.now()
+  const bucket = draftSyncBuckets.get(key)
+  if (!bucket || bucket.resetAt <= now) {
+    draftSyncBuckets.set(key, { count: 1, resetAt: now + DRAFT_SYNC_WINDOW_MS })
+    return true
+  }
+  bucket.count += 1
+  return bucket.count <= DRAFT_SYNC_MAX
+}
 
 const draftPesertaItemSchema = z.object({
   namaLengkap: z.string().min(3).max(100),
@@ -35,9 +52,6 @@ const draftPesertaArraySchema = z
 
 export async function POST(req: NextRequest) {
   try {
-    const rl = checkRateLimit(req, { key: 'draft-sync', max: 30, windowMs: 60 * 60 * 1000 })
-    if (rl) return rl
-
     const contentLength = Number(req.headers.get('content-length') ?? 0)
     if (contentLength > MAX_REQUEST_BODY) {
       return NextResponse.json({ success: false, message: 'Data draft terlalu besar.' }, { status: 413 })
@@ -50,21 +64,33 @@ export async function POST(req: NextRequest) {
 
     const parsedSekolah = dataSekolahSchema.safeParse(body.dataSekolah)
     if (!parsedSekolah.success) {
+      console.warn('[POST /api/draft] Data sekolah tidak valid:', parsedSekolah.error.flatten().fieldErrors)
       return NextResponse.json({ success: false, message: 'Data sekolah tidak valid' }, { status: 400 })
     }
 
     const parsedPeserta = draftPesertaArraySchema.safeParse(body.dataPeserta)
     if (!parsedPeserta.success) {
+      console.warn('[POST /api/draft] Data peserta tidak valid:', parsedPeserta.error.flatten().fieldErrors)
       return NextResponse.json({ success: false, message: 'Data peserta tidak valid' }, { status: 400 })
     }
 
     const parsedPendamping = pendampingArraySchema.safeParse(body.dataPendamping ?? [])
     if (!parsedPendamping.success) {
+      console.warn('[POST /api/draft] Data pendamping tidak valid:', parsedPendamping.error.flatten().fieldErrors)
       return NextResponse.json({ success: false, message: 'Data pendamping tidak valid' }, { status: 400 })
     }
 
     const namaLengkap = normalizeNamaSekolah(parsedSekolah.data.namaSekolah)
     const key = namaSekolahKey(namaLengkap)
+
+    // Rate limit per-sekolah (300/jam), agar WiFi sekolah tidak kena
+    // pembatasan yang dialami bersama oleh banyak siswa.
+    if (!checkDraftSyncRateLimit(key)) {
+      return NextResponse.json(
+        { success: false, message: 'Terlalu banyak menyimpan draft untuk sekolah ini. Coba lagi beberapa saat.' },
+        { status: 429 }
+      )
+    }
 
     // Cek apakah sekolah sudah terdaftar (punya peserta)
     const existing = await prisma.sekolah.findFirst({

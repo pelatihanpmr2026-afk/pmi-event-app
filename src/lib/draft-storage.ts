@@ -3,6 +3,11 @@ const DB_NAME = 'pmr2026_draft'
 const STORE_NAME = 'photos'
 const DRAFT_MAX_AGE = 7 * 24 * 60 * 60 * 1000 // 7 hari
 
+// Bump angka ini setiap skema data form pendaftaran berubah (mis. field baru
+// jadi wajib). Draft lama (schemaVersion < ini) TIDAK AKAN di-restore agar
+// user tidak tersangkut di step pembayaran dengan data yang ditolak server.
+const DRAFT_SCHEMA_VERSION = 1
+
 export interface DraftData {
   currentStep: number
   dataSekolah: unknown
@@ -10,11 +15,12 @@ export interface DraftData {
   dataPendamping: unknown
   sekolahId: string | null
   savedAt: number
+  schemaVersion?: number
 }
 
 export function saveDraft(data: Omit<DraftData, 'savedAt'>) {
   try {
-    const payload: DraftData = { ...data, savedAt: Date.now() }
+    const payload: DraftData = { ...data, schemaVersion: DRAFT_SCHEMA_VERSION, savedAt: Date.now() }
     localStorage.setItem(DRAFT_KEY, JSON.stringify(payload))
   } catch {
     // Storage penuh atau diblokir — abaikan
@@ -27,6 +33,12 @@ export function loadDraft(): DraftData | null {
     if (!raw) return null
     const parsed = JSON.parse(raw) as DraftData
     if (Date.now() - parsed.savedAt > DRAFT_MAX_AGE) {
+      clearDraft()
+      return null
+    }
+    // Draft dari versi skema lama tidak kompatibel — buang agar tidak
+    // membawa data invalid sampai ke step pembayaran.
+    if (parsed.schemaVersion !== DRAFT_SCHEMA_VERSION) {
       clearDraft()
       return null
     }

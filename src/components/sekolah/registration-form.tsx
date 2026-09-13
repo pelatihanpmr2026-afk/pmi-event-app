@@ -14,6 +14,9 @@ import { StepFinalPayment } from './steps/step-final-payment'
 import { DraftBanner } from './draft-banner'
 import { TermsGate } from './terms-gate'
 import { saveDraft, loadDraft, clearDraft, savePhoto, loadPhoto, deletePhoto } from '@/lib/draft-storage'
+import { compressImage } from '@/lib/compress-image'
+import { dataSekolahSchema } from '@/lib/validations/sekolah'
+import { pesertaMetaArraySchema, pendampingArraySchema } from '@/lib/validations/peserta'
 import type { PesertaPendampingValues } from '@/lib/validations/peserta'
 
 async function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
@@ -51,6 +54,27 @@ export function SekolahRegistrationForm({
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const isAdmin = !!adminDraftId
+
+  // Cek apakah data form lolos skema SERVER (bukan hanya skema step). Dipakai
+  // saat restore draft agar user TIDAK tersangkut di step pembayaran dengan
+  // data yang nanti ditolak server ("Data peserta tidak valid").
+  function firstInvalidStep(data: {
+    dataSekolah: DataSekolahResult | null
+    dataPeserta: PesertaPendampingValues['peserta'] | null
+    dataPendamping: PesertaPendampingValues['pendamping'] | null
+  }): 0 | 1 | 2 | 3 {
+    if (!data.dataSekolah || !dataSekolahSchema.safeParse(data.dataSekolah).success) return 1
+    const pesertaPayload = data.dataPeserta
+      ? data.dataPeserta.map((pesertaItem) => {
+          const rest = { ...pesertaItem }
+          delete rest.foto
+          return rest
+        })
+      : null
+    if (!pesertaPayload || !pesertaMetaArraySchema.safeParse(pesertaPayload).success) return 2
+    if (data.dataPendamping && !pendampingArraySchema.safeParse(data.dataPendamping).success) return 3
+    return 0
+  }
 
   // Cek draft saat mount
   useEffect(() => {
@@ -93,11 +117,27 @@ export function SekolahRegistrationForm({
         }
 
         setDataSekolah(d.dataSekolah as DataSekolahResult)
-        setCurrentStep(d.currentStep)
         if (restoredPeserta) setDataPeserta(restoredPeserta)
         if (d.dataPendamping) {
           setDataPendamping(d.dataPendamping as PesertaPendampingValues['pendamping'])
         }
+        // Draft server bisa saja dari versi skema lama — paksa kembali ke step
+        // pertama yang datanya invalid supaya user mengisi ulang, bukan gagal
+        // di submit.
+        const invalidStep = firstInvalidStep({
+          dataSekolah: d.dataSekolah as DataSekolahResult | null,
+          dataPeserta: restoredPeserta ?? null,
+          dataPendamping: (d.dataPendamping as PesertaPendampingValues['pendamping'] | undefined) ?? null,
+        })
+        if (invalidStep !== 0) {
+          setDataSekolah(null)
+          setCurrentStep(1)
+          setAdminDraftError(
+            'Draft dari versi lama dan beberapa datanya tidak lengkap. Silakan isi dari awal.'
+          )
+          return
+        }
+        setCurrentStep(d.currentStep)
       } catch (err) {
         if (!cancelled) setAdminDraftError(err instanceof Error ? err.message : 'Gagal memuat draft')
       } finally {
@@ -163,9 +203,10 @@ export function SekolahRegistrationForm({
       setDataSekolah(draft.dataSekolah as DataSekolahResult)
       
       // Pulihkan data peserta beserta foto (dengan tipe yang aman)
+      let restoredPeserta: PesertaPendampingValues['peserta'] | null = null
       if (draft.dataPeserta) {
         const rawPeserta = draft.dataPeserta as Array<Record<string, unknown> & { _hasFoto?: boolean }>
-        const restoredPeserta: PesertaPendampingValues['peserta'] = await Promise.all(
+        restoredPeserta = await Promise.all(
           rawPeserta.map(async (p, i) => {
             const { _hasFoto, ...rest } = p
             let foto: File | undefined = undefined
@@ -183,13 +224,29 @@ export function SekolahRegistrationForm({
       }
 
       // Pulihkan data pendamping
-      if (draft.dataPendamping) {
-        setDataPendamping(draft.dataPendamping as PesertaPendampingValues['pendamping'])
+      const restoredPendamping = draft.dataPendamping
+        ? (draft.dataPendamping as PesertaPendampingValues['pendamping'])
+        : null
+      if (restoredPendamping) {
+        setDataPendamping(restoredPendamping)
       }
 
       setCurrentStep(draft.currentStep)
       setDraftFound(null)
       toast.success('Data berhasil dipulihkan')
+
+      // Draft lama mungkin lolos auto-save versi lebih tua — pastikan user
+      // tidak bisa submit data yang ditolak server.
+      const invalidStep = firstInvalidStep({
+        dataSekolah: draft.dataSekolah as DataSekolahResult | null,
+        dataPeserta: restoredPeserta,
+        dataPendamping: restoredPendamping,
+      })
+      if (invalidStep !== 0) {
+        setCurrentStep(invalidStep)
+        if (invalidStep === 1) setDataSekolah(null)
+        toast.info('Sebagian data draft perlu dilengkapi kembali sebelum pembayaran.')
+      }
     } finally {
       setIsRestoring(false)
     }
@@ -236,14 +293,25 @@ export function SekolahRegistrationForm({
   async function syncDraftToServer(peserta: PesertaPendampingValues['peserta'] | null, pendamping: PesertaPendampingValues['pendamping'] | null, step: number) {
     if (!dataSekolah) return
     try {
+      // Kompres foto dulu supaya payload tidak melewati batas ukuran request
+      // (413 membuat draft tidak pernah tercatat di server panitia).
       const pesertaPayload = peserta
-        ? await Promise.all(peserta.map(async (p) => ({
-            ...p,
-            foto: p.foto instanceof File ? await fileToBase64(p.foto) : null,
-          })))
+        ? await Promise.all(peserta.map(async (p) => {
+            let foto: string | null = null
+            if (p.foto instanceof File) {
+              try {
+                foto = await fileToBase64(await compressImage(p.foto, 720, 0.6))
+              } catch {
+                foto = await fileToBase64(p.foto)
+              }
+            }
+            const rest = { ...p }
+            delete rest.foto
+            return { ...rest, foto }
+          }))
         : null
 
-      await fetch('/api/draft', {
+      const res = await fetch('/api/draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -253,8 +321,13 @@ export function SekolahRegistrationForm({
           dataPendamping: pendamping ?? null,
         }),
       })
+      // Jangan sembunyikan kegagalan: kalau draft tidak sampai ke server
+      // panitia, user harus diberi tahu (draft lokal tetap tersimpan).
+      if (!res.ok) {
+        toast.warning('Draft tersimpan di perangkat ini, tapi belum tersinkron ke server panitia — mungkin terganggu jaringan/kuota. Silakan coba simpan lagi nanti.')
+      }
     } catch {
-      // Sync server tidak kritis — draft lokal tetap utuh
+      toast.warning('Draft tersimpan di perangkat ini, tapi belum tersinkron ke server panitia. Silakan coba simpan lagi nanti.')
     }
   }
 
@@ -395,6 +468,11 @@ export function SekolahRegistrationForm({
                 dataPeserta={{ peserta: dataPeserta, pendamping: dataPendamping ?? [] }}
                 onBack={() => setCurrentStep(4)}
                 onSubmitted={handleFinalSubmitted}
+                onInvalidStep={(step) => {
+                  setCurrentStep(step)
+                  if (step === 1) setDataSekolah(null)
+                  toast.info('Lengkapi data di step tersebut lalu kembali ke pembayaran.')
+                }}
               />
             )}
           </CardContent>

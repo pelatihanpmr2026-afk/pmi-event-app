@@ -52,6 +52,7 @@ export async function POST(req: NextRequest) {
 
     const parsedSekolah = dataSekolahSchema.safeParse(rawSekolahParsed)
     if (!parsedSekolah.success) {
+      console.warn('[POST /api/sekolah] Data sekolah tidak valid:', parsedSekolah.error.flatten().fieldErrors)
       return NextResponse.json(
         { success: false, message: 'Data sekolah tidak valid', errors: parsedSekolah.error.flatten() },
         { status: 400 }
@@ -66,6 +67,7 @@ export async function POST(req: NextRequest) {
 
     const parsedPeserta = pesertaMetaArraySchema.safeParse(JSON.parse(rawPeserta))
     if (!parsedPeserta.success) {
+      console.warn('[POST /api/sekolah] Data peserta tidak valid:', parsedPeserta.error.flatten().fieldErrors)
       return NextResponse.json(
         { success: false, message: 'Data peserta tidak valid', errors: parsedPeserta.error.flatten() },
         { status: 400 }
@@ -73,6 +75,7 @@ export async function POST(req: NextRequest) {
     }
     const parsedPendamping = pendampingArraySchema.safeParse(JSON.parse(rawPendamping))
     if (!parsedPendamping.success) {
+      console.warn('[POST /api/sekolah] Data pendamping tidak valid:', parsedPendamping.error.flatten().fieldErrors)
       return NextResponse.json(
         { success: false, message: 'Data pendamping tidak valid', errors: parsedPendamping.error.flatten() },
         { status: 400 }

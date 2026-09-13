@@ -11,10 +11,12 @@ import { compressImage } from '@/lib/compress-image'
 import { RincianBiaya } from '../biaya-rincian'
 import { TNC_VERSION } from '@/lib/tnc-content'
 import { fetchJson } from '@/lib/safe-fetch'
+import { dataSekolahSchema } from '@/lib/validations/sekolah'
+import { pesertaMetaArraySchema, pendampingArraySchema } from '@/lib/validations/peserta'
 import type { DataSekolahResult } from './step-data-sekolah'
 import type { PesertaPendampingValues } from '@/lib/validations/peserta'
 
-export function StepFinalPayment({ dataSekolah, dataPeserta, onBack, onSubmitted }: { dataSekolah: DataSekolahResult; dataPeserta: PesertaPendampingValues; onBack: () => void; onSubmitted: (sekolahId: string) => void }) {
+export function StepFinalPayment({ dataSekolah, dataPeserta, onBack, onSubmitted, onInvalidStep }: { dataSekolah: DataSekolahResult; dataPeserta: PesertaPendampingValues; onBack: () => void; onSubmitted: (sekolahId: string) => void; onInvalidStep?: (step: 1 | 2 | 3) => void }) {
   const [file, setFile] = useState<File | null>(null)
   const [signature, setSignature] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -26,8 +28,53 @@ export function StepFinalPayment({ dataSekolah, dataPeserta, onBack, onSubmitted
     try { setFile(await compressImage(selected, 1200, 0.85)) } catch { setFile(selected) }
   }
 
+  function firstIssueName(issues: Array<{ path: PropertyKey[]; message: string }>): string | null {
+    const first = issues[0]
+    if (!first) return null
+    const field = first.path.length > 0 ? first.path.map(String).join('.') : 'data'
+    return `${field} — ${first.message}`
+  }
+
+  function validateBeforeSubmit(): true | { step: 1 | 2 | 3; message: string } {
+    const sekolahPayload = {
+      namaSekolah: dataSekolah.namaSekolah,
+      kategori: dataSekolah.kategori,
+      namaPembina: dataSekolah.namaPembina,
+      noWhatsappPembina: dataSekolah.noWhatsappPembina,
+    }
+    const pesertaPayload = dataPeserta.peserta.map((peserta) => {
+      const data = { ...peserta }
+      delete data.foto
+      return data
+    })
+
+    const sekolahCheck = dataSekolahSchema.safeParse(sekolahPayload)
+    if (!sekolahCheck.success) {
+      return { step: 1, message: `Data sekolah belum valid: ${firstIssueName(sekolahCheck.error.issues) ?? 'periksa kembali'}` }
+    }
+    const pesertaCheck = pesertaMetaArraySchema.safeParse(pesertaPayload)
+    if (!pesertaCheck.success) {
+      return { step: 2, message: `Data peserta belum valid (mungkin draft dari versi lama): ${firstIssueName(pesertaCheck.error.issues) ?? 'periksa kembali'}` }
+    }
+    const pendampingCheck = pendampingArraySchema.safeParse(dataPeserta.pendamping)
+    if (!pendampingCheck.success) {
+      return { step: 3, message: `Data pendamping belum valid (mungkin draft dari versi lama): ${firstIssueName(pendampingCheck.error.issues) ?? 'periksa kembali'}` }
+    }
+    return true
+  }
+
   async function handleSubmit() {
     if (!file) return toast.error('Upload bukti transfer dulu sebelum mengirim pendaftaran')
+
+    // Validasi ulang dengan SKEMA SERVER yang persis — menutup celah draft
+    // lama yang melewati validasi step 2/3 lalu ditolak oleh server.
+    const check = validateBeforeSubmit()
+    if (check !== true) {
+      toast.error(check.message)
+      onInvalidStep?.(check.step)
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const formData = new FormData()
@@ -49,10 +96,15 @@ export function StepFinalPayment({ dataSekolah, dataPeserta, onBack, onSubmitted
       }
       const { ok, data: result } = await fetchJson('/api/sekolah', { method: 'POST', body: formData })
       if (!ok) {
-        throw new Error(
-          (result as { message?: string } | null)?.message ||
-            'Server tidak merespons dengan benar. Periksa koneksi dan ukuran berkas, lalu coba lagi. Bila tetap gagal, hubungi panitia.',
-        )
+        const serverMessage = (result as { message?: string } | null)?.message
+        let message = serverMessage || 'Server tidak merespons dengan benar. Periksa koneksi dan ukuran berkas, lalu coba lagi. Bila tetap gagal, hubungi panitia.'
+        // Server mengirim detail field yang gagal validasi — tampilkan biar
+        // user langsung tahu apa yang harus diperbaiki.
+        const fieldErrors = (result as { errors?: { fieldErrors?: Record<string, string[]> } } | null)?.errors?.fieldErrors
+        const firstFieldKey = fieldErrors ? Object.keys(fieldErrors)[0] : undefined
+        const firstFieldValue = firstFieldKey ? fieldErrors?.[firstFieldKey]?.[0] : undefined
+        if (firstFieldValue) message = `${serverMessage ?? 'Data belum valid'} — ${firstFieldKey}: ${firstFieldValue}`
+        throw new Error(message)
       }
       if (!(result as { data?: { sekolahId?: string } | null } | null)?.data?.sekolahId) {
         throw new Error(
