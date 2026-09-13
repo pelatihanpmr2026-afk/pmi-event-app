@@ -3,6 +3,7 @@ import { getSession } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
 import { TendaManager, type TendaData } from '@/components/dashboard/tenda/tenda-manager'
 import { TendaSewaList } from '@/components/dashboard/tenda/tenda-sewa-list'
+import { RekapSewaTendaButton } from '@/components/dashboard/tenda/rekap-sewa-tenda-button'
 import { batasReservasiTenda, reservasiTendaAktif } from '@/lib/tenda-stock'
 
 export const dynamic = 'force-dynamic'
@@ -46,13 +47,16 @@ const data: TendaData[] = tendaList.map((t) => ({
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="font-heading text-base sm:text-lg text-event-navy leading-relaxed">
-          KELOLA TENDA
-        </h1>
-        <p className="font-body text-xs text-event-navy/60 mt-1">
-          Atur jenis, harga, dan stok tenda yang bisa disewa
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-base sm:text-lg text-event-navy leading-relaxed">
+            KELOLA TENDA
+          </h1>
+          <p className="font-body text-xs text-event-navy/60 mt-1">
+            Atur jenis, harga, dan stok tenda yang bisa disewa
+          </p>
+        </div>
+        <RekapSewaTendaButton />
       </div>
 
       <TendaManager initialTenda={data} />
