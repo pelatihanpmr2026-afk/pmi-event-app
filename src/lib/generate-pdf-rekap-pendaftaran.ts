@@ -1,22 +1,7 @@
-import { addRekapPage, createRekapPdf, drawPaginatedTable, drawText, rect, REKAP_A4_W, REKAP_NAVY, REKAP_YELLOW, rp } from './pdf-rekap-text'
-import type { PDFPage, PDFFont } from 'pdf-lib'
+import { addMonoHeader, createRekapPdf, drawMonoSig, drawMonoSummary, drawMonoTable, MONO_BLACK, REKAP_A4_W, drawText, rp } from './pdf-rekap-text'
 
 interface PendaftaranRow { namaSekolah: string; jumlahPeserta: number; jumlahPendamping: number; totalRp: number }
 interface TendaRow { namaSekolah: string; jumlahTenda: number; jenisTenda: string; totalRp: number }
-
-function drawSig(
-  page: PDFPage,
-  centerX: number,
-  top: number,
-  label: string,
-  name: string | null,
-  regular: PDFFont,
-  bold: PDFFont
-) {
-  drawText(page, label, centerX, top, bold, 9, REKAP_NAVY, 'center')
-  drawText(page, '______________________________________', centerX, top + 42, regular, 9, REKAP_NAVY, 'center')
-  if (name) drawText(page, name, centerX, top + 56, bold, 10, REKAP_NAVY, 'center')
-}
 
 export async function generatePdfRekapPendaftaran(
   tanggal: string,
@@ -28,42 +13,73 @@ export async function generatePdfRekapPendaftaran(
   totalTransfer: number
 ): Promise<Buffer> {
   const { pdf, regular, bold } = await createRekapPdf(`Laporan Keuangan Harian ${tanggal}`)
-  const createPage = () => addRekapPage(pdf, 'LAPORAN KEUANGAN HARIAN', tanggal, bold, regular)
+  const createPage = () => addMonoHeader(pdf, 'LAPORAN KEUANGAN HARIAN', tanggal, bold, regular)
   let page = createPage()
-  const pendaftaranTable = drawPaginatedTable({
-    page, top: 116, x: 20, widths: [30, 190, 105, 115, 115],
-    headers: ['NO', 'NAMA SEKOLAH', 'JUMLAH PESERTA', 'JUMLAH PENDAMPING', 'TOTAL BIAYA (RP.)'],
+
+  let y = 100
+  drawText(page, 'A.  PENDAPATAN PENDAFTARAN', 20, y, bold, 11, MONO_BLACK, 'left')
+  y += 8
+  const pendaftaranTable = drawMonoTable({
+    page,
+    top: y,
+    x: 20,
+    widths: [30, 190, 105, 115, 115],
+    aligns: ['center', 'left', 'center', 'center', 'right'],
+    headers: ['NO', 'NAMA SEKOLAH', 'JML. PESERTA', 'JML. PENDAMPING', 'TOTAL (RP)'],
     rows: pendaftaran.map((row, index) => [String(index + 1), row.namaSekolah, String(row.jumlahPeserta), String(row.jumlahPendamping), rp(row.totalRp)]),
-    fonts: { regular, bold }, totalRow: ['', 'TOTAL', String(totals.totalJumlahPeserta), String(totals.totalJumlahPendamping), rp(totals.totalPendaftaran)], rowHeight: 24,
-    createPage, continuationTitle: 'LAPORAN KEUANGAN HARIAN - LANJUTAN',
+    fonts: { regular, bold },
+    totalRow: ['', 'TOTAL', String(totals.totalJumlahPeserta), String(totals.totalJumlahPendamping), rp(totals.totalPendaftaran)],
+    createPage,
+    continuationTitle: 'LAPORAN KEUANGAN HARIAN - LANJUTAN',
   })
   page = pendaftaranTable.page
-  let y = pendaftaranTable.top
-  if (y + 90 > 760) { page = createPage(); y = 116 }
-  y += 40
-  drawText(page, 'PENDAPATAN SEWA TENDA', REKAP_A4_W / 2, y, bold, 13, REKAP_NAVY, 'center')
-  y += 26
-  ;({ page, top: y } = drawPaginatedTable({
-    page, top: y, x: 20, widths: [30, 120, 75, 200, 130],
-    headers: ['NO', 'NAMA SEKOLAH', 'JUMLAH TENDA', 'JENIS TENDA', 'TOTAL BIAYA (RP.)'],
+  y = pendaftaranTable.top + 30
+  if (y + 150 > 760) {
+    page = createPage()
+    y = 100
+  }
+  drawText(page, 'B.  PENDAPATAN SEWA TENDA', 20, y, bold, 11, MONO_BLACK, 'left')
+  y += 8
+  ;({ page, top: y } = drawMonoTable({
+    page,
+    top: y,
+    x: 20,
+    widths: [30, 120, 75, 200, 130],
+    aligns: ['center', 'left', 'center', 'left', 'right'],
+    headers: ['NO', 'NAMA SEKOLAH', 'JML. TENDA', 'JENIS TENDA', 'TOTAL (RP)'],
     rows: tenda.map((row, index) => [String(index + 1), row.namaSekolah, String(row.jumlahTenda), row.jenisTenda, rp(row.totalRp)]),
-    fonts: { regular, bold }, totalRow: ['', 'TOTAL', String(totals.totalJumlahTenda), '', rp(totals.totalSewaTenda)], rowHeight: 24,
-    createPage, continuationTitle: 'LAPORAN KEUANGAN HARIAN - LANJUTAN',
+    fonts: { regular, bold },
+    totalRow: ['', 'TOTAL', String(totals.totalJumlahTenda), '', rp(totals.totalSewaTenda)],
+    createPage,
+    continuationTitle: 'LAPORAN KEUANGAN HARIAN - LANJUTAN',
   }))
-  if (y + 260 > 760) { page = createPage(); y = 116 }
+
   y += 30
-  const summaryX = REKAP_A4_W - 20 - 320
-  rect(page, summaryX, y - 14, 320, 160, REKAP_YELLOW)
-  drawText(page, `TOTAL PESERTA : ${totals.totalJumlahPeserta}`, summaryX + 14, y, regular, 10)
-  drawText(page, `TOTAL PENDAMPING : ${totals.totalJumlahPendamping}`, summaryX + 14, y + 22, regular, 10)
-  drawText(page, `TOTAL BIAYA PENDAFTARAN : ${rp(totals.totalPendaftaran)}`, summaryX + 14, y + 44, regular, 10)
-  drawText(page, `TOTAL BIAYA SEWA TENDA : ${rp(totals.totalSewaTenda)}`, summaryX + 14, y + 66, regular, 10)
-  drawText(page, `TOTAL CASH : ${rp(totalCash)}`, summaryX + 14, y + 88, bold, 10)
-  drawText(page, `TOTAL TRANSFER : ${rp(totalTransfer)}`, summaryX + 14, y + 110, bold, 10)
-  drawText(page, `TOTAL KESELURUHAN : ${rp(totals.totalKeseluruhan)}`, summaryX + 14, y + 132, bold, 12)
-  const sigTop = y + 165
-  drawSig(page, 100, sigTop, 'PETUGAS / ADMIN', namaPetugas, regular, bold)
-  drawSig(page, REKAP_A4_W / 2, sigTop, 'KOORDINATOR KESEKRETARIATAN', null, regular, bold)
-  drawSig(page, REKAP_A4_W - 100, sigTop, 'BENDAHARA', null, regular, bold)
+  if (y + 290 > 760) {
+    page = createPage()
+    y = 100
+  }
+  drawText(page, 'RINGKASAN', REKAP_A4_W - 20 - 320, y, bold, 10, MONO_BLACK, 'left')
+  y = drawMonoSummary(
+    page,
+    REKAP_A4_W - 20 - 320,
+    y + 8,
+    320,
+    [
+      { label: 'Total Peserta', value: String(totals.totalJumlahPeserta) },
+      { label: 'Total Pendamping', value: String(totals.totalJumlahPendamping) },
+      { label: 'Total Biaya Pendaftaran', value: rp(totals.totalPendaftaran) },
+      { label: 'Total Biaya Sewa Tenda', value: rp(totals.totalSewaTenda) },
+      { label: 'Total Cash', value: rp(totalCash) },
+      { label: 'Total Transfer', value: rp(totalTransfer) },
+      { label: 'Total Keseluruhan', value: rp(totals.totalKeseluruhan), bold: true },
+    ],
+    { regular, bold }
+  )
+
+  const sigTop = y + 34
+  drawMonoSig(page, 110, sigTop, 'Petugas / Admin', namaPetugas, regular, bold)
+  drawMonoSig(page, REKAP_A4_W / 2, sigTop, 'Koordinator Kesekretariatan', null, regular, bold)
+  drawMonoSig(page, REKAP_A4_W - 110, sigTop, 'Bendahara', null, regular, bold)
   return Buffer.from(await pdf.save())
 }

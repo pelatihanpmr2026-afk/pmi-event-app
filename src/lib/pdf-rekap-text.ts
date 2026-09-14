@@ -154,3 +154,159 @@ export function drawPaginatedTable({
 export function rp(value: number) {
   return `Rp${value.toLocaleString('id-ID')}`
 }
+
+export const MONO_BLACK = rgb(0, 0, 0)
+
+type MonoAlign = 'left' | 'center' | 'right'
+
+/**
+ * Kop laporan monokrom profesional: judul besar, subjudul tanggal,
+ * lalu garis ganda (tipis + tebal). Hanya warna hitam.
+ */
+export function addMonoHeader(
+  pdf: PDFDocument,
+  reportTitle: string,
+  subtitle: string,
+  bold: PDFFont,
+  regular: PDFFont
+): PDFPage {
+  const page = pdf.addPage([REKAP_A4_W, REKAP_A4_H])
+  drawText(page, reportTitle, REKAP_A4_W / 2, 30, bold, 16, MONO_BLACK, 'center')
+  drawText(page, subtitle, REKAP_A4_W / 2, 54, regular, 10, MONO_BLACK, 'center')
+  line(page, 20, 72, REKAP_A4_W - 20, 72, MONO_BLACK, 0.5)
+  line(page, 20, 75, REKAP_A4_W - 20, 75, MONO_BLACK, 1.4)
+  return page
+}
+
+/**
+ * Tabel monokrom profesional: tanpa blok warna dan tanpa zebra.
+ * Header tebal diapit garis, isi dibatasi garis rambut, baris total
+ * tebal diapit garis tebal.
+ */
+export function drawMonoTable({
+  page: firstPage,
+  top: firstTop,
+  x,
+  widths,
+  aligns,
+  headers,
+  rows,
+  fonts,
+  totalRow,
+  rowHeight = 22,
+  createPage,
+  continuationTitle,
+  emptyText = 'Tidak ada data',
+}: {
+  page: PDFPage
+  top: number
+  x: number
+  widths: number[]
+  aligns: MonoAlign[]
+  headers: string[]
+  rows: string[][]
+  fonts: { regular: PDFFont; bold: PDFFont }
+  totalRow?: string[]
+  rowHeight?: number
+  createPage: () => PDFPage
+  continuationTitle?: string
+  emptyText?: string
+}): { page: PDFPage; top: number } {
+  const tableWidth = widths.reduce((sum, width) => sum + width, 0)
+  const colX = (index: number) => x + widths.slice(0, index).reduce((sum, width) => sum + width, 0)
+  const alignOf = (index: number): MonoAlign => aligns[index] ?? 'center'
+  const cellX = (index: number) =>
+    alignOf(index) === 'center'
+      ? colX(index) + widths[index] / 2
+      : alignOf(index) === 'right'
+        ? colX(index) + widths[index] - 6
+        : colX(index) + 6
+
+  const drawHeader = (page: PDFPage, top: number) => {
+    line(page, x, top, x + tableWidth, top, MONO_BLACK, 1.2)
+    headers.forEach((header, index) => {
+      drawFittedText(page, header, cellX(index), top + 5, widths[index] - 10, fonts.bold, 8.5, MONO_BLACK, alignOf(index))
+    })
+    line(page, x, top + 20, x + tableWidth, top + 20, MONO_BLACK, 1.2)
+    return top + 20
+  }
+  const nextPage = () => {
+    const page = createPage()
+    if (continuationTitle) drawText(page, continuationTitle, REKAP_A4_W / 2, 96, fonts.bold, 10, MONO_BLACK, 'center')
+    return { page, top: drawHeader(page, 116) }
+  }
+
+  let page = firstPage
+  let currentTop = drawHeader(page, firstTop)
+
+  if (rows.length === 0) {
+    drawText(page, emptyText, x + tableWidth / 2, currentTop + 6, fonts.regular, 9, MONO_BLACK, 'center')
+    currentTop += rowHeight
+    line(page, x, currentTop, x + tableWidth, currentTop, MONO_BLACK, 0.4)
+  }
+
+  rows.forEach((row) => {
+    const reserveForTotal = totalRow ? rowHeight : 0
+    if (currentTop + rowHeight + reserveForTotal > REKAP_TABLE_BOTTOM) ({ page, top: currentTop } = nextPage())
+    row.forEach((cell, index) => {
+      if (!cell) return
+      drawFittedText(page, cell, cellX(index), currentTop + 6, widths[index] - 10, fonts.regular, 9, MONO_BLACK, alignOf(index))
+    })
+    currentTop += rowHeight
+    line(page, x, currentTop, x + tableWidth, currentTop, MONO_BLACK, 0.4)
+  })
+
+  if (totalRow) {
+    if (currentTop + rowHeight > REKAP_TABLE_BOTTOM) ({ page, top: currentTop } = nextPage())
+    line(page, x, currentTop, x + tableWidth, currentTop, MONO_BLACK, 1)
+    totalRow.forEach((cell, index) => {
+      if (!cell) return
+      drawFittedText(page, cell, cellX(index), currentTop + 6, widths[index] - 10, fonts.bold, 9, MONO_BLACK, alignOf(index))
+    })
+    currentTop += rowHeight
+    line(page, x, currentTop, x + tableWidth, currentTop, MONO_BLACK, 1.2)
+  }
+
+  return { page, top: currentTop }
+}
+
+/**
+ * Blok ringkasan monokrom: label kiri, nilai rata kanan, tanpa kotak.
+ */
+export function drawMonoSummary(
+  page: PDFPage,
+  x: number,
+  top: number,
+  width: number,
+  rows: { label: string; value: string; bold?: boolean }[],
+  fonts: { regular: PDFFont; bold: PDFFont }
+): number {
+  let currentTop = top
+  line(page, x, currentTop, x + width, currentTop, MONO_BLACK, 0.8)
+  currentTop += 6
+  for (const row of rows) {
+    const font = row.bold ? fonts.bold : fonts.regular
+    drawText(page, row.label, x, currentTop, font, 10, MONO_BLACK, 'left')
+    drawText(page, row.value, x + width, currentTop, font, 10, MONO_BLACK, 'right')
+    currentTop += 20
+  }
+  line(page, x, currentTop - 4, x + width, currentTop - 4, MONO_BLACK, 0.8)
+  return currentTop
+}
+
+/**
+ * Tanda tangan monokrom: jabatan, garis tangan, lalu nama.
+ */
+export function drawMonoSig(
+  page: PDFPage,
+  centerX: number,
+  top: number,
+  role: string,
+  name: string | null,
+  regular: PDFFont,
+  bold: PDFFont
+) {
+  drawText(page, role, centerX, top, bold, 9, MONO_BLACK, 'center')
+  line(page, centerX - 75, top + 56, centerX + 75, top + 56, MONO_BLACK, 0.8)
+  drawText(page, name ?? '( ........................................ )', centerX, top + 62, regular, 9, MONO_BLACK, 'center')
+}
