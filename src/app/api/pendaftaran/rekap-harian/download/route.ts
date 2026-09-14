@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
 
     const { start, end, label, isAll } = resolveRekapTanggal(tanggalStr)
 
-    const { pendaftaran, tenda, ...totals } = await getRekapPendaftaranData(start, end)
+    const { pendaftaran, tenda, tendaRincian, ...totals } = await getRekapPendaftaranData(start, end)
 
     if (format === 'excel') {
       const buffer = await generateExcelRekapPendaftaran(label, pendaftaran, tenda, totals)
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const buffer = await generatePdfRekapPendaftaran(label, pendaftaran, tenda, totals, guard.session.nama, 0, 0)
+    const buffer = await generatePdfRekapPendaftaran(label, pendaftaran, tendaRincian, totals, guard.session.nama, 0, 0)
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { start, end, label, isAll } = resolveRekapTanggal(tanggalStr)
-    const { pendaftaran, tenda, ...totals } = await getRekapPendaftaranData(start, end)
+    const { pendaftaran, tenda, tendaRincian, ...totals } = await getRekapPendaftaranData(start, end)
 
     if (format === 'excel') {
       const buffer = await generateExcelRekapPendaftaran(label, pendaftaran, tenda, totals)
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     const totalCash = parseAngka(body.totalCash) ?? 0
     const totalTransfer = parseAngka(body.totalTransfer) ?? 0
 
-    const buffer = await generatePdfRekapPendaftaran(label, pendaftaran, tenda, totals, guard.session.nama, totalCash, totalTransfer)
+    const buffer = await generatePdfRekapPendaftaran(label, pendaftaran, tendaRincian, totals, guard.session.nama, totalCash, totalTransfer)
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',

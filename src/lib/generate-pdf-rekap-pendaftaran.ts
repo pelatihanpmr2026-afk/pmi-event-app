@@ -2,7 +2,7 @@ import { addMonoHeader, createRekapPdf, drawMonoSig, drawMonoSummary, drawMonoTa
 import type { PDFFont } from 'pdf-lib'
 
 interface PendaftaranRow { namaSekolah: string; jumlahPeserta: number; jumlahPendamping: number; totalRp: number }
-interface TendaRow { namaSekolah: string; jumlahTenda: number; jenisTenda: string; totalRp: number }
+interface TendaRincianRow { namaSekolah: string; jumlahTenda: number; jenisTenda: string; totalRp: number }
 
 const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
@@ -26,7 +26,7 @@ function bungkusTeks(font: PDFFont, text: string, size: number, maxWidth: number
 export async function generatePdfRekapPendaftaran(
   tanggal: string,
   pendaftaran: PendaftaranRow[],
-  tenda: TendaRow[],
+  tendaRincian: TendaRincianRow[],
   totals: { totalJumlahPeserta: number; totalJumlahPendamping: number; totalJumlahTenda: number; totalPendaftaran: number; totalSewaTenda: number; totalKeseluruhan: number },
   namaPetugas: string,
   totalCash: number,
@@ -59,7 +59,23 @@ export async function generatePdfRekapPendaftaran(
     y = 100
   }
   drawText(page, 'B.  PENDAPATAN SEWA TENDA', 20, y, bold, 11, MONO_BLACK, 'left')
-  y += 15
+  y += 8
+  // Satu baris per jenis tenda; baris lanjutan sekolah yang sama
+  // dikosongkan nomor dan nama sekolahnya.
+  let nomorTenda = 0
+  let sekolahTerakhir = ''
+  const barisTenda = tendaRincian.map((row) => {
+    const barisBaru = row.namaSekolah !== sekolahTerakhir
+    sekolahTerakhir = row.namaSekolah
+    if (barisBaru) nomorTenda++
+    return [
+      barisBaru ? String(nomorTenda) : '',
+      barisBaru ? row.namaSekolah : '',
+      String(row.jumlahTenda),
+      row.jenisTenda,
+      rp(row.totalRp),
+    ]
+  })
   ;({ page, top: y } = drawMonoTable({
     page,
     top: y,
@@ -67,7 +83,7 @@ export async function generatePdfRekapPendaftaran(
     widths: [30, 120, 75, 200, 130],
     aligns: ['center', 'left', 'center', 'left', 'right'],
     headers: ['NO', 'NAMA SEKOLAH', 'JML. TENDA', 'JENIS TENDA', 'TOTAL (RP)'],
-    rows: tenda.map((row, index) => [String(index + 1), row.namaSekolah, String(row.jumlahTenda), row.jenisTenda, rp(row.totalRp)]),
+    rows: barisTenda,
     fonts: { regular, bold },
     totalRow: ['', 'TOTAL', String(totals.totalJumlahTenda), '', rp(totals.totalSewaTenda)],
     createPage,
@@ -103,7 +119,7 @@ export async function generatePdfRekapPendaftaran(
     `${sekarang.getDate()} ${NAMA_BULAN[sekarang.getMonth()]} ${sekarang.getFullYear()} ini dibuat dengan sebenar-benarnya.`
   const barisPernyataan = bungkusTeks(regular, pernyataan, 10, REKAP_A4_W - 40)
 
-  if (y + 24 + barisPernyataan.length * 18 + 130 > 760) {
+  if (y + 24 + barisPernyataan.length * 18 + 320 > 760) {
     page = createPage()
     y = 100
   }
@@ -113,9 +129,14 @@ export async function generatePdfRekapPendaftaran(
     y += 18
   }
 
-  const tandaTanganTop = y + 30
-  drawMonoSig(page, 110, tandaTanganTop, 'Petugas / Admin', namaPetugas, regular, bold)
-  drawMonoSig(page, REKAP_A4_W / 2, tandaTanganTop, 'Koordinator Kesekretariatan', null, regular, bold)
-  drawMonoSig(page, REKAP_A4_W - 110, tandaTanganTop, 'Bendahara', null, regular, bold)
+  y += 22
+  drawText(page, 'Mengetahui,', REKAP_A4_W / 2, y, bold, 10, MONO_BLACK, 'center')
+  const tingkatSatuTop = y + 26
+  drawMonoSig(page, 110, tingkatSatuTop, 'Petugas / Admin', namaPetugas, regular, bold)
+  drawMonoSig(page, REKAP_A4_W - 110, tingkatSatuTop, 'Koordinator Keuangan', null, regular, bold)
+
+  const menyetujuiTop = tingkatSatuTop + 108
+  drawText(page, 'Menyetujui,', REKAP_A4_W / 2, menyetujuiTop, bold, 10, MONO_BLACK, 'center')
+  drawMonoSig(page, REKAP_A4_W / 2, menyetujuiTop + 26, 'Bendahara', null, regular, bold)
   return Buffer.from(await pdf.save())
 }

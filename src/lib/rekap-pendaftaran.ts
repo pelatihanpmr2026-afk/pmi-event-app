@@ -16,9 +16,18 @@ export interface RekapTendaRow {
   totalRp: number
 }
 
+/** Rincian sewa tenda per jenis: satu baris per (sekolah, jenis tenda). */
+export interface RekapTendaRincianRow {
+  namaSekolah: string
+  jumlahTenda: number
+  jenisTenda: string
+  totalRp: number
+}
+
 export interface RekapPendaftaranData {
   pendaftaran: RekapPendaftaranRow[]
   tenda: RekapTendaRow[]
+  tendaRincian: RekapTendaRincianRow[]
   totalJumlahPeserta: number
   totalJumlahPendamping: number
   totalJumlahTenda: number
@@ -57,7 +66,8 @@ function urutkan<R extends RowSortable>(rows: R[]): R[] {
  *   (batchKe > 1). Susulan masuk ke rekap pada tanggal penambahan, BUKAN
  *   tanggal pendaftaran awal sekolah.
  * - Sewa tenda: berdasarkan tanggal TendaSewa dibuat (hanya LUNAS), diagregasi
- *   per sekolah.
+ *   per sekolah (`tenda`), plus rincian per jenis tenda (`tendaRincian`)
+ *   untuk laporan yang memecah baris per jenis.
  */
 export async function getRekapPendaftaranData(start: Date, end: Date): Promise<RekapPendaftaranData> {
   const [sekolahDaftar, susulanPeserta, tendaSewaHariIni] = await Promise.all([
@@ -144,7 +154,12 @@ export async function getRekapPendaftaranData(start: Date, end: Date): Promise<R
 
   interface TendaInternal extends RekapTendaRow, RowSortable {}
 
+  interface RincianInternal extends RekapTendaRincianRow, RowSortable {
+    sekolahId: string
+  }
+
   const tendaBySekolah = new Map<string, TendaInternal>()
+  const rincianByJenis = new Map<string, RincianInternal>()
   for (const t of tendaSewaHariIni) {
     let row = tendaBySekolah.get(t.sekolahId)
     if (!row) {
@@ -162,10 +177,54 @@ export async function getRekapPendaftaranData(start: Date, end: Date): Promise<R
     row.totalRp += t.jumlah * t.hargaSatuanSaatSewa
     const label = t.jumlah > 1 ? `${t.tendaJenis.nama} x${t.jumlah}` : t.tendaJenis.nama
     row.jenisTenda = row.jenisTenda ? `${row.jenisTenda}, ${label}` : label
+
+    const kunciRincian = `${t.sekolahId}__${t.tendaJenisId}`
+    let rincian = rincianByJenis.get(kunciRincian)
+    if (!rincian) {
+      rincian = {
+        sekolahId: t.sekolahId,
+        namaSekolah: t.sekolah.namaLengkap,
+        jumlahTenda: 0,
+        jenisTenda: t.tendaJenis.nama,
+        totalRp: 0,
+        kategori: t.sekolah.kategori,
+        nomorPendaftaran: t.sekolah.nomorPendaftaran,
+      }
+      rincianByJenis.set(kunciRincian, rincian)
+    }
+    rincian.jumlahTenda += t.jumlah
+    rincian.totalRp += t.jumlah * t.hargaSatuanSaatSewa
+    rincian.jenisTenda = rincian.jumlahTenda > 1 ? `${t.tendaJenis.nama} x${rincian.jumlahTenda}` : t.tendaJenis.nama
   }
 
   const pendaftaranTertata = urutkan<PendaftaranInternal>(pendaftaran)
   const tenda = urutkan<TendaInternal>([...tendaBySekolah.values()])
+
+  // Kelompokkan rincian per sekolah mengikuti urutan yang sama
+  // (kategori lalu nomor pendaftaran), isi tiap kelompok mengikuti
+  // urutan pembuatan sewa.
+  const kelompokRincian = new Map<string, RincianInternal[]>()
+  for (const rincian of rincianByJenis.values()) {
+    const daftar = kelompokRincian.get(rincian.sekolahId)
+    if (daftar) daftar.push(rincian)
+    else kelompokRincian.set(rincian.sekolahId, [rincian])
+  }
+  const urutanSekolah = [...kelompokRincian.keys()].sort((a, b) => {
+    const ra = kelompokRincian.get(a)![0]
+    const rb = kelompokRincian.get(b)![0]
+    const ka = ra.kategori ? URUTAN_KATEGORI[ra.kategori] : 99
+    const kb = rb.kategori ? URUTAN_KATEGORI[rb.kategori] : 99
+    if (ka !== kb) return ka - kb
+    return (ra.nomorPendaftaran ?? Number.MAX_SAFE_INTEGER) - (rb.nomorPendaftaran ?? Number.MAX_SAFE_INTEGER)
+  })
+  const tendaRincian: RekapTendaRincianRow[] = urutanSekolah.flatMap((id) =>
+    kelompokRincian.get(id)!.map(({ namaSekolah, jumlahTenda, jenisTenda, totalRp }) => ({
+      namaSekolah,
+      jumlahTenda,
+      jenisTenda,
+      totalRp,
+    }))
+  )
 
   const totalJumlahPeserta = pendaftaranTertata.reduce((s, r) => s + r.jumlahPeserta, 0)
   const totalJumlahPendamping = pendaftaranTertata.reduce((s, r) => s + r.jumlahPendamping, 0)
@@ -176,6 +235,7 @@ export async function getRekapPendaftaranData(start: Date, end: Date): Promise<R
   return {
     pendaftaran: pendaftaranTertata,
     tenda,
+    tendaRincian,
     totalJumlahPeserta,
     totalJumlahPendamping,
     totalJumlahTenda,
