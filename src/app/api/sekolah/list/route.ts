@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     const search = (sp.get('search') ?? '').trim()
     const kategori = (sp.get('kategori') ?? '').trim()
     const sortBy = (sp.get('sortBy') ?? 'default').trim()
+    const daftarUlang = (sp.get('daftarUlang') ?? '').trim()
 
     const where: Prisma.SekolahWhereInput = {
       ...(search
@@ -33,6 +34,17 @@ export async function GET(req: NextRequest) {
         : {}),
       ...(kategori
         ? { kategori: kategori as Prisma.SekolahWhereInput['kategori'] }
+        : {}),
+      ...(daftarUlang === 'sudah' || daftarUlang === 'belum'
+        ? {
+            pembayaran: {
+              some: {
+                tipe: 'PESERTA' as const,
+                statusPembayaran: 'LUNAS' as const,
+                statusDaftarUlang: daftarUlang === 'sudah',
+              },
+            },
+          }
         : {}),
     }
 

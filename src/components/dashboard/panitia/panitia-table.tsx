@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { Search, Eye, Trash2, FileDown, FileSpreadsheet, Check, X } from 'lucide-react'
+import { Search, Eye, Pencil, Trash2, FileDown, FileSpreadsheet, Check, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/responsive-table'
 import { ASAL_UNIT_OPTIONS, DIVISI_OPTIONS } from '@/lib/constants'
 import { PanitiaDetailModal, type PanitiaData, type SesiRingkas } from './panitia-detail-modal'
+import { PanitiaEditModal, type PanitiaUpdated } from './panitia-edit-modal'
 
 function findLabel(options: readonly { value: string; label: string }[], value: string) {
   return options.find((opt) => opt.value === value)?.label ?? value
@@ -29,6 +30,8 @@ export function PanitiaTable({
   const [filterDivisi, setFilterDivisi] = useState('')
   const [selected, setSelected] = useState<PanitiaData | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editing, setEditing] = useState<PanitiaData | null>(null)
+  const [isEditOpen, setIsEditOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
@@ -46,6 +49,21 @@ export function PanitiaTable({
   function openDetail(panitia: PanitiaData) {
     setSelected(panitia)
     setIsModalOpen(true)
+  }
+
+  function openEdit(panitia: PanitiaData) {
+    setEditing(panitia)
+    setIsEditOpen(true)
+  }
+
+  function handleSaved(updated: PanitiaUpdated) {
+    setData((prev) =>
+      prev.map((p) =>
+        p.id === updated.id
+          ? { ...p, ...updated, createdAt: p.createdAt, absensiLogs: p.absensiLogs }
+          : p
+      )
+    )
   }
 
   async function handleDelete(id: string, nama: string) {
@@ -170,6 +188,12 @@ export function PanitiaTable({
             <Eye size={16} />
           </button>
           <button
+            onClick={() => openEdit(row)}
+            className="p-1.5 text-gray-500 hover:text-event-navy hover:bg-[var(--color-surface-muted)] rounded-[var(--radius-input)] transition-colors"
+          >
+            <Pencil size={16} />
+          </button>
+          <button
             onClick={() => handleDelete(row.id, row.nama)}
             disabled={deletingId === row.id}
             className="p-1.5 text-gray-500 hover:text-pmi-red hover:bg-red-50 rounded-[var(--radius-input)] transition-colors"
@@ -192,6 +216,13 @@ export function PanitiaTable({
           <p className="font-body text-xs text-gray-400">{row.nomorRegistrasi}</p>
         </div>
         <Badge variant={row.status === 'HADIR' ? 'success' : 'info'}>{row.status}</Badge>
+        <button
+          onClick={() => openEdit(row)}
+          aria-label={`Edit ${row.nama}`}
+          className="p-1.5 text-gray-500 hover:text-event-navy hover:bg-[var(--color-surface-muted)] rounded-[var(--radius-input)] transition-colors shrink-0"
+        >
+          <Pencil size={16} />
+        </button>
       </div>
       <div className="grid grid-cols-2 gap-1 text-[11px] font-body">
         <span className="text-gray-400">Unit:</span>
@@ -286,6 +317,13 @@ export function PanitiaTable({
         sesiList={sesiList}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+      <PanitiaEditModal
+        key={editing?.id ?? 'tutup'}
+        panitia={editing}
+        isOpen={isEditOpen}
+        onClose={() => setIsEditOpen(false)}
+        onSaved={handleSaved}
       />
     </div>
   )

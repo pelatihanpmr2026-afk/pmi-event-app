@@ -57,6 +57,7 @@ export function SekolahTable({
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filterKategori, setFilterKategori] = useState('')
+  const [filterDaftarUlang, setFilterDaftarUlang] = useState('')
   const [sortBy, setSortBy] = useState<'default' | 'nomor'>('default')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -71,7 +72,7 @@ export function SekolahTable({
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  async function fetchPage(nextPage: number, q: string, kategori: string, sort: 'default' | 'nomor') {
+  async function fetchPage(nextPage: number, q: string, kategori: string, daftarUlang: string, sort: 'default' | 'nomor') {
     setLoading(true)
     try {
       const params = new URLSearchParams({
@@ -79,6 +80,7 @@ export function SekolahTable({
         pageSize: String(PAGE_SIZE),
         search: q,
         kategori,
+        daftarUlang,
         sortBy: sort,
       })
       const res = await fetch(`/api/sekolah/list?${params}`)
@@ -106,8 +108,8 @@ export function SekolahTable({
       firstRun.current = false
       return
     }
-    void fetchPage(page, debouncedSearch, filterKategori, sortBy)
-  }, [page, debouncedSearch, filterKategori, sortBy])
+    void fetchPage(page, debouncedSearch, filterKategori, filterDaftarUlang, sortBy)
+  }, [page, debouncedSearch, filterKategori, filterDaftarUlang, sortBy])
 
   function openDetail(id: string) {
     setOpenMenuId(null)
@@ -116,7 +118,7 @@ export function SekolahTable({
   }
 
   async function refreshList() {
-    await fetchPage(page, debouncedSearch, filterKategori, sortBy)
+    await fetchPage(page, debouncedSearch, filterKategori, filterDaftarUlang, sortBy)
   }
 
   async function confirmPayment(paymentId: string, label: string) {
@@ -496,6 +498,20 @@ export function SekolahTable({
               setPage(1)
             }}
             options={[...KATEGORI_SEKOLAH_OPTIONS]}
+          />
+        </div>
+        <div className="w-full sm:w-52">
+          <Select
+            placeholder="Semua Status DU"
+            value={filterDaftarUlang}
+            onChange={(e) => {
+              setFilterDaftarUlang(e.target.value)
+              setPage(1)
+            }}
+            options={[
+              { value: 'sudah', label: 'Sudah Daftar Ulang' },
+              { value: 'belum', label: 'Belum Daftar Ulang' },
+            ]}
           />
         </div>
         <button
