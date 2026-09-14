@@ -78,6 +78,6 @@ export async function generatePdfPanitia(
   ]
   bawah = drawMonoSummary(page, REKAP_A4_W - 20 - 270, bawah, 270, ringkasan, { regular, bold })
 
-  drawMonoSig(page, REKAP_A4_W - 110, bawah + 40, 'Mengetahui, Koordinator Kesekretariatan', namaPetugas, regular, bold)
+  drawMonoSig(page, REKAP_A4_W - 110, bawah + 40, 'Mengetahui, Ketua Pelaksana', 'Wahyu Hidayat', regular, bold)
   return Buffer.from(await pdf.save())
 }
