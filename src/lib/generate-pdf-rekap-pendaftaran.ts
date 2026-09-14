@@ -23,7 +23,9 @@ export async function generatePdfRekapPendaftaran(
   pendaftaran: PendaftaranRow[],
   tenda: TendaRow[],
   totals: { totalJumlahPeserta: number; totalJumlahPendamping: number; totalJumlahTenda: number; totalPendaftaran: number; totalSewaTenda: number; totalKeseluruhan: number },
-  namaPetugas: string
+  namaPetugas: string,
+  totalCash: number,
+  totalTransfer: number
 ): Promise<Buffer> {
   const { pdf, regular, bold } = await createRekapPdf(`Laporan Keuangan Harian ${tanggal}`)
   const createPage = () => addRekapPage(pdf, 'LAPORAN KEUANGAN HARIAN', tanggal, bold, regular)
@@ -48,16 +50,18 @@ export async function generatePdfRekapPendaftaran(
     fonts: { regular, bold }, totalRow: ['', 'TOTAL', String(totals.totalJumlahTenda), '', rp(totals.totalSewaTenda)], rowHeight: 24,
     createPage, continuationTitle: 'LAPORAN KEUANGAN HARIAN - LANJUTAN',
   }))
-  if (y + 220 > 760) { page = createPage(); y = 116 }
+  if (y + 260 > 760) { page = createPage(); y = 116 }
   y += 30
-  const summaryX = REKAP_A4_W - 20 - 290
-  rect(page, summaryX, y - 14, 290, 122, REKAP_YELLOW)
+  const summaryX = REKAP_A4_W - 20 - 320
+  rect(page, summaryX, y - 14, 320, 160, REKAP_YELLOW)
   drawText(page, `TOTAL PESERTA : ${totals.totalJumlahPeserta}`, summaryX + 14, y, regular, 10)
   drawText(page, `TOTAL PENDAMPING : ${totals.totalJumlahPendamping}`, summaryX + 14, y + 22, regular, 10)
   drawText(page, `TOTAL BIAYA PENDAFTARAN : ${rp(totals.totalPendaftaran)}`, summaryX + 14, y + 44, regular, 10)
   drawText(page, `TOTAL BIAYA SEWA TENDA : ${rp(totals.totalSewaTenda)}`, summaryX + 14, y + 66, regular, 10)
-  drawText(page, `TOTAL KESELURUHAN : ${rp(totals.totalKeseluruhan)}`, summaryX + 14, y + 92, bold, 12)
-  const sigTop = y + 130
+  drawText(page, `TOTAL CASH : ${rp(totalCash)}`, summaryX + 14, y + 88, bold, 10)
+  drawText(page, `TOTAL TRANSFER : ${rp(totalTransfer)}`, summaryX + 14, y + 110, bold, 10)
+  drawText(page, `TOTAL KESELURUHAN : ${rp(totals.totalKeseluruhan)}`, summaryX + 14, y + 132, bold, 12)
+  const sigTop = y + 165
   drawSig(page, 100, sigTop, 'PETUGAS / ADMIN', namaPetugas, regular, bold)
   drawSig(page, REKAP_A4_W / 2, sigTop, 'KOORDINATOR KESEKRETARIATAN', null, regular, bold)
   drawSig(page, REKAP_A4_W - 100, sigTop, 'BENDAHARA', null, regular, bold)

@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { Download } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/ui/modal'
+import { toast } from 'sonner'
 
 interface PendaftaranRow { namaSekolah: string; jumlahPeserta: number; jumlahPendamping: number; totalRp: number }
 interface TendaRow { namaSekolah: string; jumlahTenda: number; jenisTenda: string; totalRp: number }
@@ -26,6 +28,10 @@ export function RekapPendaftaranPanel() {
     totalKeseluruhan: number
   } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false)
+  const [totalCash, setTotalCash] = useState('')
+  const [totalTransfer, setTotalTransfer] = useState('')
+  const [isDownloading, setIsDownloading] = useState(false)
 
   const paramTanggal = semuaTanggal ? 'all' : tanggal
 
@@ -40,8 +46,44 @@ export function RekapPendaftaranPanel() {
     }
   }
 
-  function handleDownload(format: 'excel' | 'pdf') {
-    window.open(`/api/pendaftaran/rekap-harian/download?tanggal=${paramTanggal}&format=${format}`, '_blank')
+  function handleDownloadExcel() {
+    window.open(`/api/pendaftaran/rekap-harian/download?tanggal=${paramTanggal}&format=excel`, '_blank')
+  }
+
+  async function handleDownloadPdf() {
+    const cash = totalCash.replace(/\D/g, '')
+    const transfer = totalTransfer.replace(/\D/g, '')
+    if (!cash && !transfer) {
+      toast.error('Isi minimal salah satu dari Total Cash atau Total Transfer')
+      return
+    }
+    setIsDownloading(true)
+    try {
+      const res = await fetch('/api/pendaftaran/rekap-harian/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tanggal: paramTanggal, totalCash: Number(cash || 0), totalTransfer: Number(transfer || 0) }),
+      })
+      if (!res.ok) {
+        const result = await res.json().catch(() => null)
+        throw new Error((result as { message?: string } | null)?.message || 'Gagal mengekspor PDF')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const fileBase = semuaTanggal ? 'Rekap_Pendaftaran_Semua_Tanggal' : `Rekap_Pendaftaran_${paramTanggal}`
+      a.href = url
+      a.download = `${fileBase}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      setIsPdfModalOpen(false)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
+    } finally {
+      setIsDownloading(false)
+    }
   }
 
   return (
@@ -58,11 +100,11 @@ export function RekapPendaftaranPanel() {
           <Button variant="primary" onClick={handleLihat} isLoading={isLoading}>
             Lihat
           </Button>
-          <Button variant="secondary" onClick={() => handleDownload('excel')} className="flex items-center gap-1.5">
+          <Button variant="secondary" onClick={handleDownloadExcel} className="flex items-center gap-1.5">
             <Download size={14} />
             Excel
           </Button>
-          <Button variant="outline" onClick={() => handleDownload('pdf')} className="flex items-center gap-1.5">
+          <Button variant="outline" onClick={() => setIsPdfModalOpen(true)} className="flex items-center gap-1.5">
             <Download size={14} />
             PDF
           </Button>
@@ -209,6 +251,46 @@ export function RekapPendaftaranPanel() {
           </div>
         </>
       )}
+
+      <Modal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        title="Ekspor PDF Laporan Keuangan Harian"
+      >
+        <div className="flex flex-col gap-4">
+          <p className="font-body text-xs text-event-navy/70">
+            Isi rincian pembayaran yang diterima. Nilai ini akan dicantumkan pada PDF. Minimal satu kolom wajib diisi.
+          </p>
+          <div>
+            <Input
+              label="Total Cash (Tunai)"
+              type="text"
+              inputMode="numeric"
+              placeholder="0"
+              value={totalCash}
+              onChange={(e) => setTotalCash(e.target.value)}
+            />
+          </div>
+          <div>
+            <Input
+              label="Total Transfer"
+              type="text"
+              inputMode="numeric"
+              placeholder="0"
+              value={totalTransfer}
+              onChange={(e) => setTotalTransfer(e.target.value)}
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-1">
+            <Button type="button" variant="outline" onClick={() => setIsPdfModalOpen(false)} disabled={isDownloading}>
+              Batal
+            </Button>
+            <Button type="button" variant="primary" onClick={handleDownloadPdf} isLoading={isDownloading}>
+              Unduh PDF
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }
