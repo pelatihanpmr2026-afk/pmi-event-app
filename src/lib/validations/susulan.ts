@@ -14,9 +14,7 @@ import { pesertaItemSchema, pendampingArraySchema } from './peserta'
  * karena payload susulan dikirim sebagai JSON + file foto terpisah, sama
  * seperti pendaftaran awal).
  */
-export const susulanPesertaArraySchema = z
-  .array(pesertaItemSchema.omit({ foto: true }))
-  .max(60, 'Maksimal 60 peserta per batch susulan')
+export const susulanPesertaArraySchema = z.array(pesertaItemSchema.omit({ foto: true }))
 
 export const susulanPayloadSchema = z
   .object({

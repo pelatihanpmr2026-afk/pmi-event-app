@@ -75,12 +75,13 @@ const pesertaMetaSchema = baseItemSchema.extend({
   ]),
 })
 
+// Sesuai FAQ di halaman utama: tidak ada batasan jumlah peserta maupun
+// pendamping per sekolah, jadi skema array di sini TIDAK punya .max().
 export const pesertaMetaArraySchema = z
   .array(pesertaMetaSchema)
   .min(1, 'Minimal 1 peserta harus didaftarkan')
-  .max(60, 'Maksimal 60 peserta per pendaftaran')
 
-export const pendampingArraySchema = z.array(baseItemSchema).max(30, 'Maksimal 30 pendamping per pendaftaran')
+export const pendampingArraySchema = z.array(baseItemSchema)
 
 export const pesertaPendampingSchema = z.object({
   peserta: z.array(pesertaItemSchema).min(1, 'Minimal 1 peserta harus didaftarkan'),

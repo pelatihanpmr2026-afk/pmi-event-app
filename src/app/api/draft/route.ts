@@ -7,8 +7,6 @@ import { dataSekolahSchema } from '@/lib/validations/sekolah'
 import { pendampingArraySchema } from '@/lib/validations/peserta'
 import { MAX_REQUEST_BODY } from '@/lib/constants-sekolah'
 
-const MAX_PHOTOS = 60
-
 // Rate limit draft sync per SEKOLAH, bukan per-IP: satu sekolah (apalagi di
 // WiFi bersama) bisa menyimpan draft berkali-kali dalam sehari tanpa khawatir
 // kena batas IP global yang dipakai banyak orang.
@@ -45,10 +43,10 @@ const draftPesertaItemSchema = z.object({
   foto: z.string().nullable().optional(),
 })
 
+// Setara dengan pesertaMetaArraySchema: tanpa batas jumlah peserta (FAQ).
 const draftPesertaArraySchema = z
   .array(draftPesertaItemSchema)
   .min(1, 'Minimal 1 peserta')
-  .max(MAX_PHOTOS, `Maksimal ${MAX_PHOTOS} peserta`)
 
 export async function POST(req: NextRequest) {
   try {
