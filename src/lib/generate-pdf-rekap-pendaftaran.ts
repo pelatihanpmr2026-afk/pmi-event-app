@@ -99,7 +99,7 @@ export async function generatePdfRekapPendaftaran(
 
   const sekarang = new Date()
   const pernyataan =
-    `Yang bertanda tangan di bawah ini menyatakan bahwa laporan keuangan ${NAMA_HARI[sekarang.getDay()]} ` +
+    `Yang bertanda tangan di bawah ini menyatakan bahwa laporan keuangan ${NAMA_HARI[sekarang.getDay()]}, ` +
     `${sekarang.getDate()} ${NAMA_BULAN[sekarang.getMonth()]} ${sekarang.getFullYear()} ini dibuat dengan sebenar-benarnya.`
   const barisPernyataan = bungkusTeks(regular, pernyataan, 10, REKAP_A4_W - 40)
 
