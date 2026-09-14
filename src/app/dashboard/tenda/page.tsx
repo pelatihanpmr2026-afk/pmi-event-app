@@ -60,7 +60,7 @@ const data: TendaData[] = tendaList.map((t) => ({
       </div>
 
       <TendaManager initialTenda={data} />
-      <TendaSewaList />
+      <TendaSewaList tendaOptions={tendaList.map((t) => ({ id: t.id, nama: t.nama }))} />
     </div>
   )
 }

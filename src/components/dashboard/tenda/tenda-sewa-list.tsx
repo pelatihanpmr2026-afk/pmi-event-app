@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Loader2, Pencil, Trash2 } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Download, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
@@ -29,14 +29,21 @@ function rp(n: number) {
   return `Rp${n.toLocaleString('id-ID')}`
 }
 
-export function TendaSewaList() {
+export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; nama: string }[] }) {
   const [data, setData] = useState<SewaRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [filterTenda, setFilterTenda] = useState('')
+  const [isExporting, setIsExporting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editingRow, setEditingRow] = useState<SewaRow | null>(null)
-  const [tendaOptions, setTendaOptions] = useState<TendaOption[]>([])
+  const [editTendaOptions, setEditTendaOptions] = useState<TendaOption[]>([])
   const [editJumlah, setEditJumlah] = useState<Record<string, number>>({})
   const [isSaving, setIsSaving] = useState(false)
+
+  const filteredData = useMemo(() => {
+    if (!filterTenda) return data
+    return data.filter((row) => row.tenda.some((t) => t.tendaJenisId === filterTenda))
+  }, [data, filterTenda])
 
   async function fetchData() {
     try {
@@ -74,7 +81,7 @@ export function TendaSewaList() {
       const res = await fetch('/api/tenda')
       const result = await res.json()
       if (!res.ok || !result.success) throw new Error(result?.message || 'Gagal memuat jenis tenda')
-      setTendaOptions(result.data)
+      setEditTendaOptions(result.data)
       setEditJumlah(Object.fromEntries(row.tenda.map((tenda) => [tenda.tendaJenisId, tenda.jumlah])))
       setEditingRow(row)
     } catch (error) {
@@ -111,17 +118,73 @@ export function TendaSewaList() {
     }
   }
 
+  async function handleExportPdf() {
+    setIsExporting(true)
+    try {
+      const params = new URLSearchParams()
+      if (filterTenda) params.set('tendaJenisId', filterTenda)
+      const res = await fetch(`/api/tenda/sewa-list/download?${params.toString()}`)
+      if (!res.ok) {
+        const result = await res.json().catch(() => null)
+        throw new Error(result?.message || 'Gagal mengekspor PDF')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const tendaNama = tendaOptions.find((t) => t.id === filterTenda)?.nama
+      a.href = url
+      a.download = `Sewa_Tenda_${tendaNama ? tendaNama.replace(/[^a-z0-9]+/gi, '_') : 'Semua'}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   if (isLoading) {
     return <p className="font-body text-sm text-event-navy/50 text-center py-8">Memuat data...</p>
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <h2 className="font-heading text-xs text-event-navy">SEKOLAH YANG SEWA TENDA (SUDAH LUNAS)</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <h2 className="font-heading text-xs text-event-navy sm:flex-1">SEKOLAH YANG SEWA TENDA (SUDAH LUNAS)</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            value={filterTenda}
+            onChange={(e) => setFilterTenda(e.target.value)}
+            className="h-11 border-3 border-event-navy bg-white px-3 font-body text-xs text-event-navy outline-none"
+            aria-label="Filter berdasarkan jenis tenda"
+          >
+            <option value="">Semua Jenis Tenda</option>
+            {tendaOptions.map((t) => (
+              <option key={t.id} value={t.id}>{t.nama}</option>
+            ))}
+          </select>
+          <Button
+            variant="secondary"
+            onClick={() => void handleExportPdf()}
+            isLoading={isExporting}
+            disabled={filteredData.length === 0}
+            className="flex items-center gap-1.5"
+          >
+            <Download size={14} />
+            Export PDF
+          </Button>
+        </div>
+      </div>
 
       {data.length === 0 ? (
         <div className="border-3 border-event-navy bg-white py-10 text-center">
           <p className="font-body text-sm text-event-navy/50">Belum ada sekolah yang sewa tenda</p>
+        </div>
+      ) : filteredData.length === 0 ? (
+        <div className="border-3 border-event-navy bg-white py-10 text-center">
+          <p className="font-body text-sm text-event-navy/50">Tidak ada sekolah dengan filter jenis tenda ini</p>
         </div>
       ) : (
         <div className="border-3 border-event-navy overflow-x-auto bg-white">
@@ -137,7 +200,7 @@ export function TendaSewaList() {
               </tr>
             </thead>
             <tbody>
-              {data.map((s, i) => (
+              {filteredData.map((s, i) => (
                 <tr key={s.id} className={`border-t-2 border-event-navy/10 ${i % 2 === 1 ? 'bg-event-cream/40' : ''}`}>
                   <td className="px-3 py-2.5 font-body text-sm font-bold text-event-navy">
                     {s.namaSekolah}
@@ -193,7 +256,7 @@ export function TendaSewaList() {
             Perubahan akan memperbarui jumlah sewa, total pembayaran, stok, dan kwitansi.
           </p>
           <div className="flex flex-col gap-2">
-            {tendaOptions.map((tenda) => (
+            {editTendaOptions.map((tenda) => (
               <label key={tenda.id} className="flex items-center justify-between gap-3 border-2 border-event-navy/15 px-3 py-2">
                 <span className="min-w-0 font-body text-xs text-event-navy">
                   <span className="block font-bold">{tenda.nama}</span>
