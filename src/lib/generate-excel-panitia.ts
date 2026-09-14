@@ -121,3 +121,75 @@ export async function generateExcelPanitiaPerDivisiBuffer(rows: PanitiaExcelRow[
 
   return Buffer.from(await workbook.xlsx.writeBuffer())
 }
+
+export interface PanitiaLengkapExcelRow {
+  nomorRegistrasi: string
+  nama: string
+  gender: string
+  noWhatsapp: string
+  alamat: string
+  asalUnit: string
+  divisi: string
+  hadirSesiIds: string[]
+  status: string
+}
+
+export interface PanitiaLengkapExcelSesi {
+  id: string
+  nama: string
+}
+
+/** Export datar sesuai tabel dashboard: satu sheet, kolom kehadiran per sesi. */
+export async function generateExcelPanitiaLengkapBuffer(
+  rows: PanitiaLengkapExcelRow[],
+  sesiList: PanitiaLengkapExcelSesi[]
+): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook()
+  workbook.creator = 'Sistem Pendaftaran PMR 2026'
+  workbook.created = new Date()
+
+  const sheet = workbook.addWorksheet('Data Panitia')
+  sheet.columns = [
+    { header: 'No', key: 'no', width: 6 },
+    { header: 'No. Registrasi', key: 'nomorRegistrasi', width: 24 },
+    { header: 'Nama', key: 'nama', width: 28 },
+    { header: 'Gender', key: 'gender', width: 14 },
+    { header: 'WhatsApp', key: 'whatsapp', width: 18 },
+    { header: 'Alamat', key: 'alamat', width: 42 },
+    { header: 'Asal Unit', key: 'asalUnit', width: 22 },
+    { header: 'Divisi', key: 'divisi', width: 28 },
+    ...sesiList.map((sesi) => ({ header: sesi.nama, key: `sesi_${sesi.id}`, width: 16 })),
+    { header: 'Status', key: 'status', width: 14 },
+  ]
+  styleHeader(sheet)
+  sheet.views = [{ state: 'frozen', ySplit: 1 }]
+  const toColLetter = (n: number): string => {
+    let s = ''
+    while (n > 0) {
+      const m = (n - 1) % 26
+      s = String.fromCharCode(65 + m) + s
+      n = Math.floor((n - 1) / 26)
+    }
+    return s
+  }
+  sheet.autoFilter = `A1:${toColLetter(sheet.columnCount)}1`
+
+  rows.forEach((row, index) => {
+    const excelRow = sheet.getRow(index + 2)
+    excelRow.values = [
+      index + 1,
+      row.nomorRegistrasi,
+      row.nama,
+      row.gender === 'LAKI_LAKI' ? 'Laki-laki' : 'Perempuan',
+      row.noWhatsapp,
+      row.alamat,
+      findLabel(ASAL_UNIT_OPTIONS, row.asalUnit),
+      findLabel(DIVISI_OPTIONS, row.divisi),
+      ...sesiList.map((sesi) => (row.hadirSesiIds.includes(sesi.id) ? 'Hadir' : '-')),
+      row.status,
+    ]
+    excelRow.alignment = { vertical: 'top', wrapText: true }
+  })
+
+  return Buffer.from(await workbook.xlsx.writeBuffer())
+}

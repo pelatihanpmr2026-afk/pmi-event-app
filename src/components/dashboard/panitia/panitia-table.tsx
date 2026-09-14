@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { Search, Eye, Trash2, FileDown, FileSpreadsheet } from 'lucide-react'
+import { Search, Eye, Trash2, FileDown, FileSpreadsheet, Check, X } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -91,6 +91,15 @@ export function PanitiaTable({
     window.open(`/api/panitia/export${query}`, '_blank', 'noopener,noreferrer')
   }
 
+  function handleExportLengkap(format: 'excel' | 'pdf') {
+    const params = new URLSearchParams()
+    params.set('format', format)
+    if (search.trim()) params.set('search', search.trim())
+    if (filterUnit) params.set('unit', filterUnit)
+    if (filterDivisi) params.set('divisi', filterDivisi)
+    window.open(`/api/panitia/export-lengkap?${params}`, '_blank', 'noopener,noreferrer')
+  }
+
   const columns: ResponsiveTableColumn<PanitiaData>[] = [
     {
       key: 'foto',
@@ -124,6 +133,23 @@ export function PanitiaTable({
       header: 'Divisi',
       render: (row) => <span className="text-gray-600">{findLabel(DIVISI_OPTIONS, row.divisi)}</span>,
     },
+    ...sesiList.map((sesi) => ({
+      key: `sesi-${sesi.id}`,
+      header: sesi.nama,
+      align: 'center' as const,
+      render: (row: PanitiaData) => {
+        const hadir = row.absensiLogs.some((l) => l.sesiId === sesi.id)
+        return hadir ? (
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-500 text-white" title={`Hadir ${sesi.nama}`}>
+            <Check size={13} />
+          </span>
+        ) : (
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-200 text-gray-400" title={`Belum hadir ${sesi.nama}`}>
+            <X size={13} />
+          </span>
+        )
+      },
+    })),
     {
       key: 'status',
       header: 'Status',
@@ -175,6 +201,25 @@ export function PanitiaTable({
         <span className="text-gray-400">No. WhatsApp:</span>
         <span className="font-medium text-event-navy">{row.noWhatsapp}</span>
       </div>
+      {sesiList.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {sesiList.map((sesi) => {
+            const hadir = row.absensiLogs.some((l) => l.sesiId === sesi.id)
+            return (
+              <span
+                key={sesi.id}
+                title={sesi.nama}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-body font-medium ${
+                  hadir ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
+                }`}
+              >
+                {hadir ? <Check size={11} /> : <X size={11} />}
+                {sesi.nama}
+              </span>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 
@@ -211,6 +256,14 @@ export function PanitiaTable({
         <Button variant="primary" onClick={handleExportExcel} className="flex items-center gap-1.5">
           <FileSpreadsheet size={14} />
           Export Excel per Divisi
+        </Button>
+        <Button variant="secondary" onClick={() => handleExportLengkap('excel')} className="flex items-center gap-1.5">
+          <FileSpreadsheet size={14} />
+          Excel Tabel
+        </Button>
+        <Button variant="outline" onClick={() => handleExportLengkap('pdf')} className="flex items-center gap-1.5">
+          <FileDown size={14} />
+          PDF Tabel
         </Button>
       </div>
 

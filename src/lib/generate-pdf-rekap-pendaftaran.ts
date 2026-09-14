@@ -59,7 +59,7 @@ export async function generatePdfRekapPendaftaran(
     y = 100
   }
   drawText(page, 'B.  PENDAPATAN SEWA TENDA', 20, y, bold, 11, MONO_BLACK, 'left')
-  y += 8
+  y += 15
   // Satu baris per jenis tenda; baris lanjutan sekolah yang sama
   // dikosongkan nomor dan nama sekolahnya.
   let nomorTenda = 0
@@ -133,7 +133,7 @@ export async function generatePdfRekapPendaftaran(
   drawText(page, 'Mengetahui,', REKAP_A4_W / 2, y, bold, 10, MONO_BLACK, 'center')
   const tingkatSatuTop = y + 26
   drawMonoSig(page, 110, tingkatSatuTop, 'Petugas / Admin', namaPetugas, regular, bold)
-  drawMonoSig(page, REKAP_A4_W - 110, tingkatSatuTop, 'Koordinator Keuangan', null, regular, bold)
+  drawMonoSig(page, REKAP_A4_W - 110, tingkatSatuTop, 'Koordinator Kesekretariatan', null, regular, bold)
 
   const menyetujuiTop = tingkatSatuTop + 108
   drawText(page, 'Menyetujui,', REKAP_A4_W / 2, menyetujuiTop, bold, 10, MONO_BLACK, 'center')
