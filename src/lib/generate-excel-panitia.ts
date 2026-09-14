@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs'
 import { ASAL_UNIT_OPTIONS, DIVISI_OPTIONS } from './constants'
+import { ringkasNamaPanitia } from './utils'
 import { tryCropToPassportPhoto } from './passport-photo'
 
 interface PanitiaExcelRow {
@@ -179,7 +180,7 @@ export async function generateExcelPanitiaLengkapBuffer(
     excelRow.values = [
       index + 1,
       row.nomorRegistrasi,
-      row.nama,
+      ringkasNamaPanitia(row.nama),
       row.gender === 'LAKI_LAKI' ? 'Laki-laki' : 'Perempuan',
       row.noWhatsapp,
       row.alamat,
@@ -189,6 +190,7 @@ export async function generateExcelPanitiaLengkapBuffer(
       row.status,
     ]
     excelRow.alignment = { vertical: 'top', wrapText: true }
+    excelRow.font = { size: 11 }
   })
 
   return Buffer.from(await workbook.xlsx.writeBuffer())

@@ -1,4 +1,5 @@
 import { addMonoHeader, createRekapPdf, drawMonoSig, drawMonoSummary, drawMonoTable, REKAP_A4_W } from './pdf-rekap-text'
+import { ringkasNamaPanitia } from './utils'
 
 export interface PanitiaPdfSesi {
   id: string
@@ -51,7 +52,7 @@ export async function generatePdfPanitia(
     headers: ['NO', 'NAMA', 'UNIT', 'DIVISI', ...sesiList.map((s) => s.nama.toUpperCase()), 'STATUS'],
     rows: rows.map((row, index) => [
       String(index + 1),
-      `${row.nama} (${row.nomorRegistrasi})`,
+      ringkasNamaPanitia(row.nama),
       row.asalUnit,
       row.divisi,
       ...sesiList.map((s) => (row.hadirSesiIds.includes(s.id) ? 'Hadir' : '-')),
