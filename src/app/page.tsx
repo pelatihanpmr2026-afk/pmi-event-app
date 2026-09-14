@@ -15,6 +15,7 @@ import { Reveal } from '@/components/home/scroll-reveal'
 import { prisma } from '@/lib/prisma'
 import { BIAYA_PESERTA, BIAYA_PENDAMPING } from '@/lib/constants-sekolah'
 import { TendaInfoCards } from '@/components/public/tenda-info-cards'
+import { KritikSaranSection } from '@/components/home/kritik-saran-section'
 
 export const dynamic = 'force-dynamic'
 
@@ -408,6 +409,8 @@ export default async function HomePage() {
             </Reveal>
           </div>
         </section>
+
+        <KritikSaranSection />
 
         {/* ===== FOOTER ===== */}
         <footer className="border-t-2 border-event-navy/15 bg-white">

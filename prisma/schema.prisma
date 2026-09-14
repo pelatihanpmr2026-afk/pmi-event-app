@@ -480,3 +480,16 @@ model Draft {
   @@index([updatedAt])
   @@map("draft")
 }
+
+model KritikSaran {
+  id                String   @id @default(cuid())
+  nama              String?  @db.VarChar(100)
+  pesan             String   @db.Text
+  ratingPendaftaran Int      @default(0)
+  ratingPerkemahan  Int      @default(0)
+  ratingAcara       Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("kritik_saran")
+}

@@ -52,6 +52,8 @@ const PUBLIC = new Set([
   'POST pengajuan-anggaran/[id]/verify', // verifikasi no WA koordinator untuk akses edit pengajuan
   'POST pengajuan-anggaran/[id]/edit', // edit/tambah item oleh pengaju (verifikasi no WA)
   'POST cron/cleanup-tenda', // dilindungi CRON_SECRET, bukan session admin
+  'GET kritik-saran', // daftar kritik & saran untuk homepage (publik, read-only)
+  'POST kritik-saran', // kirim kritik & saran + penilaian (publik, di-rate-limit)
 ])
 
 const HANDLER_RE = /export async function (GET|POST|PATCH|PUT|DELETE)\(/g
