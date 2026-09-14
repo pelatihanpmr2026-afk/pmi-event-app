@@ -32,8 +32,8 @@ export async function generatePdfRekapPendaftaran(
   totalCash: number,
   totalTransfer: number
 ): Promise<Buffer> {
-  const { pdf, regular, bold } = await createRekapPdf(`Laporan Keuangan Harian ${tanggal}`)
-  const createPage = () => addMonoHeader(pdf, 'BERITA ACARA LAPORAN KEUANGAN HARIAN', tanggal, bold, regular)
+  const { pdf, regular, bold } = await createRekapPdf(`Laporan Pemasukkan Harian ${tanggal}`)
+  const createPage = () => addMonoHeader(pdf, 'BERITA ACARA LAPORAN PEMASUKKAN HARIAN', tanggal, bold, regular)
   let page = createPage()
 
   let y = 100
@@ -50,7 +50,7 @@ export async function generatePdfRekapPendaftaran(
     fonts: { regular, bold },
     totalRow: ['', 'TOTAL', String(totals.totalJumlahPeserta), String(totals.totalJumlahPendamping), rp(totals.totalPendaftaran)],
     createPage,
-    continuationTitle: 'LAPORAN KEUANGAN HARIAN - LANJUTAN',
+    continuationTitle: 'LAPORAN PENDAFTARAN - LANJUTAN',
   })
   page = pendaftaranTable.page
   y = pendaftaranTable.top + 30
@@ -87,7 +87,7 @@ export async function generatePdfRekapPendaftaran(
     fonts: { regular, bold },
     totalRow: ['', 'TOTAL', String(totals.totalJumlahTenda), '', rp(totals.totalSewaTenda)],
     createPage,
-    continuationTitle: 'LAPORAN KEUANGAN HARIAN - LANJUTAN',
+    continuationTitle: 'LAPORAN SEWA TENDA - LANJUTAN',
   }))
 
   y += 30
