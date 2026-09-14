@@ -134,20 +134,18 @@ export function SekolahRegistrationForm({
         if (d.dataPendamping) {
           setDataPendamping(d.dataPendamping as PesertaPendampingValues['pendamping'])
         }
-        // Draft server bisa saja dari versi skema lama — paksa kembali ke step
-        // pertama yang datanya invalid supaya user mengisi ulang, bukan gagal
-        // di submit.
+        // Draft server kini memungkinkan data parsial (belum fix). Paksa
+        // kembali ke STEP yang datanya belum lengkap — data yang sudah valid
+        // tetap dipertahankan, bukan dibuang semua dari awal.
         const invalidStep = firstInvalidStep({
           dataSekolah: d.dataSekolah as DataSekolahResult | null,
           dataPeserta: restoredPeserta ?? null,
           dataPendamping: (d.dataPendamping as PesertaPendampingValues['pendamping'] | undefined) ?? null,
         })
         if (invalidStep !== 0) {
-          setDataSekolah(null)
-          setCurrentStep(1)
-          setServerDraftError(
-            'Draft dari versi lama dan beberapa datanya tidak lengkap. Silakan isi dari awal.'
-          )
+          setCurrentStep(invalidStep)
+          if (invalidStep === 1) setDataSekolah(null)
+          toast.info('Draft dimuat, tapi ada data yang belum lengkap. Selesaikan dulu di step ini sebelum lanjut.')
           return
         }
         setCurrentStep(d.currentStep)

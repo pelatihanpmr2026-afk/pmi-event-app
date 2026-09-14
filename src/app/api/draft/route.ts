@@ -4,8 +4,6 @@ import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
 import { normalizeNamaSekolah, namaSekolahKey } from '@/lib/sekolah'
-import { dataSekolahSchema } from '@/lib/validations/sekolah'
-import { pendampingArraySchema } from '@/lib/validations/peserta'
 import { MAX_REQUEST_BODY } from '@/lib/constants-sekolah'
 
 // Masa berlaku link resume draft yang dibagikan ke pembina sekolah.
@@ -33,28 +31,51 @@ function checkDraftSyncRateLimit(key: string) {
   return bucket.count <= DRAFT_SYNC_MAX
 }
 
-const draftPesertaItemSchema = z.object({
-  namaLengkap: z.string().min(3).max(100),
-  tempatLahir: z.string().min(2).max(100),
-  tanggalLahir: z.string(),
-  alamat: z.string().min(5).max(255),
-  agama: z.enum(['ISLAM', 'KRISTEN', 'KATOLIK', 'HINDU', 'BUDDHA', 'KONGHUCU', 'LAINNYA']),
-  golonganDarah: z.enum(['A', 'B', 'AB', 'O', 'TIDAK_TAHU']),
-  tahunMasuk: z.string(),
-  noHp: z.string().max(15).optional().or(z.literal('')),
-  gender: z.enum(['LAKI_LAKI', 'PEREMPUAN']),
-  riwayatPenyakit: z.enum([
-    'TIDAK_ADA', 'ASMA_BERAT', 'EPILEPSI', 'JANTUNG', 'DIABETES', 'HIPERTENSI_BERAT',
-    'GANGGUAN_GINJAL', 'GANGGUAN_PERNAPASAN_KRONIS', 'RIWAYAT_KEJANG', 'HEMOFILIA',
-    'ANEMIA_BERAT', 'LAINNYA',
-  ]),
-  foto: z.string().nullable().optional(),
+// Draft itu data KERJA (belum final) — isian parsial, kosong, atau belum
+// tervalidasi WAJIB tetap tersimpan ke server supaya bisa dipulihkan panitia
+// lewat dashboard / link resume. Berbeda dengan submit FINAL (/api/sekolah)
+// yang tetap memvalidasi ketat, route draft sengaja LONGGAR: kita hanya
+// menjamin bentuk umumnya sehat (objek dengan string berpanjang wajar, bukan
+// tipe sampah) agar tidak menyimpan data korup. Saat restore,
+// firstInvalidStep() di form akan memundurkan user ke step yang belum lengkap.
+const draftSekolahSchema = z.object({
+  namaSekolah: z.string().min(1).max(150),
+  namaPembina: z.string().max(100).nullish(),
+  noWhatsappPembina: z.string().max(20).nullish(),
+  kategori: z.string().max(20).nullish(),
 })
 
-// Setara dengan pesertaMetaArraySchema: tanpa batas jumlah peserta (FAQ).
-const draftPesertaArraySchema = z
-  .array(draftPesertaItemSchema)
-  .min(1, 'Minimal 1 peserta')
+const draftPesertaItemSchema = z.object({
+  namaLengkap: z.string().max(100).nullish(),
+  tempatLahir: z.string().max(100).nullish(),
+  tanggalLahir: z.string().max(10).nullish(),
+  alamat: z.string().max(255).nullish(),
+  noHp: z.string().max(15).nullish(),
+  tahunMasuk: z.string().max(4).nullish(),
+  agama: z.string().max(20).nullish(),
+  golonganDarah: z.string().max(20).nullish(),
+  gender: z.string().max(20).nullish(),
+  riwayatPenyakit: z.string().max(40).nullish(),
+  foto: z.string().nullish(),
+})
+
+// Tanpa batas jumlah & tanpa min saat draft — array boleh kosong sekalipun
+// (mis. user baru mengisi data sekolah saja, atau sedang menghapus peserta).
+const draftPesertaArraySchema = z.array(draftPesertaItemSchema)
+
+const draftPendampingItemSchema = z.object({
+  namaLengkap: z.string().max(100).nullish(),
+  tempatLahir: z.string().max(100).nullish(),
+  tanggalLahir: z.string().max(10).nullish(),
+  alamat: z.string().max(255).nullish(),
+  noHp: z.string().max(15).nullish(),
+  tahunMasuk: z.string().max(4).nullish(),
+  agama: z.string().max(20).nullish(),
+  golonganDarah: z.string().max(20).nullish(),
+  gender: z.string().max(20).nullish(),
+})
+
+const draftPendampingArraySchema = z.array(draftPendampingItemSchema)
 
 export async function POST(req: NextRequest) {
   try {
@@ -68,21 +89,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, message: 'Payload tidak valid' }, { status: 400 })
     }
 
-    const parsedSekolah = dataSekolahSchema.safeParse(body.dataSekolah)
+    const parsedSekolah = draftSekolahSchema.safeParse(body.dataSekolah)
     if (!parsedSekolah.success) {
-      console.warn('[POST /api/draft] Data sekolah tidak valid:', parsedSekolah.error.flatten().fieldErrors)
+      console.warn('[POST /api/draft] Data sekolah malformed:', parsedSekolah.error.flatten().fieldErrors)
       return NextResponse.json({ success: false, message: 'Data sekolah tidak valid' }, { status: 400 })
     }
 
-    const parsedPeserta = draftPesertaArraySchema.safeParse(body.dataPeserta)
+    const parsedPeserta = draftPesertaArraySchema.safeParse(
+      Array.isArray(body.dataPeserta) ? body.dataPeserta : []
+    )
     if (!parsedPeserta.success) {
-      console.warn('[POST /api/draft] Data peserta tidak valid:', parsedPeserta.error.flatten().fieldErrors)
+      console.warn('[POST /api/draft] Data peserta malformed:', parsedPeserta.error.flatten().fieldErrors)
       return NextResponse.json({ success: false, message: 'Data peserta tidak valid' }, { status: 400 })
     }
 
-    const parsedPendamping = pendampingArraySchema.safeParse(body.dataPendamping ?? [])
+    const parsedPendamping = draftPendampingArraySchema.safeParse(
+      Array.isArray(body.dataPendamping) ? body.dataPendamping : []
+    )
     if (!parsedPendamping.success) {
-      console.warn('[POST /api/draft] Data pendamping tidak valid:', parsedPendamping.error.flatten().fieldErrors)
+      console.warn('[POST /api/draft] Data pendamping malformed:', parsedPendamping.error.flatten().fieldErrors)
       return NextResponse.json({ success: false, message: 'Data pendamping tidak valid' }, { status: 400 })
     }
 

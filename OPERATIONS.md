@@ -507,13 +507,13 @@ Body 81MB seperti itu berarti foto peserta sampai ke server **dalam keadaan asli
 1. Build VPS sudah berisi **kompresi foto di sisi klien** (commit `perbaikan error unexpected token`). Tanpa build tersebut, foto dikirim ~3–8MB per peserta.
 2. Kompresi klien bisa gagal di browser dalam-aplikasi (WA/IG/Line) karena `canvas.toBlob` tidak didukung → fallback ke file asli. Kasus itu akan terlihat dari ukuran body yang tetap besar meskipun build sudah terbaru.
 
-Pendaftaran mengirim multipart berisi banyak foto peserta (idealnya dikompres di klien ke ~1200px/JPEG ~200-400KB per foto) ditambah bukti transfer, tanda tangan, dan metadata. Karena aplikasi juga memvalidasi ulang magic-bytes setiap file, sengaja diberi ruang untuk margin. Tambahkan di blok server Nginx:
+Pendaftaran mengirim multipart berisi banyak foto peserta (idealnya dikompres di klien ke ~1200px/JPEG ~200-400KB per foto) ditambah bukti transfer, tanda tangan, dan metadata. Karena aplikasi juga memvalidasi ulang magic-bytes setiap file, sengaja diberi ruang untuk margin. Tambahkan di blok server Nginx — WAJIB lebih besar dari `MAX_REQUEST_BODY` aplikasi (150MB, `src/lib/constants-sekolah.ts`):
 
 ```nginx
-client_max_body_size 60m;
+client_max_body_size 160m;
 ```
 
-Nilai `60m` lebih besar dari guard aplikasi (40MB di `MAX_REQUEST_BODY`, `src/lib/constants-sekolah.ts`), sehingga kalau body tetap melebihi batas, yang menjawab user adalah **JSON jelas dari aplikasi** — bukan halaman HTML Nginx. Aplikasi menolak body melebihi 40MB dengan pesan yang ramah.
+`160m` lebih besar dari guard aplikasi (150MB), sehingga kalau body tetap melebihi batas, yang menjawab user adalah **JSON jelas dari aplikasi** — bukan halaman HTML Nginx. Aplikasi menolak body melebihi 150MB dengan pesan yang ramah. Jika nilai Nginx lebih KECIL dari guard aplikasi (mis. masih `60m` dari versi lama), body yang terlalu besar ditolak duluan oleh Nginx dengan halaman HTML 413.
 
 #### B. Request terlalu lama (504 Gateway Timeout)
 
@@ -542,7 +542,7 @@ sudo systemctl reload nginx
 
 #### D. Opsi: jadikan error halaman Nginx berupa JSON
 
-Selama batas Nginx dinaikkan ke `60m` (lebih besar dari guard 40MB), pesan ramah dari aplikasi sudah cukup. Sebagai jaring pengaman untuk body yang melewati Nginx sekalipun (foto tak terkompres pada sekolah besar), error halaman HTML Nginx bisa diubah menjadi JSON supaya user tidak lagi melihat pesan generik:
+Selama batas Nginx dinaikkan ke `160m` (lebih besar dari guard 150MB), pesan ramah dari aplikasi sudah cukup. Sebagai jaring pengaman untuk body yang melewati Nginx sekalipun (foto tak terkompres pada sekolah besar), error halaman HTML Nginx bisa diubah menjadi JSON supaya user tidak lagi melihat pesan generik:
 
 ```nginx
 # Di dalam blok server (atau http)
