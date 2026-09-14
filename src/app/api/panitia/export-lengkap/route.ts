@@ -57,11 +57,24 @@ export async function GET(req: NextRequest) {
           asalUnit: true,
           divisi: true,
           status: true,
+          createdAt: true,
           absensiLogs: { select: { sesiId: true } },
         },
       }),
       prisma.absensiSesi.findMany({ orderBy: { tanggal: 'asc' }, select: { id: true, nama: true } }),
     ])
+
+    // Urutkan berdasarkan divisi mengikuti urutan DIVISI_OPTIONS,
+    // lalu waktu pendaftaran di dalam tiap divisi.
+    const urutanDivisi = (divisi: string) => {
+      const idx = DIVISI_OPTIONS.findIndex((option) => option.value === divisi)
+      return idx === -1 ? Number.MAX_SAFE_INTEGER : idx
+    }
+    panitiaList.sort((a, b) => {
+      const bandingDivisi = urutanDivisi(a.divisi) - urutanDivisi(b.divisi)
+      if (bandingDivisi !== 0) return bandingDivisi
+      return a.createdAt.getTime() - b.createdAt.getTime()
+    })
 
     const rows = panitiaList.map((p) => ({
       nomorRegistrasi: p.nomorRegistrasi,
