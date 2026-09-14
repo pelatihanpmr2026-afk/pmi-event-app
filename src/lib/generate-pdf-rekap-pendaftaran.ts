@@ -70,8 +70,8 @@ export async function generatePdfRekapPendaftaran(
       { label: 'Total Pendamping', value: String(totals.totalJumlahPendamping) },
       { label: 'Total Biaya Pendaftaran', value: rp(totals.totalPendaftaran) },
       { label: 'Total Biaya Sewa Tenda', value: rp(totals.totalSewaTenda) },
-      { label: 'Total Cash', value: rp(totalCash) },
-      { label: 'Total Transfer', value: rp(totalTransfer) },
+      { label: 'Total Setoran Cash', value: rp(totalCash) },
+      { label: 'Total Setoran Transfer', value: rp(totalTransfer) },
       { label: 'Total Keseluruhan', value: rp(totals.totalKeseluruhan), bold: true },
     ],
     { regular, bold }
