@@ -1,6 +1,6 @@
 'use client'
 
-import { useForm, useFieldArray, FormProvider } from 'react-hook-form'
+import { useForm, useFieldArray, FormProvider, type FieldErrors, type FieldPath } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { useEffect } from 'react'
@@ -16,6 +16,45 @@ import {
   createEmptyPendamping,
 } from '@/lib/validations/peserta'
 import { BIAYA_PENDAMPING } from '@/lib/constants-sekolah'
+
+// Urutan navigasi field saat klik "Lanjut" dengan data invalid (lihat
+// komentar yang sama di step-peserta.tsx).
+const PENDAMPING_FIELDS = [
+  'namaLengkap',
+  'tempatLahir',
+  'tanggalLahir',
+  'alamat',
+  'agama',
+  'golonganDarah',
+  'tahunMasuk',
+  'noHp',
+  'gender',
+] as const
+
+type PendampingFieldKey = (typeof PENDAMPING_FIELDS)[number]
+
+const PENDAMPING_FIELD_LABELS: Record<PendampingFieldKey, string> = {
+  namaLengkap: 'Nama Lengkap',
+  tempatLahir: 'Tempat Lahir',
+  tanggalLahir: 'Tanggal Lahir',
+  alamat: 'Alamat',
+  agama: 'Agama',
+  golonganDarah: 'Golongan Darah',
+  tahunMasuk: 'Tahun Masuk',
+  noHp: 'No. HP',
+  gender: 'Jenis Kelamin',
+}
+
+function scrollToItem(prefix: string, index: number) {
+  const candidates = [`[name="${prefix}.${index}.namaLengkap"]`, `[name^="${prefix}.${index}."]`]
+  for (const selector of candidates) {
+    const el = document.querySelector<HTMLElement>(selector)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+  }
+}
 
 export function StepPendamping({
   onComplete,
@@ -42,7 +81,7 @@ export function StepPendamping({
     mode: 'onChange',
   })
 
-  const { control, handleSubmit, watch, getValues, formState: { errors, isValid } } = form
+  const { control, handleSubmit, watch, getValues } = form
   const pendampingArray = useFieldArray({ control, name: 'pendamping' })
   const jumlahPendamping = watch('pendamping')?.length ?? 0
   const totalBiayaPendamping = jumlahPendamping * BIAYA_PENDAMPING
@@ -63,14 +102,51 @@ export function StepPendamping({
     onComplete({ pendamping: values.pendamping })
   }
 
-  function handleFormError() {
-    const fields = Object.keys(errors)
-    if (fields.length > 0) {
-      toast.error(`Mohon lengkapi data pendamping dengan benar. Field yang belum valid: ${fields.join(', ')}`)
-    } else {
-      toast.error('Terjadi kesalahan validasi')
+  // Klik "Lanjut" SELALU aktif (validasi penuh tetap berjalan di handleSubmit).
+// Callback error ini adalah sumber kebenaran saat tombol diklik: cari
+// pendamping & field pertama yang invalid, fokus ke input-nya (input
+// native), scroll ke kartu/baris-nya, lalu tampilkan pesan presisi.
+function handleFormError(formErrors: FieldErrors<PendampingOnlyValues>) {
+  const items = formErrors.pendamping as unknown as
+    | Array<Record<PendampingFieldKey, { message?: string } | undefined>>
+    | undefined
+  const arrayMessage =
+    (formErrors.pendamping as unknown as { message?: string } | undefined)?.message ?? null
+
+  // Pendamping opsional: array kosong = valid. Kalau ada error level array
+  // (tidak mungkin normal, tapi jaga-jaga) tampilkan apa adanya.
+  if (!Array.isArray(items) || items.length === 0) {
+    toast.error(arrayMessage || 'Terjadi kesalahan validasi')
+    return
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (!item) continue
+    for (const field of PENDAMPING_FIELDS) {
+      const fieldError = item[field]
+      if (!fieldError?.message) continue
+
+      const name = `pendamping.${i}.${field}`
+      const label = PENDAMPING_FIELD_LABELS[field]
+
+      // gender (RadioPixel) tidak punya input native → hanya scroll + toast.
+      if (field !== 'gender') {
+        form.setFocus(name as FieldPath<PendampingOnlyValues>)
+      }
+      const el = document.querySelector<HTMLElement>(`[name="${name}"]`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } else {
+        scrollToItem('pendamping', i)
+      }
+
+      toast.error(`Pendamping #${i + 1} belum lengkap — ${label}: ${fieldError.message}`)
+      return
     }
   }
+  toast.error('Terjadi kesalahan validasi')
+}
 
   function handleSaveDraft() {
     onSaveDraft?.({ pendamping: getValues().pendamping })
@@ -145,7 +221,7 @@ export function StepPendamping({
                 Simpan Draft & Lanjut Nanti
               </Button>
             )}
-            <Button type="submit" variant="primary" pixel disabled={!isValid}>
+            <Button type="submit" variant="primary" pixel>
               Lanjut ke Review
             </Button>
           </div>

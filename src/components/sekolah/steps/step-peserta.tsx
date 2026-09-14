@@ -1,6 +1,6 @@
 'use client'
 
-import { useForm, useFieldArray, FormProvider } from 'react-hook-form'
+import { useForm, useFieldArray, FormProvider, type FieldErrors, type FieldPath } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { useEffect } from 'react'
@@ -16,6 +16,53 @@ import {
   createEmptyPeserta,
 } from '@/lib/validations/peserta'
 import { BIAYA_PESERTA } from '@/lib/constants-sekolah'
+
+// Urutan navigasi field saat klik "Lanjut" dengan data invalid: field yang
+// muncul lebih dulu di kartu/baris diperiksa lebih dulu, agar user selalu
+// diarahkan ke masalah pertama yang harus diperbaiki.
+const PESERTA_FIELDS = [
+  'foto',
+  'namaLengkap',
+  'tempatLahir',
+  'tanggalLahir',
+  'alamat',
+  'agama',
+  'golonganDarah',
+  'tahunMasuk',
+  'noHp',
+  'gender',
+  'riwayatPenyakit',
+] as const
+
+type PesertaFieldKey = (typeof PESERTA_FIELDS)[number]
+
+const PESERTA_FIELD_LABELS: Record<PesertaFieldKey, string> = {
+  foto: 'Foto',
+  namaLengkap: 'Nama Lengkap',
+  tempatLahir: 'Tempat Lahir',
+  tanggalLahir: 'Tanggal Lahir',
+  alamat: 'Alamat',
+  agama: 'Agama',
+  golonganDarah: 'Golongan Darah',
+  tahunMasuk: 'Tahun Masuk',
+  noHp: 'No. HP',
+  gender: 'Jenis Kelamin',
+  riwayatPenyakit: 'Riwayat Penyakit',
+}
+
+// RadioPixel "Jenis Kelamin" dan upload foto tidak mendaftarkan input native
+// ke react-hook-form, jadi setFocus tidak bisa dilakukan — cukup scroll ke
+// kartu/baris + toast spesifik (error-nya sudah terlihat merah di kartu).
+export function scrollToItem(prefix: string, index: number) {
+  const candidates = [`[name="${prefix}.${index}.namaLengkap"]`, `[name^="${prefix}.${index}."]`]
+  for (const selector of candidates) {
+    const el = document.querySelector<HTMLElement>(selector)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+  }
+}
 
 export function StepPeserta({
   onComplete,
@@ -40,7 +87,7 @@ export function StepPeserta({
     mode: 'onChange',
   })
 
-  const { control, handleSubmit, watch, getValues, formState: { errors, isValid } } = form
+  const { control, handleSubmit, watch, getValues, formState: { errors } } = form
   const pesertaArray = useFieldArray({ control, name: 'peserta' })
   const jumlahPeserta = watch('peserta')?.length ?? 0
   const totalBiayaPeserta = jumlahPeserta * BIAYA_PESERTA
@@ -67,14 +114,50 @@ export function StepPeserta({
     onComplete({ peserta: values.peserta })
   }
 
-  function handleFormError() {
-    const fields = Object.keys(errors)
-    if (fields.length > 0) {
-      toast.error(`Mohon lengkapi data peserta. Field yang belum valid: ${fields.join(', ')}`)
-    } else {
-      toast.error('Terjadi kesalahan validasi')
+  // Klik "Lanjut" SELALU aktif (validasi penuh tetap berjalan di handleSubmit).
+// Callback error ini adalah sumber kebenaran saat tombol diklik: cari peserta
+// & field pertama yang invalid, fokus ke input-nya (input native), scroll ke
+// kartu/baris-nya, lalu tampilkan pesan presisi.
+function handleFormError(formErrors: FieldErrors<PesertaOnlyValues>) {
+  const items = formErrors.peserta as unknown as
+    | Array<Record<PesertaFieldKey, { message?: string } | undefined>>
+    | undefined
+  const arrayMessage =
+    (formErrors.peserta as unknown as { message?: string } | undefined)?.message ?? null
+
+  if (!Array.isArray(items) || items.length === 0) {
+    toast.error(arrayMessage || 'Terjadi kesalahan validasi')
+    return
+  }
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (!item) continue
+    for (const field of PESERTA_FIELDS) {
+      const fieldError = item[field]
+      if (!fieldError?.message) continue
+
+      const name = `peserta.${i}.${field}`
+      const label = PESERTA_FIELD_LABELS[field]
+
+      // Field yang punya input native (text/date/select) bisa di-fokus;
+      // gender (RadioPixel) & foto hanya di-scroll + toast.
+      if (field !== 'gender' && field !== 'foto') {
+        form.setFocus(name as FieldPath<PesertaOnlyValues>)
+      }
+      const el = document.querySelector<HTMLElement>(`[name="${name}"]`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } else {
+        scrollToItem('peserta', i)
+      }
+
+      toast.error(`Peserta #${i + 1} belum lengkap — ${label}: ${fieldError.message}`)
+      return
     }
   }
+  toast.error('Terjadi kesalahan validasi')
+}
 
   function handleSaveDraft() {
     onSaveDraft?.({ peserta: getValues().peserta })
@@ -151,7 +234,7 @@ export function StepPeserta({
                 Simpan Draft & Lanjut Nanti
               </Button>
             )}
-            <Button type="submit" variant="primary" pixel disabled={!isValid}>
+            <Button type="submit" variant="primary" pixel>
               Lanjut ke Pendamping
             </Button>
           </div>
