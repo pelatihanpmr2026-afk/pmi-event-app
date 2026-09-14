@@ -8,6 +8,7 @@ import { checkRateLimit } from '@/lib/rate-limit'
 import { dataSekolahSchema } from '@/lib/validations/sekolah'
 import { pesertaMetaArraySchema, pendampingArraySchema, normalizeNamaPeserta } from '@/lib/validations/peserta'
 import { normalizeNamaSekolah, namaSekolahKey, generateKodePendaftaran, sanitizeFilename } from '@/lib/sekolah'
+import { normalizeNoWa } from '@/lib/validations/susulan'
 import { saveBuffer, saveUploadedFile, getFileExtension, getAbsolutePathFromUrl, deleteFileByUrl } from '@/lib/save-file'
 import { normalizeParticipantPhotoBuffer } from '@/lib/normalize-image-buffer'
 import { generateQrCode } from '@/lib/generate-qrcode'
@@ -19,6 +20,19 @@ import type { Jenjang, StatusSekolah } from '@prisma/client'
 import { TNC_VERSION } from '@/lib/tnc-content'
 
 const MAX_RETRY_KODE = 5
+
+// Kembalikan sekolahId yang SUDAH terdaftar hanya bila submitter adalah
+// pemiliknya (nama pembina + No. WA cocok dengan record). Tanpa ini, endpoint
+// publik bisa dipakai untuk menebak id sekolah mana pun hanya dari namanya.
+function cocokPemilik(
+  submitted: { namaPembina: string; noWhatsappPembina: string },
+  existing: { namaPembina: string | null; noWhatsappPembina: string | null }
+): boolean {
+  const namaCocok =
+    (submitted.namaPembina ?? '').trim().toLowerCase() === (existing.namaPembina ?? '').trim().toLowerCase()
+  const waCocok = normalizeNoWa(submitted.noWhatsappPembina) === normalizeNoWa(existing.noWhatsappPembina ?? '')
+  return namaCocok && waCocok
+}
 
 function getBaseUrl(): string {
   return process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
@@ -142,8 +156,13 @@ export async function POST(req: NextRequest) {
     )
 
     if (existingSekolah && existingSekolah.peserta.length > 0) {
+      const dataId = cocokPemilik(dataSekolah, existingSekolah) ? { sekolahId: existingSekolah.id } : undefined
       return NextResponse.json(
-        { success: false, message: `"${namaLengkap}" sudah terdaftar. Silakan kembali ke Step 1.` },
+        {
+          success: false,
+          message: `"${namaLengkap}" sudah terdaftar sebelumnya. Buka status pembayaran untuk melihat & mengunduh kwitansi.`,
+          ...(dataId ? { data: dataId } : {}),
+        },
         { status: 409 }
       )
     }
@@ -350,10 +369,23 @@ export async function POST(req: NextRequest) {
           // Nama sekolah sama terdaftar bersamaan oleh 2 tab (namaLengkap unique di DB).
           if (target.includes('namaLengkap')) {
             await cleanupFiles()
+            // Sekolah dibuat request lain yang nyaris bersamaan — cari recordnya
+            // supaya pemilik (nama pembina + WA cocok) bisa langsung ke status.
+            const concurrent = await prisma.sekolah.findMany({
+              where: { namaLengkap },
+              include: { peserta: { select: { id: true } } },
+              take: 1,
+            })
+            const existingConcurrent = concurrent[0] ?? null
+            const dataId =
+              existingConcurrent && cocokPemilik(dataSekolah, existingConcurrent)
+                ? { sekolahId: existingConcurrent.id }
+                : undefined
             return NextResponse.json(
               {
                 success: false,
-                message: `"${namaLengkap}" sudah terdaftar. Silakan kembali ke Step 1.`,
+                message: `"${namaLengkap}" sudah terdaftar sebelumnya. Buka status pembayaran untuk melihat & mengunduh kwitansi.`,
+                ...(dataId ? { data: dataId } : {}),
               },
               { status: 409 }
             )

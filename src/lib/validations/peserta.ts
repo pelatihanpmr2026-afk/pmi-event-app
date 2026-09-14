@@ -100,6 +100,16 @@ export const pesertaOnlySchema = z.object({
 })
 
 /**
+ * Skema KHUSUS untuk step "Data Peserta" pada alur SUSULAN.
+ * Di susulan, data peserta bersifat OPSIONAL — pendamping saja bisa diajukan
+ * tanpa harus mengisi peserta dulu. Karena Zod tidak bisa "menghapus" check
+ * .min() bawaan, skema ini dibuat terpisah tanpa .min(1).
+ */
+export const pesertaOnlyOptionalSchema = z.object({
+  peserta: z.array(pesertaItemSchema),
+})
+
+/**
  * Skema KHUSUS untuk step "Data Pendamping".
  * Sengaja dipisah dari pesertaPendampingSchema karena step ini hanya punya
  * data pendamping di form-nya (data peserta sudah diisi di step sebelumnya
@@ -119,6 +129,7 @@ export type PesertaItemValues = z.infer<typeof pesertaItemSchema>
 export type PendampingItemValues = z.infer<typeof pendampingItemSchema>
 export type PesertaPendampingValues = z.infer<typeof pesertaPendampingSchema>
 export type PesertaOnlyValues = z.infer<typeof pesertaOnlySchema>
+export type PesertaOnlyOptionalValues = z.infer<typeof pesertaOnlyOptionalSchema>
 export type PendampingOnlyValues = z.infer<typeof pendampingOnlySchema>
 
 export function createEmptyPeserta(): PesertaItemValues {

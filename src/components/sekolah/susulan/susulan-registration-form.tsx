@@ -92,6 +92,7 @@ export function SusulanRegistrationForm({ sekolahId }: { sekolahId: string }) {
           {currentStep === 1 && (
             <StepPeserta
               key="susulan-peserta"
+              optional
               onComplete={handlePesertaComplete}
               onBack={() => router.push('/sekolah/susulan')}
               defaultValues={dataPeserta ? { peserta: dataPeserta } : undefined}

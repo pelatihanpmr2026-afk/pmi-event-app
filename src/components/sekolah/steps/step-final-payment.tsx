@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import { Copy, FileText, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,11 @@ export function StepFinalPayment({ dataSekolah, dataPeserta, onBack, onSubmitted
   const [file, setFile] = useState<File | null>(null)
   const [signature, setSignature] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  // Server menolak 409 karena sekolah ini SUDAH terdaftar di database (biasanya
+  // submit ganda/link status lama). Jangan biarkan user tersangkut tanpa jalan —
+  // tunjukkan pintu ke halaman status & download kwitansi (langsung bila server
+  // mengonfirmasi kepemilikan lewat data pembina, lewat verifikasi No. WA selain itu).
+  const [sudahTerdaftar, setSudahTerdaftar] = useState<{ nama: string; sekolahId: string | null } | null>(null)
   const jumlahPeserta = dataPeserta.peserta.length
   const jumlahPendamping = dataPeserta.pendamping.length
 
@@ -94,10 +100,18 @@ export function StepFinalPayment({ dataSekolah, dataPeserta, onBack, onSubmitted
         const signatureResponse = await fetch(signature)
         formData.append('tandaTanganPenanggungJawab', await signatureResponse.blob(), 'ttd-penanggung-jawab.png')
       }
-      const { ok, data: result } = await fetchJson('/api/sekolah', { method: 'POST', body: formData })
+      const { ok, status, data: result } = await fetchJson('/api/sekolah', { method: 'POST', body: formData })
       if (!ok) {
         const serverMessage = (result as { message?: string } | null)?.message
         let message = serverMessage || 'Server tidak merespons dengan benar. Periksa koneksi dan ukuran berkas, lalu coba lagi. Bila tetap gagal, hubungi panitia.'
+        // Sekolah sudah terdaftar (submit ganda/beruntun) — pendaftaran TIDAK
+        // perlu diulang. Alihkan ke halaman status & kwitansi, bukan dead-end.
+        if (status === 409 && (serverMessage ?? '').toLowerCase().includes('sudah terdaftar')) {
+          const existingId = (result as { data?: { sekolahId?: string } | null } | null)?.data?.sekolahId
+          setSudahTerdaftar({ nama: dataSekolah.namaSekolah, sekolahId: existingId ?? null })
+          toast.info('Sekolah ini sudah terdaftar — buka status pembayaran untuk melihat & mengunduh kwitansi.')
+          return
+        }
         // Server mengirim detail field yang gagal validasi — tampilkan biar
         // user langsung tahu apa yang harus diperbaiki.
         const fieldErrors = (result as { errors?: { fieldErrors?: Record<string, string[]> } } | null)?.errors?.fieldErrors
@@ -114,6 +128,28 @@ export function StepFinalPayment({ dataSekolah, dataPeserta, onBack, onSubmitted
       toast.success('Data dan bukti transfer berhasil dikirim')
       onSubmitted((result as { data: { sekolahId: string } }).data.sekolahId)
     } catch (error) { toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan') } finally { setIsSubmitting(false) }
+  }
+
+  if (sudahTerdaftar) {
+    const statusHref = sudahTerdaftar.sekolahId
+      ? `/sekolah/pembayaran/${sudahTerdaftar.sekolahId}`
+      : '/sekolah/status'
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="border-3 border-pmi-red bg-pmi-red/10 p-4 flex flex-col gap-3">
+          <p className="font-heading text-xs text-pmi-red">SEKOLAH SUDAH TERDAFTAR SEBELUMNYA</p>
+          <p className="font-body text-xs text-event-navy">
+            “{sudahTerdaftar.nama}” sudah terdaftar di database pendaftaran, jadi pendaftaran tidak
+            perlu diulang. Untuk melihat status pembayaran, nomor pendaftaran, dan mengunduh
+            kwitansi:
+          </p>
+          <Link href={statusHref}>
+            <Button type="button" variant="primary" pixel className="w-full">Lihat Status Pembayaran & Download Kwitansi</Button>
+          </Link>
+          <Button type="button" variant="outline" pixel onClick={() => setSudahTerdaftar(null)}>Kembali ke Formulir</Button>
+        </div>
+      </div>
+    )
   }
 
   return <div className="flex flex-col gap-5">

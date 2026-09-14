@@ -30,6 +30,8 @@ const PUBLIC = new Set([
   'POST sekolah/tenda/verify',
   'GET sekolah/susulan/verify',
   'POST sekolah/susulan/select', // pilih sekolah saat no WA terdaftar di beberapa sekolah
+  'GET sekolah/pembayaran/lookup', // cari sekolah via no WA pembina untuk lihat status & unduh kwitansi
+  'POST sekolah/pembayaran/select', // pilih sekolah saat no WA terdaftar di beberapa sekolah
   'GET sekolah/[id]/kapasitas-tenda',
   'GET sekolah/[id]/susulan',
   'POST sekolah/[id]/susulan',

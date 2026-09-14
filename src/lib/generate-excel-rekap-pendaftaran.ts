@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs'
 
 interface PendaftaranRow { namaSekolah: string; jumlahPeserta: number; jumlahPendamping: number; totalRp: number }
-interface TendaRow { namaSekolah: string; namaTenda: string; jumlahTenda: number; totalRp: number }
+interface TendaRow { namaSekolah: string; jumlahTenda: number; jenisTenda: string; totalRp: number }
 
 export async function generateExcelRekapPendaftaran(
   tanggal: string,
@@ -17,10 +17,10 @@ export async function generateExcelRekapPendaftaran(
   }
 ): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook()
-  const sheet = workbook.addWorksheet('Rekap Pendaftaran')
+  const sheet = workbook.addWorksheet('Laporan Keuangan Harian')
 
   sheet.mergeCells('A1:E1')
-  sheet.getCell('A1').value = `REKAP PENDAFTARAN HARIAN — ${tanggal}`
+  sheet.getCell('A1').value = `LAPORAN KEUANGAN HARIAN — ${tanggal}`
   sheet.getCell('A1').font = { bold: true, size: 14 }
 
   sheet.columns = [
@@ -31,7 +31,7 @@ export async function generateExcelRekapPendaftaran(
     { key: 'c5', width: 18 },
   ]
 
-  sheet.getRow(3).values = ['No', 'Nama Sekolah', 'Jumlah Peserta', 'Jumlah Pendamping', 'Total (Rp)']
+  sheet.getRow(3).values = ['No', 'Nama Sekolah', 'Jumlah Peserta', 'Jumlah Pendamping', 'Total Biaya (Rp)']
   sheet.getRow(3).eachCell((c) => {
     c.font = { bold: true }
     c.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
@@ -48,11 +48,11 @@ export async function generateExcelRekapPendaftaran(
   let nextRow = totalRow1 + 3
 
   sheet.mergeCells(`A${nextRow}:E${nextRow}`)
-  sheet.getCell(`A${nextRow}`).value = `REKAP PENDAFTARAN HARIAN — ${tanggal}`
+  sheet.getCell(`A${nextRow}`).value = `PENDAPATAN SEWA TENDA — ${tanggal}`
   sheet.getCell(`A${nextRow}`).font = { bold: true, size: 14 }
   nextRow += 2
 
-  sheet.getRow(nextRow).values = ['No', 'Nama Sekolah', 'Nama Tenda', 'Jumlah Tenda', 'Total (Rp)']
+  sheet.getRow(nextRow).values = ['No', 'Nama Sekolah', 'Jumlah Tenda', 'Jenis Tenda', 'Total Biaya (Rp)']
   sheet.getRow(nextRow).eachCell((c) => {
     c.font = { bold: true }
     c.border = { top: { style: 'thin' }, bottom: { style: 'thin' }, left: { style: 'thin' }, right: { style: 'thin' } }
@@ -60,21 +60,27 @@ export async function generateExcelRekapPendaftaran(
   nextRow += 1
 
   tenda.forEach((r, i) => {
-    sheet.getRow(nextRow + i).values = [i + 1, r.namaSekolah, r.namaTenda, r.jumlahTenda, r.totalRp]
+    sheet.getRow(nextRow + i).values = [i + 1, r.namaSekolah, r.jumlahTenda, r.jenisTenda, r.totalRp]
   })
   nextRow += tenda.length
 
-  sheet.getRow(nextRow).values = ['', '', 'TOTAL', totals.totalJumlahTenda, totals.totalSewaTenda]
+  sheet.getRow(nextRow).values = ['', 'TOTAL', totals.totalJumlahTenda, '', totals.totalSewaTenda]
   sheet.getRow(nextRow).font = { bold: true }
   nextRow += 3
 
-  sheet.getCell(`D${nextRow}`).value = 'TOTAL PENDAFTARAN :'
+  sheet.getCell(`D${nextRow}`).value = 'TOTAL PESERTA :'
+  sheet.getCell(`E${nextRow}`).value = totals.totalJumlahPeserta
+  nextRow += 1
+  sheet.getCell(`D${nextRow}`).value = 'TOTAL PENDAMPING :'
+  sheet.getCell(`E${nextRow}`).value = totals.totalJumlahPendamping
+  nextRow += 1
+  sheet.getCell(`D${nextRow}`).value = 'TOTAL BIAYA PENDAFTARAN :'
   sheet.getCell(`E${nextRow}`).value = totals.totalPendaftaran
   nextRow += 1
-  sheet.getCell(`D${nextRow}`).value = 'TOTAL SEWA TENDA :'
+  sheet.getCell(`D${nextRow}`).value = 'TOTAL BIAYA SEWA TENDA :'
   sheet.getCell(`E${nextRow}`).value = totals.totalSewaTenda
   nextRow += 1
-  sheet.getCell(`D${nextRow}`).value = 'TOTAL :'
+  sheet.getCell(`D${nextRow}`).value = 'TOTAL KESELURUHAN :'
   sheet.getCell(`E${nextRow}`).value = totals.totalKeseluruhan
   sheet.getRow(nextRow).font = { bold: true }
 

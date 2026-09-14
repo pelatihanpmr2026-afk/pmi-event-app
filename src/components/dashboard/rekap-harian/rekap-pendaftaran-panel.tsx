@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
 interface PendaftaranRow { namaSekolah: string; jumlahPeserta: number; jumlahPendamping: number; totalRp: number }
-interface TendaRow { namaSekolah: string; namaTenda: string; jumlahTenda: number; totalRp: number }
+interface TendaRow { namaSekolah: string; jumlahTenda: number; jenisTenda: string; totalRp: number }
 
 function rp(n: number) {
   return `Rp${n.toLocaleString('id-ID')}`
@@ -143,8 +143,8 @@ export function RekapPendaftaranPanel() {
                     <p className="font-body font-bold text-sm text-event-navy">{r.namaSekolah}</p>
                     <div className="grid grid-cols-3 gap-2 text-[11px] font-body">
                       <div className="bg-event-cream px-2 py-1.5 border border-event-navy/20 col-span-1">
-                        <span className="text-event-navy/50 block">Tenda</span>
-                        <span className="text-event-navy font-bold block truncate">{r.namaTenda}</span>
+                        <span className="text-event-navy/50 block">Jenis Tenda</span>
+                        <span className="text-event-navy font-bold block truncate">{r.jenisTenda}</span>
                       </div>
                       <div className="bg-event-cream px-2 py-1.5 border border-event-navy/20">
                         <span className="text-event-navy/50 block">Qty</span>
@@ -165,7 +165,7 @@ export function RekapPendaftaranPanel() {
                   <thead>
                     <tr className="bg-event-pink text-white">
                       <th className="font-body text-xs px-3 py-3 text-left">Nama Sekolah</th>
-                      <th className="font-body text-xs px-3 py-3 text-left">Nama Tenda</th>
+                      <th className="font-body text-xs px-3 py-3 text-left">Jenis Tenda</th>
                       <th className="font-body text-xs px-3 py-3 text-center">Qty</th>
                       <th className="font-body text-xs px-3 py-3 text-right">Total (Rp)</th>
                     </tr>
@@ -174,7 +174,7 @@ export function RekapPendaftaranPanel() {
                     {data.tenda.map((r, i) => (
                       <tr key={i} className={`border-t-2 border-event-navy/10 ${i % 2 === 1 ? 'bg-event-cream/40' : ''}`}>
                         <td className="px-3 py-2.5 font-body text-sm font-bold text-event-navy">{r.namaSekolah}</td>
-                        <td className="px-3 py-2.5 font-body text-xs text-event-navy">{r.namaTenda}</td>
+                        <td className="px-3 py-2.5 font-body text-xs text-event-navy">{r.jenisTenda}</td>
                         <td className="px-3 py-2.5 text-center font-body text-xs text-event-navy">{r.jumlahTenda}</td>
                         <td className="px-3 py-2.5 text-right font-body text-xs font-bold text-event-navy">{rp(r.totalRp)}</td>
                       </tr>
@@ -186,6 +186,14 @@ export function RekapPendaftaranPanel() {
           )}
 
           <div className="border-3 border-event-navy bg-event-yellow/20 p-4 flex flex-col gap-1 sm:max-w-sm sm:ml-auto">
+            <div className="flex justify-between font-body text-xs text-event-navy">
+              <span>Total Peserta</span>
+              <span className="font-bold">{data.totalJumlahPeserta}</span>
+            </div>
+            <div className="flex justify-between font-body text-xs text-event-navy">
+              <span>Total Pendamping</span>
+              <span className="font-bold">{data.totalJumlahPendamping}</span>
+            </div>
             <div className="flex justify-between font-body text-xs text-event-navy">
               <span>Total Pendaftaran</span>
               <span className="font-bold">{rp(data.totalPendaftaran)}</span>

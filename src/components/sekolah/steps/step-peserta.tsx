@@ -11,6 +11,7 @@ import { PesertaTable } from '../peserta-table'
 import { useMediaQuery } from '@/hooks/use-media-query'
 import {
   pesertaOnlySchema,
+  pesertaOnlyOptionalSchema,
   PesertaOnlyValues,
   PesertaPendampingValues,
   createEmptyPeserta,
@@ -69,20 +70,23 @@ export function StepPeserta({
   onBack,
   onSaveDraft,
   defaultValues,
+  optional = false,
 }: {
   onComplete: (values: Pick<PesertaPendampingValues, 'peserta'>) => void
   onBack: () => void
   onSaveDraft?: (values: Pick<PesertaPendampingValues, 'peserta'>) => void
   defaultValues?: Pick<PesertaPendampingValues, 'peserta'>
+  optional?: boolean
 }) {
   // Step ini hanya mengurus data peserta, jadi resolver-nya juga khusus
   // schema peserta saja (pesertaOnlySchema) — lihat komentar di
   // src/lib/validations/peserta.ts untuk alasan kenapa dipisah dari
-  // pesertaPendampingSchema.
+  // pesertaPendampingSchema. Pada alur SUSULAN, peserta boleh kosong
+  // (opsional) sehingga dipakai schema tanpa .min(1).
   const form = useForm<PesertaOnlyValues>({
-    resolver: zodResolver(pesertaOnlySchema),
+    resolver: zodResolver(optional ? pesertaOnlyOptionalSchema : pesertaOnlySchema),
     defaultValues: {
-      peserta: defaultValues?.peserta ?? [createEmptyPeserta()],
+      peserta: defaultValues?.peserta ?? (optional ? [] : [createEmptyPeserta()]),
     },
     mode: 'onChange',
   })
@@ -177,12 +181,23 @@ function handleFormError(formErrors: FieldErrors<PesertaOnlyValues>) {
       <form onSubmit={handleSubmit(onSubmit, handleFormError)} className="flex flex-col gap-5">
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h3 className="font-heading text-[11px] text-event-navy">DATA PESERTA</h3>
+            <h3 className="font-heading text-[11px] text-event-navy">DATA PESERTA{optional ? ' (Opsional)' : ''}</h3>
           </div>
+          {optional && pesertaArray.fields.length === 0 && (
+            <p className="font-body text-xs text-event-navy/60">
+              Dokumen ini tidak wajib. Lanjutkan ke pendamping atau Review bila tanpa peserta susulan.
+            </p>
+          )}
           {errors.peserta?.message && <p className="text-xs font-medium text-pmi-red">{errors.peserta.message}</p>}
 
           {isDesktop ? (
-            <PesertaTable fields={pesertaArray.fields} onRemove={pesertaArray.remove} />
+            pesertaArray.fields.length === 0 ? (
+              <p className="font-body text-sm text-gray-400 text-center py-4 border border-[var(--color-border)] rounded-[var(--radius-input)]">
+                Belum ada peserta ditambahkan{optional ? ' (opsional)' : ''}
+              </p>
+            ) : (
+              <PesertaTable fields={pesertaArray.fields} onRemove={pesertaArray.remove} />
+            )
           ) : (
             <div className="flex flex-col gap-3">
               {pesertaArray.fields.length === 0 && (
@@ -229,13 +244,18 @@ function handleFormError(formErrors: FieldErrors<PesertaOnlyValues>) {
             Kembali
           </Button>
           <div className="flex flex-wrap items-center gap-2">
+            {optional && (
+              <Button type="button" variant="secondary" pixel onClick={() => onComplete({ peserta: [] })}>
+                Lewati (Tanpa Peserta)
+              </Button>
+            )}
             {onSaveDraft && (
               <Button type="button" variant="secondary" pixel onClick={handleSaveDraft}>
                 Simpan Draft & Lanjut Nanti
               </Button>
             )}
             <Button type="submit" variant="primary" pixel>
-              Lanjut ke Pendamping
+              {optional ? 'Lanjut ke Pendamping' : 'Lanjut ke Pendamping'}
             </Button>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { addRekapPage, createRekapPdf, drawPaginatedTable, drawText, rect, REKAP
 import type { PDFPage, PDFFont } from 'pdf-lib'
 
 interface PendaftaranRow { namaSekolah: string; jumlahPeserta: number; jumlahPendamping: number; totalRp: number }
-interface TendaRow { namaSekolah: string; namaTenda: string; jumlahTenda: number; totalRp: number }
+interface TendaRow { namaSekolah: string; jumlahTenda: number; jenisTenda: string; totalRp: number }
 
 function drawSig(
   page: PDFPage,
@@ -25,39 +25,41 @@ export async function generatePdfRekapPendaftaran(
   totals: { totalJumlahPeserta: number; totalJumlahPendamping: number; totalJumlahTenda: number; totalPendaftaran: number; totalSewaTenda: number; totalKeseluruhan: number },
   namaPetugas: string
 ): Promise<Buffer> {
-  const { pdf, regular, bold } = await createRekapPdf(`Rekap Pendaftaran ${tanggal}`)
-  const createPage = () => addRekapPage(pdf, 'REKAP PENDAFTARAN HARIAN', tanggal, bold, regular)
+  const { pdf, regular, bold } = await createRekapPdf(`Laporan Keuangan Harian ${tanggal}`)
+  const createPage = () => addRekapPage(pdf, 'LAPORAN KEUANGAN HARIAN', tanggal, bold, regular)
   let page = createPage()
   const pendaftaranTable = drawPaginatedTable({
     page, top: 116, x: 20, widths: [30, 190, 105, 115, 115],
-    headers: ['NO', 'NAMA SEKOLAH', 'JUMLAH PESERTA', 'JUMLAH PENDAMPING', 'TOTAL (RP.)'],
+    headers: ['NO', 'NAMA SEKOLAH', 'JUMLAH PESERTA', 'JUMLAH PENDAMPING', 'TOTAL BIAYA (RP.)'],
     rows: pendaftaran.map((row, index) => [String(index + 1), row.namaSekolah, String(row.jumlahPeserta), String(row.jumlahPendamping), rp(row.totalRp)]),
     fonts: { regular, bold }, totalRow: ['', 'TOTAL', String(totals.totalJumlahPeserta), String(totals.totalJumlahPendamping), rp(totals.totalPendaftaran)], rowHeight: 24,
-    createPage, continuationTitle: 'REKAP PENDAFTARAN - LANJUTAN',
+    createPage, continuationTitle: 'LAPORAN KEUANGAN HARIAN - LANJUTAN',
   })
   page = pendaftaranTable.page
   let y = pendaftaranTable.top
   if (y + 90 > 760) { page = createPage(); y = 116 }
   y += 40
-  drawText(page, 'REKAP HARIAN SEWA TENDA', REKAP_A4_W / 2, y, bold, 13, REKAP_NAVY, 'center')
+  drawText(page, 'PENDAPATAN SEWA TENDA', REKAP_A4_W / 2, y, bold, 13, REKAP_NAVY, 'center')
   y += 26
   ;({ page, top: y } = drawPaginatedTable({
-    page, top: y, x: 20, widths: [30, 190, 135, 100, 100],
-    headers: ['NO', 'NAMA SEKOLAH', 'NAMA TENDA', 'JUMLAH TENDA', 'TOTAL (RP.)'],
-    rows: tenda.map((row, index) => [String(index + 1), row.namaSekolah, row.namaTenda, String(row.jumlahTenda), rp(row.totalRp)]),
-    fonts: { regular, bold }, totalRow: ['', '', 'TOTAL', String(totals.totalJumlahTenda), rp(totals.totalSewaTenda)], rowHeight: 24,
-    createPage, continuationTitle: 'REKAP SEWA TENDA - LANJUTAN',
+    page, top: y, x: 20, widths: [30, 120, 75, 200, 130],
+    headers: ['NO', 'NAMA SEKOLAH', 'JUMLAH TENDA', 'JENIS TENDA', 'TOTAL BIAYA (RP.)'],
+    rows: tenda.map((row, index) => [String(index + 1), row.namaSekolah, String(row.jumlahTenda), row.jenisTenda, rp(row.totalRp)]),
+    fonts: { regular, bold }, totalRow: ['', 'TOTAL', String(totals.totalJumlahTenda), '', rp(totals.totalSewaTenda)], rowHeight: 24,
+    createPage, continuationTitle: 'LAPORAN KEUANGAN HARIAN - LANJUTAN',
   }))
-  if (y + 175 > 760) { page = createPage(); y = 116 }
+  if (y + 220 > 760) { page = createPage(); y = 116 }
   y += 30
-  const summaryX = REKAP_A4_W - 20 - 280
-  rect(page, summaryX, y - 14, 280, 90, REKAP_YELLOW)
-  drawText(page, `TOTAL PENDAFTARAN : ${rp(totals.totalPendaftaran)}`, summaryX + 14, y, regular, 10)
-  drawText(page, `TOTAL SEWA TENDA : ${rp(totals.totalSewaTenda)}`, summaryX + 14, y + 22, regular, 10)
-  drawText(page, `TOTAL : ${rp(totals.totalKeseluruhan)}`, summaryX + 14, y + 44, bold, 12)
-  const sigTop = y + 92
+  const summaryX = REKAP_A4_W - 20 - 290
+  rect(page, summaryX, y - 14, 290, 122, REKAP_YELLOW)
+  drawText(page, `TOTAL PESERTA : ${totals.totalJumlahPeserta}`, summaryX + 14, y, regular, 10)
+  drawText(page, `TOTAL PENDAMPING : ${totals.totalJumlahPendamping}`, summaryX + 14, y + 22, regular, 10)
+  drawText(page, `TOTAL BIAYA PENDAFTARAN : ${rp(totals.totalPendaftaran)}`, summaryX + 14, y + 44, regular, 10)
+  drawText(page, `TOTAL BIAYA SEWA TENDA : ${rp(totals.totalSewaTenda)}`, summaryX + 14, y + 66, regular, 10)
+  drawText(page, `TOTAL KESELURUHAN : ${rp(totals.totalKeseluruhan)}`, summaryX + 14, y + 92, bold, 12)
+  const sigTop = y + 130
   drawSig(page, 100, sigTop, 'PETUGAS / ADMIN', namaPetugas, regular, bold)
-  drawSig(page, REKAP_A4_W / 2, sigTop, 'KOOR. KESEKRETARIATAN', null, regular, bold)
+  drawSig(page, REKAP_A4_W / 2, sigTop, 'KOORDINATOR KESEKRETARIATAN', null, regular, bold)
   drawSig(page, REKAP_A4_W - 100, sigTop, 'BENDAHARA', null, regular, bold)
   return Buffer.from(await pdf.save())
 }

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import NextLink from 'next/link'
-import { CheckCircle2, XCircle, Loader2, Link2, ArrowRight } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2, Link2, ArrowRight, Download } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { RadioPixel } from '@/components/ui/radio-pixel'
 import { Button } from '@/components/ui/button'
@@ -66,7 +66,10 @@ export function StepDataSekolah({ onComplete, defaultValues }: { onComplete: (re
       {checkStatus === 'checking' && <Loader2 size={16} className="animate-spin text-event-navy/50 shrink-0" />}{checkStatus === 'tersedia' && <CheckCircle2 size={16} className="text-green-600 shrink-0" />}{checkStatus === 'terpakai_tenda_saja' && <Link2 size={16} className="text-event-blue shrink-0" />}{checkStatus === 'terpakai_lengkap' && <XCircle size={16} className="text-pmi-red shrink-0" />}
       <p className="font-body text-xs text-event-navy">{checkStatus === 'checking' && 'Mengecek ketersediaan nama sekolah...'}{checkStatus === 'tersedia' && <>Nama resmi: <span className="font-bold">{namaLengkap}</span> — tersedia</>}{checkStatus === 'terpakai_tenda_saja' && <><span className="font-bold">{namaLengkap}</span> sudah pernah menyewa tenda. Pendaftaran akan disambungkan ke sekolah tersebut.</>}{checkStatus === 'terpakai_lengkap' && <><span className="font-bold">{namaLengkap}</span> sudah terdaftar sebelumnya.</>}{checkStatus === 'error' && 'Gagal mengecek nama sekolah, coba lagi.'}</p>
     </div>}
-    {checkStatus === 'terpakai_lengkap' && <NextLink href="/sekolah/susulan" className="flex items-center justify-center gap-2 border-3 border-event-navy bg-event-yellow shadow-pixel-sm px-4 py-3 font-body font-bold text-xs text-event-navy hover:bg-event-yellow/80 transition-colors">Daftarkan Peserta/Pendamping Susulan untuk Sekolah Ini <ArrowRight size={14} /></NextLink>}
+    {checkStatus === 'terpakai_lengkap' && <div className="flex flex-col gap-2">
+      <NextLink href="/sekolah/status" className="flex items-center justify-center gap-2 border-3 border-event-navy bg-event-blue text-white shadow-pixel-sm px-4 py-3 font-body font-bold text-xs hover:bg-event-blue/80 transition-colors">Lihat Status Pembayaran & Download Kwitansi <Download size={14} /></NextLink>
+      <NextLink href="/sekolah/susulan" className="flex items-center justify-center gap-2 border-3 border-event-navy bg-event-yellow shadow-pixel-sm px-4 py-3 font-body font-bold text-xs text-event-navy hover:bg-event-yellow/80 transition-colors">Daftarkan Peserta/Pendamping Susulan untuk Sekolah Ini <ArrowRight size={14} /></NextLink>
+    </div>}
     <Input label="Nama Pembina/Pelatih" placeholder="Contoh: Budi Santoso" error={errors.namaPembina?.message} {...register('namaPembina')} />
     <Input label="Nomor WhatsApp Aktif Pembina/Pelatih" placeholder="Contoh: 081234567890" error={errors.noWhatsappPembina?.message} {...register('noWhatsappPembina')} />
     <div className="bg-event-cream border-3 border-event-navy shadow-pixel-sm p-4"><p className="font-body text-xs text-event-navy/70">Biaya pendaftaran: <span className="font-bold">Rp{BIAYA_PESERTA.toLocaleString('id-ID')}/peserta</span> dan <span className="font-bold">Rp{BIAYA_PENDAMPING.toLocaleString('id-ID')}/pendamping</span>.</p></div>
