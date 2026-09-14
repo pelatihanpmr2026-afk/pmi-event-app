@@ -18,7 +18,7 @@ export async function generatePdfRekapPendaftaran(
 
   let y = 100
   drawText(page, 'A.  PENDAPATAN PENDAFTARAN', 20, y, bold, 11, MONO_BLACK, 'left')
-  y += 12
+  y += 15
   const pendaftaranTable = drawMonoTable({
     page,
     top: y,
@@ -39,7 +39,7 @@ export async function generatePdfRekapPendaftaran(
     y = 100
   }
   drawText(page, 'B.  PENDAPATAN SEWA TENDA', 20, y, bold, 11, MONO_BLACK, 'left')
-  y += 12
+  y += 15
   ;({ page, top: y } = drawMonoTable({
     page,
     top: y,
