@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { tendaSelectionSchema } from '@/lib/validations/tenda'
-import { TENDA_TOLERANSI } from '@/lib/constants-sekolah'
 import { lockDanValidasiStokTenda } from '@/lib/tenda-stock'
 import { hasTendaSession, TENDA_SESSION_COOKIE } from '@/lib/tenda-session'
 import { deleteFileByUrl } from '@/lib/save-file'
@@ -115,12 +114,6 @@ export async function PUT(
       return NextResponse.json({ success: false, message: 'Salah satu jenis tenda tidak ditemukan' }, { status: 400 })
     }
 
-    const kapasitas = pilihan.reduce((total, item) => total + tendaJenis.find((tenda) => tenda.id === item.tendaJenisId)!.kapasitasMin * item.jumlah, 0)
-    const batasKapasitas = Math.max(sekolah.peserta.length, sekolah.estimasiPesertaPendamping ?? 0) + TENDA_TOLERANSI
-    if (kapasitas > batasKapasitas) {
-      return NextResponse.json({ success: false, message: `Total kapasitas tenda (${kapasitas} orang) melebihi batas maksimal (${batasKapasitas} orang)` }, { status: 400 })
-    }
-
     const totalBaru = pilihan.reduce((total, item) => total + tendaJenis.find((tenda) => tenda.id === item.tendaJenisId)!.harga * item.jumlah, 0)
     const qrToken = pembayaran.qrToken ?? nanoid(24)
     const referensi = sekolah.kodePendaftaran ?? `SEWA-TENDA-${sekolah.id}`
@@ -223,11 +216,9 @@ export async function POST(
       )
     }
 
-    const jumlahAktual = sekolah.peserta.length
-    const estimasi = sekolah.estimasiPesertaPendamping ?? 0
-    const efektifJumlahOrang = Math.max(jumlahAktual, estimasi)
-    const batasKapasitas = efektifJumlahOrang + TENDA_TOLERANSI
-
+    // Aturan batas kapasitas (peserta + pendamping + toleransi) DIHAPUS —
+    // sekolah bebas menyewa tenda sebanyak yang stoknya tersedia; yang tetap
+    // dibatasi hanya stok (lockDanValidasiStokTenda).
     if (pilihan.length === 0) {
       // Kosongkan seluruh pilihan tenda sekolah ini
       await prisma.$transaction([
@@ -241,7 +232,6 @@ export async function POST(
     const tendaIds = pilihan.map((p) => p.tendaJenisId)
     const tendaJenisList = await prisma.tendaJenis.findMany({ where: { id: { in: tendaIds } } })
 
-    let totalKapasitas = 0
     let jumlahBiaya = 0
 
     for (const p of pilihan) {
@@ -249,19 +239,9 @@ export async function POST(
       if (!jenis) {
         return NextResponse.json({ success: false, message: 'Jenis tenda tidak ditemukan' }, { status: 400 })
       }
-      totalKapasitas += jenis.kapasitasMin * p.jumlah
       jumlahBiaya += jenis.harga * p.jumlah
     }
 
-    if (totalKapasitas > batasKapasitas) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: `Total kapasitas tenda (${totalKapasitas} orang) melebihi batas maksimal (${batasKapasitas} orang)`,
-        },
-        { status: 400 }
-      )
-    }
     try {
       const result = await prisma.$transaction(async (tx) => {
         await lockDanValidasiStokTenda(tx, id, pilihan)

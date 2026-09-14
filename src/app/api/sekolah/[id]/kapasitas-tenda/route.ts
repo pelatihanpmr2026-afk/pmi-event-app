@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { TENDA_RESERVASI_JAM, TENDA_TOLERANSI } from '@/lib/constants-sekolah'
+import { TENDA_RESERVASI_JAM } from '@/lib/constants-sekolah'
 import { batasReservasiTenda, reservasiTendaAktif } from '@/lib/tenda-stock'
 import { hasTendaSession, TENDA_SESSION_COOKIE } from '@/lib/tenda-session'
 
@@ -28,7 +28,6 @@ export async function GET(
     const jumlahAktual = sekolah.peserta.length
     const estimasi = sekolah.estimasiPesertaPendamping ?? 0
     const efektifJumlahOrang = Math.max(jumlahAktual, estimasi)
-    const batasKapasitas = efektifJumlahOrang + TENDA_TOLERANSI
 
     const pembayaranTenda = sekolah.pembayaran[0] ?? null
     const reservasiAktif = reservasiTendaAktif(pembayaranTenda ?? undefined, batasReservasiTenda())
@@ -42,7 +41,6 @@ export async function GET(
         jumlahAktual,
         estimasi,
         efektifJumlahOrang,
-        batasKapasitas,
         terkunci,
         statusPembayaranTenda: pembayaranTenda?.statusPembayaran ?? null,
         reservasiAktif,

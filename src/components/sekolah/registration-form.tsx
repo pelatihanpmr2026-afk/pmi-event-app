@@ -25,6 +25,23 @@ async function dataUrlToFile(dataUrl: string, filename: string): Promise<File> {
   return new File([blob], filename, { type: blob.type })
 }
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+// Signature isi foto peserta (cuma panjang + nama/ukuran tiap file) untuk
+// cache payload kompresi — sinkron otomatis yang sering jadi tidak mengompres
+// ulang semua foto tiap kali.
+function pesertaFotoSignature(peserta: PesertaPendampingValues['peserta'] | null): string {
+  if (!peserta) return 'null'
+  return `${peserta.length}#${peserta.map((p) => (p.foto instanceof File ? `${p.foto.name}:${p.foto.size}` : '0')).join('|')}`
+}
+
 // PENTING: array ini harus punya 1 label untuk setiap nilai currentStep (1-5).
 // Sebelumnya cuma ada 4 label padahal currentStep bisa sampai 5 (step
 // pembayaran), jadi STEPS[currentStep - 1] jadi undefined dan
@@ -58,11 +75,18 @@ export function SekolahRegistrationForm({
   const [isRestoring, setIsRestoring] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
+  // Status sinkronisasi draft ke server panitia: 'idle' (belum dicoba),
+  // 'synced' (server punya), 'error' (draft HANYA di perangkat ini).
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'synced' | 'error'>('idle')
 
   const [serverDraftLoading, setServerDraftLoading] = useState(hasServerDraft)
   const [serverDraftError, setServerDraftError] = useState<string | null>(null)
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const serverSyncTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // Cache payload foto hasil kompresi, dikunci per "signature foto". Auto-save
+  // yang sering (setiap ketik) jadi TIDAK mengompres ulang semua foto tiap kali.
+  const pesertaPayloadCacheRef = useRef<{ signature: string; payload: Array<Record<string, unknown>> | null } | null>(null)
 
   // Cek apakah data form lolos skema SERVER (bukan hanya skema step). Dipakai
   // saat restore draft agar user TIDAK tersangkut di step pembayaran dengan
@@ -156,9 +180,108 @@ export function SekolahRegistrationForm({
       }
     })()
     return () => { cancelled = true }
-  }, [isAdmin, isResume, adminDraftId, resumeDraftId, resumeToken])
+}, [isAdmin, isResume, adminDraftId, resumeDraftId, resumeToken])
 
-  // Auto-save dengan debounce 1 detik
+  // Kompres & susun payload peserta. Cache per "signature foto" supaya sinkron
+  // otomatis (auto-save) yang sering tidak mengompres ulang semua foto.
+  const buildPesertaPayload = useCallback(
+    async (peserta: PesertaPendampingValues['peserta'] | null): Promise<Array<Record<string, unknown>> | null> => {
+      if (!peserta) return null
+      const signature = pesertaFotoSignature(peserta)
+      const cached = pesertaPayloadCacheRef.current
+      if (cached && cached.signature === signature) return cached.payload
+      const payload = await Promise.all(
+        peserta.map(async (p) => {
+          let foto: string | null = null
+          if (p.foto instanceof File) {
+            try {
+              foto = await fileToBase64(await compressImage(p.foto, 720, 0.6))
+            } catch {
+              foto = await fileToBase64(p.foto)
+            }
+          }
+          const rest = { ...p }
+          delete rest.foto
+          return { ...rest, foto }
+        })
+      )
+      pesertaPayloadCacheRef.current = { signature, payload }
+      return payload
+    },
+    []
+  )
+
+  // Kirim draft ke server panitia. Return boolean — keputusan tampil/menghilang alat
+  // pamit (tombol "Simpan Draft" vs auto-save senyap) diserahkan ke pemanggil.
+  const postDraftToServer = useCallback(
+    async (
+      peserta: PesertaPendampingValues['peserta'] | null,
+      pendamping: PesertaPendampingValues['pendamping'] | null,
+      step: number
+    ): Promise<boolean> => {
+      if (!dataSekolah) return false
+      try {
+        // Kompres foto dulu supaya payload tidak melewati batas ukuran request
+        // (413 membuat draft tidak pernah tercatat di server panitia).
+        const pesertaPayload = await buildPesertaPayload(peserta)
+        const res = await fetch('/api/draft', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            currentStep: step,
+            dataSekolah,
+            dataPeserta: pesertaPayload,
+            dataPendamping: pendamping ?? null,
+          }),
+        })
+        // Catat penolakan server agar kasus "draft tidak muncul" bisa dilacak.
+        if (!res.ok) {
+          const detail = await res.text().catch(() => '')
+          console.warn('[draft-sync] server menolak', res.status, detail.slice(0, 200))
+        }
+        return res.ok
+      } catch (error) {
+        console.warn('[draft-sync] gagal mengirim', error)
+        return false
+      }
+    },
+    [dataSekolah, buildPesertaPayload]
+  )
+
+  // Dipakai tombol "Simpan Draft..." — user HARUS tahu kalau server menolak.
+  const syncDraftToServer = useCallback(
+    async (
+      peserta: PesertaPendampingValues['peserta'] | null,
+      pendamping: PesertaPendampingValues['pendamping'] | null,
+      step: number
+    ): Promise<boolean> => {
+      const ok = await postDraftToServer(peserta, pendamping, step)
+      setSyncStatus(ok ? 'synced' : 'error')
+      return ok
+    },
+    [postDraftToServer]
+  )
+
+  // Sinkron senyap dari auto-save (tanpa toast supaya tidak mengganggu);
+  // statusnya ditampilkan di teks "Tersimpan sebagai draft…".
+  const autoSyncDraft = useCallback(
+    async () => {
+      if (hasServerDraft) return
+      const ok = await postDraftToServer(
+        currentStep >= 2 ? (dataPeserta ?? null) : null,
+        dataPendamping ?? null,
+        currentStep
+      )
+      setSyncStatus(ok ? 'synced' : 'error')
+    },
+    [hasServerDraft, currentStep, dataPeserta, dataPendamping, postDraftToServer]
+  )
+
+  // Auto-save: lokal debounce 1 dtk + sinkron server debounce 5 dtk.
+  // SEBELUMNYA auto-save HANYA menulis localStorage — user melihat "tersimpan"
+  // (teks hijau) padahal tidak pernah nyampe ke server panitia. Sekarang setiap
+  // perubahan yang auto-save juga dikirim ke /api/draft secara senyap (jeda
+  // lebih lama agar tidak membebani WiFi/kuota sekolah).
   useEffect(() => {
     if (hasServerDraft || !isHydrated || draftFound !== null) return
     if (currentStep === 1 && !dataSekolah) return
@@ -178,10 +301,17 @@ export function SekolahRegistrationForm({
       })
       setLastSavedAt(Date.now())
     }, 1000)
+
+    if (serverSyncTimeoutRef.current) clearTimeout(serverSyncTimeoutRef.current)
+    serverSyncTimeoutRef.current = setTimeout(() => {
+      void autoSyncDraft()
+    }, 5000)
+
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
+      if (serverSyncTimeoutRef.current) clearTimeout(serverSyncTimeoutRef.current)
     }
-}, [currentStep, dataSekolah, dataPeserta, dataPendamping, isHydrated, draftFound, hasServerDraft])
+}, [currentStep, dataSekolah, dataPeserta, dataPendamping, isHydrated, draftFound, hasServerDraft, autoSyncDraft])
 
   useEffect(() => {
     if (hasServerDraft) return
@@ -292,56 +422,6 @@ export function SekolahRegistrationForm({
     }
   }
 
-  function fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
-  }
-
-  async function syncDraftToServer(peserta: PesertaPendampingValues['peserta'] | null, pendamping: PesertaPendampingValues['pendamping'] | null, step: number) {
-    if (!dataSekolah) return
-    try {
-      // Kompres foto dulu supaya payload tidak melewati batas ukuran request
-      // (413 membuat draft tidak pernah tercatat di server panitia).
-      const pesertaPayload = peserta
-        ? await Promise.all(peserta.map(async (p) => {
-            let foto: string | null = null
-            if (p.foto instanceof File) {
-              try {
-                foto = await fileToBase64(await compressImage(p.foto, 720, 0.6))
-              } catch {
-                foto = await fileToBase64(p.foto)
-              }
-            }
-            const rest = { ...p }
-            delete rest.foto
-            return { ...rest, foto }
-          }))
-        : null
-
-      const res = await fetch('/api/draft', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currentStep: step,
-          dataSekolah,
-          dataPeserta: pesertaPayload,
-          dataPendamping: pendamping ?? null,
-        }),
-      })
-      // Jangan sembunyikan kegagalan: kalau draft tidak sampai ke server
-      // panitia, user harus diberi tahu (draft lokal tetap tersimpan).
-      if (!res.ok) {
-        toast.warning('Draft tersimpan di perangkat ini, tapi belum tersinkron ke server panitia — mungkin terganggu jaringan/kuota. Silakan coba simpan lagi nanti.')
-      }
-    } catch {
-      toast.warning('Draft tersimpan di perangkat ini, tapi belum tersinkron ke server panitia. Silakan coba simpan lagi nanti.')
-    }
-  }
-
   async function simpanDraftPeserta(values: Pick<PesertaPendampingValues, 'peserta'>, step: number) {
     setDataPeserta(values.peserta)
     await persistPesertaPhotos(values.peserta)
@@ -365,9 +445,13 @@ export function SekolahRegistrationForm({
   // Disimpan dari tombol "Simpan Draft" di Step 2 — data peserta (termasuk
   // foto) ikut draft TANPA harus pindah dulu ke step pendamping.
   function handleSavePesertaDraft(values: Pick<PesertaPendampingValues, 'peserta'>) {
-    void simpanDraftPeserta(values, currentStep).then(() => {
-      void syncDraftToServer(values.peserta, dataPendamping ?? null, currentStep)
-      toast.success('Draft peserta tersimpan. Data dan foto aman — lanjutkan kapan saja.')
+    void simpanDraftPeserta(values, currentStep).then(async () => {
+      const ok = await syncDraftToServer(values.peserta, dataPendamping ?? null, currentStep)
+      if (ok) {
+        toast.success('Draft peserta tersimpan di server — data dan foto aman.')
+      } else {
+        toast.warning('Draft tersimpan di perangkat ini, tapi belum tersinkron ke server panitia. Periksa jaringan lalu simpan lagi.')
+      }
     })
   }
 
@@ -388,8 +472,13 @@ export function SekolahRegistrationForm({
       })
     }
     setLastSavedAt(Date.now())
-    void syncDraftToServer(dataPeserta ?? null, values.pendamping ?? null, currentStep)
-    toast.success('Draft pendamping tersimpan — lanjutkan kapan saja.')
+    void syncDraftToServer(dataPeserta ?? null, values.pendamping ?? null, currentStep).then((ok) => {
+      if (ok) {
+        toast.success('Draft pendamping tersimpan di server — lanjutkan kapan saja.')
+      } else {
+        toast.warning('Draft tersimpan di perangkat ini, tapi belum tersinkron ke server panitia. Periksa jaringan lalu simpan lagi.')
+      }
+    })
   }
 
   // Step review hanya menampilkan ringkasan data, belum mengirim apa pun ke
@@ -442,7 +531,13 @@ export function SekolahRegistrationForm({
         {isRestoring && <p className="font-body text-sm text-gray-400 text-center">Memulihkan data...</p>}
 
         <ProgressStepper steps={STEPS} currentStep={currentStep} />
-        {lastSavedAt && <p className="font-body text-xs text-green-700 text-center">Tersimpan sebagai draft pada {new Date(lastSavedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</p>}
+        {lastSavedAt && (
+          <p className={`font-body text-xs text-center ${syncStatus === 'error' ? 'text-red-700' : 'text-green-700'}`}>
+            Tersimpan sebagai draft pada {new Date(lastSavedAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+            {syncStatus === 'synced' ? ' • tersinkron ke server panitia' : ''}
+            {syncStatus === 'error' ? ' • GAGAL tersinkron — draft hanya di perangkat ini' : ''}
+          </p>
+        )}
 
         <Card pixel>
           <CardHeader variant={currentStep === 4 || currentStep === 5 ? 'yellow' : 'blue'} pixel>

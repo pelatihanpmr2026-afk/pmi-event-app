@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { CornerDownLeft } from 'lucide-react'
+import { CornerDownLeft, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,14 +32,24 @@ export default function DraftListPage() {
   const [loading, setLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const pageSize = 50
 
-  const fetchDrafts = useCallback(async (q: string) => {
+  const fetchDrafts = useCallback(async (q: string, p = 1) => {
     setLoading(true)
     try {
-      const params = q ? `?q=${encodeURIComponent(q)}` : ''
-      const res = await fetch(`/api/draft${params}`)
+      const params = new URLSearchParams()
+      if (q) params.set('q', q)
+      if (p > 1) params.set('page', String(p))
+      const qs = params.toString()
+      const res = await fetch(`/api/draft${qs ? `?${qs}` : ''}`)
       const json = await res.json()
-      if (json.success) setDrafts(json.data)
+      if (json.success) {
+        setDrafts(json.data)
+        setTotal(json.meta?.total ?? json.data.length)
+        setPage(json.meta?.page ?? p)
+      }
     } finally {
       setLoading(false)
     }
@@ -51,7 +61,11 @@ export default function DraftListPage() {
       try {
         const res = await fetch('/api/draft')
         const json = await res.json()
-        if (!cancelled && json.success) setDrafts(json.data)
+        if (!cancelled && json.success) {
+          setDrafts(json.data)
+          setTotal(json.meta?.total ?? json.data.length)
+          setPage(1)
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -62,7 +76,8 @@ export default function DraftListPage() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault()
     setSearchQuery(query)
-    void fetchDrafts(query)
+    setPage(1)
+    void fetchDrafts(query, 1)
   }
 
   // Salin link resume: draft lama (belum punya resumeToken) dibuatin token dulu
@@ -97,6 +112,8 @@ export default function DraftListPage() {
     }
   }
 
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -117,7 +134,7 @@ export default function DraftListPage() {
             type="button"
             variant="ghost"
             size="sm"
-            onClick={() => { setQuery(''); setSearchQuery(''); void fetchDrafts('') }}
+            onClick={() => { setQuery(''); setSearchQuery(''); setPage(1); void fetchDrafts('', 1) }}
           >
             Reset
           </Button>
@@ -218,6 +235,34 @@ export default function DraftListPage() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="font-body text-xs text-gray-500">
+              Total {total} draft — halaman {page}/{totalPages}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1 || loading}
+                onClick={() => void fetchDrafts(searchQuery, page - 1)}
+              >
+                Sebelumnya
+              </Button>
+              <Button variant="outline" size="sm" disabled={loading} onClick={() => void fetchDrafts(searchQuery, page)}>
+                <RefreshCw className="w-3.5 h-3.5" />
+                Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages || loading}
+                onClick={() => void fetchDrafts(searchQuery, page + 1)}
+              >
+                Berikutnya
+              </Button>
+            </div>
           </div>
         </>
       )}

@@ -3,7 +3,7 @@ import { nanoid } from 'nanoid'
 import { prisma } from '@/lib/prisma'
 import { dataSekolahMiniSchema } from '@/lib/validations/sekolah'
 import { tendaSelectionSchema } from '@/lib/validations/tenda'
-import { TENDA_RESERVASI_SEMENTARA_MENIT, TENDA_TOLERANSI } from '@/lib/constants-sekolah'
+import { TENDA_RESERVASI_SEMENTARA_MENIT } from '@/lib/constants-sekolah'
 import { lockDanValidasiStokTenda } from '@/lib/tenda-stock'
 import { checkRateLimit } from '@/lib/rate-limit'
 
@@ -17,9 +17,11 @@ export async function POST(req: NextRequest) {
     const pilihan = tendaSelectionSchema.safeParse({ pilihan: body.pilihan })
     if (!sekolah.success || !pilihan.success || pilihan.data.pilihan.length === 0) return NextResponse.json({ success: false, message: 'Data reservasi tidak valid' }, { status: 400 })
     const jenis = await prisma.tendaJenis.findMany({ where: { id: { in: pilihan.data.pilihan.map((p) => p.tendaJenisId) } } })
+    // Aturan batas kapasitas (peserta + pendamping + toleransi) DIHAPUS —
+    // sekolah bebas menyewa tenda sebanyak yang stoknya tersedia. Yang tetap
+    // dibatasi hanya stok (lihat lockDanValidasiStokTenda).
+    if (jenis.length !== pilihan.data.pilihan.length) return NextResponse.json({ success: false, message: 'Salah satu jenis tenda tidak ditemukan' }, { status: 400 })
     const estimasi = Number(sekolah.data.estimasiPesertaPendamping)
-    const kapasitas = pilihan.data.pilihan.reduce((sum, p) => sum + jenis.find((t) => t.id === p.tendaJenisId)!.kapasitasMin * p.jumlah, 0)
-    if (jenis.length !== pilihan.data.pilihan.length || kapasitas > estimasi + TENDA_TOLERANSI) return NextResponse.json({ success: false, message: 'Kapasitas tenda melebihi batas kebutuhan' }, { status: 400 })
     const id = `resv_${nanoid(18)}`
     const expiresAt = new Date(Date.now() + TENDA_RESERVASI_SEMENTARA_MENIT * 60 * 1000)
     await prisma.$transaction(async (tx) => {

@@ -16,7 +16,10 @@ function newResumeToken(): string {
 // Rate limit draft sync per SEKOLAH, bukan per-IP: satu sekolah (apalagi di
 // WiFi bersama) bisa menyimpan draft berkali-kali dalam sehari tanpa khawatir
 // kena batas IP global yang dipakai banyak orang.
-const DRAFT_SYNC_MAX = 300
+// Dinaikkan dari 300 karena auto-save sekarang ikut sinkron ke server — satu
+// sekolah yang aktif mengetik bisa ±720 kiriman/jam (debounce 5 dtk) + simpan
+// manual. 3000/jam masih aman mencegah spam nyata.
+const DRAFT_SYNC_MAX = 3000
 const DRAFT_SYNC_WINDOW_MS = 60 * 60 * 1000
 const draftSyncBuckets = new Map<string, { count: number; resetAt: number }>()
 
@@ -114,7 +117,7 @@ export async function POST(req: NextRequest) {
     const namaLengkap = normalizeNamaSekolah(parsedSekolah.data.namaSekolah)
     const key = namaSekolahKey(namaLengkap)
 
-    // Rate limit per-sekolah (300/jam), agar WiFi sekolah tidak kena
+    // Rate limit per-sekolah (3000/jam), agar WiFi sekolah tidak kena
     // pembatasan yang dialami bersama oleh banyak siswa.
     if (!checkDraftSyncRateLimit(key)) {
       return NextResponse.json(
@@ -178,11 +181,21 @@ export async function GET(req: NextRequest) {
 
     const where = q ? { namaSekolah: { contains: q } } : {}
 
-    const drafts = await prisma.draft.findMany({
-      where,
-      orderBy: { updatedAt: 'desc' },
-      take: 100,
-    })
+    // Pagination 50/halaman — sebelumnya take:100 menyebabkan draft lama
+    // "hilang" dari dashboard begitu jumlah draft melewati 100.
+    const pageParam = Number.parseInt(searchParams.get('page') ?? '1', 10)
+    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1
+    const pageSize = 50
+
+    const [total, drafts] = await Promise.all([
+      prisma.draft.count({ where }),
+      prisma.draft.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ])
 
     const data = drafts.map((d) => {
       const ds = (d.dataSekolah ?? {}) as Record<string, unknown>
@@ -200,7 +213,7 @@ export async function GET(req: NextRequest) {
       }
     })
 
-    return NextResponse.json({ success: true, data })
+    return NextResponse.json({ success: true, data, meta: { total, page, pageSize } })
   } catch (error) {
     console.error('[GET /api/draft]', error)
     return NextResponse.json({ success: false, message: 'Gagal memuat draft' }, { status: 500 })
