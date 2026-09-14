@@ -1,7 +1,27 @@
 import { addMonoHeader, createRekapPdf, drawMonoSig, drawMonoSummary, drawMonoTable, MONO_BLACK, REKAP_A4_W, drawText, rp } from './pdf-rekap-text'
+import type { PDFFont } from 'pdf-lib'
 
 interface PendaftaranRow { namaSekolah: string; jumlahPeserta: number; jumlahPendamping: number; totalRp: number }
 interface TendaRow { namaSekolah: string; jumlahTenda: number; jenisTenda: string; totalRp: number }
+
+const NAMA_HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
+const NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember']
+
+function bungkusTeks(font: PDFFont, text: string, size: number, maxWidth: number): string[] {
+  const lines: string[] = []
+  let current = ''
+  for (const word of text.split(' ')) {
+    const candidate = current ? `${current} ${word}` : word
+    if (font.widthOfTextAtSize(candidate, size) > maxWidth && current) {
+      lines.push(current)
+      current = word
+    } else {
+      current = candidate
+    }
+  }
+  if (current) lines.push(current)
+  return lines
+}
 
 export async function generatePdfRekapPendaftaran(
   tanggal: string,
@@ -13,7 +33,7 @@ export async function generatePdfRekapPendaftaran(
   totalTransfer: number
 ): Promise<Buffer> {
   const { pdf, regular, bold } = await createRekapPdf(`Laporan Keuangan Harian ${tanggal}`)
-  const createPage = () => addMonoHeader(pdf, 'LAPORAN KEUANGAN HARIAN', tanggal, bold, regular)
+  const createPage = () => addMonoHeader(pdf, 'BERITA ACARA LAPORAN KEUANGAN HARIAN', tanggal, bold, regular)
   let page = createPage()
 
   let y = 100
@@ -72,14 +92,30 @@ export async function generatePdfRekapPendaftaran(
       { label: 'Total Biaya Sewa Tenda', value: rp(totals.totalSewaTenda) },
       { label: 'Total Setoran Cash', value: rp(totalCash) },
       { label: 'Total Setoran Transfer', value: rp(totalTransfer) },
-      { label: 'Total Keseluruhan', value: rp(totals.totalKeseluruhan), bold: true },
+      { label: 'Total Pemasukkan Hari Ini', value: rp(totals.totalKeseluruhan), bold: true },
     ],
     { regular, bold }
   )
 
-  const sigTop = y + 34
-  drawMonoSig(page, 110, sigTop, 'Petugas / Admin', namaPetugas, regular, bold)
-  drawMonoSig(page, REKAP_A4_W / 2, sigTop, 'Koordinator Kesekretariatan', null, regular, bold)
-  drawMonoSig(page, REKAP_A4_W - 110, sigTop, 'Bendahara', null, regular, bold)
+  const sekarang = new Date()
+  const pernyataan =
+    `Yang bertanda tangan di bawah ini menyatakan bahwa laporan keuangan hari ${NAMA_HARI[sekarang.getDay()]}, ` +
+    `tanggal ${sekarang.getDate()}, bulan ${NAMA_BULAN[sekarang.getMonth()]}, tahun ${sekarang.getFullYear()} ini dibuat dengan sebenar-benarnya.`
+  const barisPernyataan = bungkusTeks(regular, pernyataan, 10, REKAP_A4_W - 40)
+
+  if (y + 24 + barisPernyataan.length * 18 + 130 > 760) {
+    page = createPage()
+    y = 100
+  }
+  y += 24
+  for (const baris of barisPernyataan) {
+    drawText(page, baris, 20, y, regular, 10, MONO_BLACK, 'left')
+    y += 18
+  }
+
+  const tandaTanganTop = y + 30
+  drawMonoSig(page, 110, tandaTanganTop, 'Petugas / Admin', namaPetugas, regular, bold)
+  drawMonoSig(page, REKAP_A4_W / 2, tandaTanganTop, 'Koordinator Kesekretariatan', null, regular, bold)
+  drawMonoSig(page, REKAP_A4_W - 110, tandaTanganTop, 'Bendahara', null, regular, bold)
   return Buffer.from(await pdf.save())
 }
