@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { CornerDownLeft } from 'lucide-react'
+import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -13,6 +15,8 @@ interface DraftItem {
   currentStep: number
   jumlahPeserta: number
   updatedAt: string
+  resumeToken: string | null
+  resumeTokenExpiresAt: string | null
 }
 
 const STEP_LABELS: Record<number, string> = {
@@ -59,6 +63,38 @@ export default function DraftListPage() {
     e.preventDefault()
     setSearchQuery(query)
     void fetchDrafts(query)
+  }
+
+  // Salin link resume: draft lama (belum punya resumeToken) dibuatin token dulu
+  // lewat endpoint admin, baru URL disalin. Link dipakai pembina sekolah tanpa
+  // login — selalu berbentuk ?draft=<id>&token=<uuid acak>.
+  async function handleCopyResumeLink(d: DraftItem) {
+    let token = d.resumeToken
+    if (!token) {
+      try {
+        const res = await fetch(`/api/draft/${d.id}/resume-link`, { method: 'POST' })
+        const json = await res.json()
+        if (!res.ok || !json.success) throw new Error(json.message || 'Gagal membuat link')
+        token = json.data.resumeToken as string
+        setDrafts((cur) =>
+          cur.map((x) =>
+            x.id === d.id
+              ? { ...x, resumeToken: token, resumeTokenExpiresAt: json.data.resumeTokenExpiresAt as string }
+              : x
+          )
+        )
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Gagal membuat link')
+        return
+      }
+    }
+    const url = `${window.location.origin}/sekolah/daftar?draft=${d.id}&token=${token}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Link draft disalin — kirim ke pembina agar melanjutkan pendaftaran sendiri.')
+    } catch {
+      toast.error('Gagal menyalin link ke clipboard')
+    }
   }
 
   return (
@@ -134,11 +170,17 @@ export default function DraftListPage() {
                           {new Date(d.updatedAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </td>
                         <td className="px-4 py-2 text-right">
-                          <Link href={`/dashboard/draft/${d.id}`}>
-                            <Button variant="outline" size="sm" className="text-xs">
-                              Lanjutkan
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="ghost" size="sm" className="text-xs" onClick={() => void handleCopyResumeLink(d)}>
+                              <CornerDownLeft className="w-3.5 h-3.5" />
+                              Salin Link
                             </Button>
-                          </Link>
+                            <Link href={`/dashboard/draft/${d.id}`}>
+                              <Button variant="outline" size="sm" className="text-xs">
+                                Lanjutkan
+                              </Button>
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -169,6 +211,10 @@ export default function DraftListPage() {
                     <span>{d.jumlahPeserta} peserta</span>
                     <span>{new Date(d.updatedAt).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
+                  <Button variant="outline" size="sm" className="text-xs w-fit" onClick={() => void handleCopyResumeLink(d)}>
+                    <CornerDownLeft className="w-3.5 h-3.5" />
+                    Salin Link
+                  </Button>
                 </CardContent>
               </Card>
             ))}

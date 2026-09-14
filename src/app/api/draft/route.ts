@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { prisma } from '@/lib/prisma'
 import { requireAdmin } from '@/lib/api-guard'
@@ -6,6 +7,13 @@ import { normalizeNamaSekolah, namaSekolahKey } from '@/lib/sekolah'
 import { dataSekolahSchema } from '@/lib/validations/sekolah'
 import { pendampingArraySchema } from '@/lib/validations/peserta'
 import { MAX_REQUEST_BODY } from '@/lib/constants-sekolah'
+
+// Masa berlaku link resume draft yang dibagikan ke pembina sekolah.
+export const RESUME_LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 hari
+
+function newResumeToken(): string {
+  return randomUUID()
+}
 
 // Rate limit draft sync per SEKOLAH, bukan per-IP: satu sekolah (apalagi di
 // WiFi bersama) bisa menyimpan draft berkali-kali dalam sehari tanpa khawatir
@@ -113,6 +121,11 @@ export async function POST(req: NextRequest) {
         dataSekolah: parsedSekolah.data,
         dataPeserta: parsedPeserta.data,
         dataPendamping: parsedPendamping.data,
+        // Token resume dibuat saat draft pertama disimpan. Update berikutnya
+        // TIDAK mengganti token, sehingga link yang sudah dibagikan panitia ke
+        // pembina tetap berlaku selama masa berlakunya.
+        resumeToken: newResumeToken(),
+        resumeTokenExpiresAt: new Date(Date.now() + RESUME_LINK_TTL_MS),
       },
       update: {
         namaSekolah: namaLengkap,
@@ -157,6 +170,8 @@ export async function GET(req: NextRequest) {
         jumlahPeserta: dp.length,
         updatedAt: d.updatedAt.toISOString(),
         createdAt: d.createdAt.toISOString(),
+        resumeToken: d.resumeToken ?? null,
+        resumeTokenExpiresAt: d.resumeTokenExpiresAt?.toISOString() ?? null,
       }
     })
 

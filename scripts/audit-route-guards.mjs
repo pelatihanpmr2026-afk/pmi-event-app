@@ -22,6 +22,8 @@ const PUBLIC = new Set([
   'POST auth/logout',
   'POST sekolah', // pendaftaran publik (di-rate-limit)
   'POST draft', // sinkronisasi draft publik (di-rate-limit)
+  'GET draft/public/resume', // resume draft lewat token yang dibagikan link (UUID acak, kadaluwarsa 7 hari)
+  'DELETE draft/public/resume', // hapus draft setelah pendaftaran selesai (token yang sama)
   'GET sekolah/search',
   'GET sekolah/check-nama',
   'POST sekolah/mini',

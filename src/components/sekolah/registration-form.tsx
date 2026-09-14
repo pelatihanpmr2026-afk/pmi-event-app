@@ -33,12 +33,22 @@ const STEPS = ['Data Sekolah', 'Data Peserta', 'Data Pendamping', 'Review', 'Pem
 
 export function SekolahRegistrationForm({
   adminDraftId,
+  resumeDraftId,
+  resumeToken,
   onDone,
 }: {
   adminDraftId?: string
+  resumeDraftId?: string
+  resumeToken?: string
   onDone?: (sekolahId: string) => void
 } = {}) {
   const router = useRouter()
+  const isAdmin = !!adminDraftId
+  const isResume = !isAdmin && !!resumeDraftId && !!resumeToken
+  // Draft yang berasal dari SERVER (diperbarui panitia/admin): jangan nimbrung
+  // dengan draft localStorage milik user maupun auto-save perangkat lokal.
+  const hasServerDraft = isAdmin || isResume
+
   const [currentStep, setCurrentStep] = useState(1)
   const [dataSekolah, setDataSekolah] = useState<DataSekolahResult | null>(null)
   const [dataPeserta, setDataPeserta] = useState<PesertaPendampingValues['peserta'] | null>(null)
@@ -49,11 +59,10 @@ export function SekolahRegistrationForm({
   const [isHydrated, setIsHydrated] = useState(false)
   const [lastSavedAt, setLastSavedAt] = useState<number | null>(null)
 
-  const [adminDraftLoading, setAdminDraftLoading] = useState(!!adminDraftId)
-  const [adminDraftError, setAdminDraftError] = useState<string | null>(null)
+  const [serverDraftLoading, setServerDraftLoading] = useState(hasServerDraft)
+  const [serverDraftError, setServerDraftError] = useState<string | null>(null)
 
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const isAdmin = !!adminDraftId
 
   // Cek apakah data form lolos skema SERVER (bukan hanya skema step). Dipakai
   // saat restore draft agar user TIDAK tersangkut di step pembayaran dengan
@@ -76,9 +85,9 @@ export function SekolahRegistrationForm({
     return 0
   }
 
-  // Cek draft saat mount
+  // Cek draft saat mount (mode mandiri tanpa draft server)
   useEffect(() => {
-    if (adminDraftId) return
+    if (hasServerDraft) return
     const timer = setTimeout(() => {
       const draft = loadDraft()
       if (draft) {
@@ -87,15 +96,19 @@ export function SekolahRegistrationForm({
       setIsHydrated(true)
     }, 0)
     return () => clearTimeout(timer)
-  }, [adminDraftId, isAdmin])
+  }, [hasServerDraft])
 
-  // Admin mode: fetch draft dari server
+  // Mode dengan draft server (admin via [id], publik via token resume):
+  // fetch draft dari server
   useEffect(() => {
-    if (!adminDraftId) return
+    if (!isAdmin && !isResume) return
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch(`/api/draft/${adminDraftId}`)
+        const url = isAdmin
+          ? `/api/draft/${adminDraftId}`
+          : `/api/draft/public/resume?draft=${encodeURIComponent(resumeDraftId!)}&token=${encodeURIComponent(resumeToken!)}`
+        const res = await fetch(url)
         const json = await res.json()
         if (!json.success) throw new Error(json.message)
         const d = json.data
@@ -132,24 +145,24 @@ export function SekolahRegistrationForm({
         if (invalidStep !== 0) {
           setDataSekolah(null)
           setCurrentStep(1)
-          setAdminDraftError(
+          setServerDraftError(
             'Draft dari versi lama dan beberapa datanya tidak lengkap. Silakan isi dari awal.'
           )
           return
         }
         setCurrentStep(d.currentStep)
       } catch (err) {
-        if (!cancelled) setAdminDraftError(err instanceof Error ? err.message : 'Gagal memuat draft')
+        if (!cancelled) setServerDraftError(err instanceof Error ? err.message : 'Gagal memuat draft')
       } finally {
-        if (!cancelled) setAdminDraftLoading(false)
+        if (!cancelled) setServerDraftLoading(false)
       }
     })()
     return () => { cancelled = true }
-  }, [adminDraftId, isAdmin])
+  }, [isAdmin, isResume, adminDraftId, resumeDraftId, resumeToken])
 
   // Auto-save dengan debounce 1 detik
   useEffect(() => {
-    if (isAdmin || !isHydrated || draftFound !== null) return
+    if (hasServerDraft || !isHydrated || draftFound !== null) return
     if (currentStep === 1 && !dataSekolah) return
 
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
@@ -170,18 +183,18 @@ export function SekolahRegistrationForm({
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current)
     }
-  }, [currentStep, dataSekolah, dataPeserta, dataPendamping, isHydrated, draftFound, isAdmin])
+}, [currentStep, dataSekolah, dataPeserta, dataPendamping, isHydrated, draftFound, hasServerDraft])
 
   useEffect(() => {
-    if (isAdmin) return
+    if (hasServerDraft) return
     const warn = (event: BeforeUnloadEvent) => { if (dataSekolah || dataPeserta || dataPendamping) { event.preventDefault(); event.returnValue = '' } }
     window.addEventListener('beforeunload', warn)
     return () => window.removeEventListener('beforeunload', warn)
-  }, [dataSekolah, dataPeserta, dataPendamping, isAdmin])
+  }, [dataSekolah, dataPeserta, dataPendamping, hasServerDraft])
 
   // Simpan foto peserta ke IndexedDB (hanya jika ada perubahan)
   useEffect(() => {
-    if (isAdmin || !isHydrated || !dataPeserta || draftFound !== null) return
+    if (hasServerDraft || !isHydrated || !dataPeserta || draftFound !== null) return
     dataPeserta.forEach((p, i) => {
       if (p.foto instanceof File) {
         void savePhoto(`peserta_${i}`, p.foto)
@@ -193,7 +206,7 @@ export function SekolahRegistrationForm({
     for (let i = dataPeserta.length; i < 200; i++) {
       void deletePhoto(`peserta_${i}`)
     }
-  }, [dataPeserta, isHydrated, draftFound, isAdmin])
+  }, [dataPeserta, isHydrated, draftFound, hasServerDraft])
 
   const handleRestore = useCallback(async () => {
     setIsRestoring(true)
@@ -334,13 +347,15 @@ export function SekolahRegistrationForm({
   async function simpanDraftPeserta(values: Pick<PesertaPendampingValues, 'peserta'>, step: number) {
     setDataPeserta(values.peserta)
     await persistPesertaPhotos(values.peserta)
-    saveDraft({
-      currentStep: step,
-      dataSekolah,
-      dataPeserta: pesertaToDraft(values.peserta),
-      dataPendamping: dataPendamping ?? null,
-      sekolahId: null,
-    })
+    if (!hasServerDraft) {
+      saveDraft({
+        currentStep: step,
+        dataSekolah,
+        dataPeserta: pesertaToDraft(values.peserta),
+        dataPendamping: dataPendamping ?? null,
+        sekolahId: null,
+      })
+    }
     setLastSavedAt(Date.now())
   }
 
@@ -365,13 +380,15 @@ export function SekolahRegistrationForm({
 
   function handleSavePendampingDraft(values: Pick<PesertaPendampingValues, 'pendamping'>) {
     setDataPendamping(values.pendamping)
-    saveDraft({
-      currentStep,
-      dataSekolah,
-      dataPeserta: dataPeserta ? pesertaToDraft(dataPeserta) : null,
-      dataPendamping: values.pendamping ?? null,
-      sekolahId: null,
-    })
+    if (!hasServerDraft) {
+      saveDraft({
+        currentStep,
+        dataSekolah,
+        dataPeserta: dataPeserta ? pesertaToDraft(dataPeserta) : null,
+        dataPendamping: values.pendamping ?? null,
+        sekolahId: null,
+      })
+    }
     setLastSavedAt(Date.now())
     void syncDraftToServer(dataPeserta ?? null, values.pendamping ?? null, currentStep)
     toast.success('Draft pendamping tersimpan — lanjutkan kapan saja.')
@@ -393,6 +410,12 @@ export function SekolahRegistrationForm({
     if (isAdmin && adminDraftId) {
       void fetch(`/api/draft/${adminDraftId}`, { method: 'DELETE' }).catch(() => {})
       onDone?.(sekolahId)
+    } else if (isResume && resumeDraftId && resumeToken) {
+      // Mode resume publik: draft server dicabut setelah pendaftaran selesai
+      // supaya link tidak bisa dipakai lagi untuk mendaftar ganda.
+      const qs = `draft=${encodeURIComponent(resumeDraftId)}&token=${encodeURIComponent(resumeToken)}`
+      void fetch(`/api/draft/public/resume?${qs}`, { method: 'DELETE' }).catch(() => {})
+      router.push(`/sekolah/pembayaran/${sekolahId}`)
     } else {
       router.push(`/sekolah/pembayaran/${sekolahId}`)
     }
@@ -406,9 +429,14 @@ export function SekolahRegistrationForm({
   }
 
   return (
-    <AdminModeGate isAdmin={isAdmin} loading={adminDraftLoading} error={adminDraftError}>
+    <FormGate
+      loading={serverDraftLoading}
+      error={serverDraftError}
+      fallbackHref={isAdmin ? '/dashboard/draft' : '/sekolah/daftar'}
+      terms={!isAdmin}
+    >
       <div className={`w-full mx-auto flex flex-col gap-6 ${currentStep === 2 || currentStep === 3 ? 'max-w-full' : 'max-w-2xl'}`}>
-        {!isAdmin && draftFound !== null && (
+        {!hasServerDraft && draftFound !== null && (
           <div className="max-w-2xl w-full mx-auto">
             <DraftBanner savedAt={draftFound} onRestore={handleRestore} onDiscard={handleDiscard} />
           </div>
@@ -478,22 +506,24 @@ export function SekolahRegistrationForm({
           </CardContent>
         </Card>
       </div>
-    </AdminModeGate>
+    </FormGate>
   )
 }
 
-function AdminModeGate({
-  isAdmin,
+function FormGate({
   loading,
   error,
+  fallbackHref,
+  terms,
   children,
 }: {
-  isAdmin: boolean
   loading: boolean
   error: string | null
+  fallbackHref: string
+  terms: boolean
   children: React.ReactNode
 }) {
-  if (isAdmin && loading) {
+  if (loading) {
     return (
       <div className="w-full max-w-md mx-auto flex flex-col items-center gap-4 py-16">
         <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full" />
@@ -501,16 +531,16 @@ function AdminModeGate({
       </div>
     )
   }
-  if (isAdmin && error) {
+  if (error) {
     return (
       <div className="w-full max-w-md mx-auto flex flex-col items-center gap-4 py-16">
         <p className="text-sm text-red-600">Gagal memuat draft: {error}</p>
-        <Link href="/dashboard/draft" className="text-sm text-blue-600 hover:underline">Kembali ke daftar draft</Link>
+        <Link href={fallbackHref} className="text-sm text-blue-600 hover:underline">Mulai pendaftaran dari awal</Link>
       </div>
     )
   }
-  if (isAdmin) {
-    return <>{children}</>
+  if (terms) {
+    return <TermsGate>{children}</TermsGate>
   }
-  return <TermsGate>{children}</TermsGate>
+  return <>{children}</>
 }

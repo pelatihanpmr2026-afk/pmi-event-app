@@ -3,7 +3,16 @@ import { SekolahRegistrationForm } from '@/components/sekolah/registration-form'
 
 const MARQUEE_ITEMS = ['PENDAFTARAN SEKOLAH', 'WIRA & MADYA', 'KUOTA TERBATAS', 'DAFTAR SEKARANG']
 
-export default function DaftarSekolahPage() {
+// Mode resume: panitia membagikan link /sekolah/daftar?draft=<id>&token=<token>
+// ke pembina sekolah. Form akan memuat draft server & melanjutkan pendaftaran
+// tanpa login admin, dengan akses dikunci token acak (bukan session).
+export default async function DaftarSekolahPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ draft?: string; token?: string }>
+}) {
+  const { draft, token } = await searchParams
+
   return (
     <PixelPageShell
       title="PENDAFTARAN SEKOLAH"
@@ -12,7 +21,7 @@ export default function DaftarSekolahPage() {
       marqueeVariant="pink"
       contentClassName="max-w-6xl"
     >
-      <SekolahRegistrationForm />
+      <SekolahRegistrationForm resumeDraftId={draft} resumeToken={token} />
     </PixelPageShell>
   )
 }
