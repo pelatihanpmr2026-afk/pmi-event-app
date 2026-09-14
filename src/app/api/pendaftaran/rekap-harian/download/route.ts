@@ -20,7 +20,7 @@ function parseAngka(value: unknown): number | null {
 
 export async function GET(req: NextRequest) {
   try {
-    const guard = await requireRole('KEUANGAN')
+    const guard = await requireRole('KEUANGAN', 'KESEKRETARIATAN')
     if (!guard.ok) return guard.response
 
     const { searchParams } = new URL(req.url)
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const guard = await requireRole('KEUANGAN')
+    const guard = await requireRole('KEUANGAN', 'KESEKRETARIATAN')
     if (!guard.ok) return guard.response
 
     const body = await req.json().catch(() => null)

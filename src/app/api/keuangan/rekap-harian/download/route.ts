@@ -8,7 +8,7 @@ import { requireRole } from '@/lib/api-guard'
 
 export async function GET(req: NextRequest) {
   try {
-    const guard = await requireRole('KEUANGAN')
+    const guard = await requireRole('KEUANGAN', 'KESEKRETARIATAN')
     if (!guard.ok) return guard.response
 
     const { searchParams } = new URL(req.url)

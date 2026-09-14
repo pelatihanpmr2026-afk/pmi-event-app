@@ -18,7 +18,7 @@ export async function generatePdfRekapPendaftaran(
 
   let y = 100
   drawText(page, 'A.  PENDAPATAN PENDAFTARAN', 20, y, bold, 11, MONO_BLACK, 'left')
-  y += 8
+  y += 12
   const pendaftaranTable = drawMonoTable({
     page,
     top: y,
@@ -39,7 +39,7 @@ export async function generatePdfRekapPendaftaran(
     y = 100
   }
   drawText(page, 'B.  PENDAPATAN SEWA TENDA', 20, y, bold, 11, MONO_BLACK, 'left')
-  y += 8
+  y += 12
   ;({ page, top: y } = drawMonoTable({
     page,
     top: y,
@@ -63,7 +63,7 @@ export async function generatePdfRekapPendaftaran(
   y = drawMonoSummary(
     page,
     REKAP_A4_W - 20 - 320,
-    y + 8,
+    y + 12,
     320,
     [
       { label: 'Total Peserta', value: String(totals.totalJumlahPeserta) },
