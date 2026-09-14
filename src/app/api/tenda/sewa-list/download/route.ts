@@ -8,23 +8,34 @@ function ymd(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-/** Saring sekolah yang sewa tenda berdasarkan jenis tenda (opsional). */
+/** Saring sekolah yang sewa tenda berdasarkan jenis tenda / vendor (opsional). */
 export async function GET(req: NextRequest) {
   try {
     const guard = await requireRole('KESEKRETARIATAN')
     if (!guard.ok) return guard.response
 
     const tendaJenisId = req.nextUrl.searchParams.get('tendaJenisId') ?? null
+    const vendorFilter = req.nextUrl.searchParams.get('vendor')?.trim() || null
 
-    const tendaOptions = await prisma.tendaJenis.findMany({ select: { id: true, nama: true } })
+    const tendaOptions = await prisma.tendaJenis.findMany({ select: { id: true, nama: true, namaVendor: true } })
     const tendaTerpilih = tendaJenisId ? tendaOptions.find((t) => t.id === tendaJenisId) ?? null : null
     if (tendaJenisId && !tendaTerpilih) {
       return NextResponse.json({ success: false, message: 'Jenis tenda tidak ditemukan' }, { status: 400 })
     }
 
+    const tendaIdsByVendor = vendorFilter
+      ? tendaOptions.filter((t) => t.namaVendor?.trim() === vendorFilter).map((t) => t.id)
+      : null
+
     const sekolahList = await prisma.sekolah.findMany({
       where: {
-        tendaSewa: { some: tendaJenisId ? { tendaJenisId } : {} },
+        tendaSewa: {
+          some: tendaIdsByVendor
+            ? { tendaJenisId: { in: tendaIdsByVendor } }
+            : tendaJenisId
+              ? { tendaJenisId }
+              : {},
+        },
         pembayaran: { some: { tipe: 'TENDA', statusPembayaran: 'LUNAS' } },
       },
       include: {
@@ -56,7 +67,10 @@ export async function GET(req: NextRequest) {
 
     const now = new Date()
     const label = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-    const filterLabel = tendaTerpilih ? `FILTER JENIS TENDA : ${tendaTerpilih.nama}` : 'SEMUA JENIS TENDA'
+    const filterParts: string[] = []
+    if (tendaTerpilih) filterParts.push(`JENIS TENDA : ${tendaTerpilih.nama}`)
+    if (vendorFilter) filterParts.push(`VENDOR : ${vendorFilter}`)
+    const filterLabel = filterParts.length > 0 ? filterParts.join(' | ') : 'SEMUA JENIS TENDA & VENDOR'
 
     const buffer = await generatePdfSewaTendaList(
       label,
@@ -66,11 +80,14 @@ export async function GET(req: NextRequest) {
       guard.session.nama
     )
 
-    const tendaSlug = tendaTerpilih ? tendaTerpilih.nama.replace(/[^a-z0-9]+/gi, '_') : 'Semua'
+    const slugParts: string[] = []
+    if (tendaTerpilih) slugParts.push(tendaTerpilih.nama)
+    if (vendorFilter) slugParts.push(vendorFilter)
+    const fileSlug = slugParts.length > 0 ? slugParts.join('_').replace(/[^a-z0-9]+/gi, '_') : 'Semua'
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="Sewa_Tenda_${tendaSlug}_${ymd(now)}.pdf"`,
+        'Content-Disposition': `attachment; filename="Sewa_Tenda_${fileSlug}_${ymd(now)}.pdf"`,
       },
     })
   } catch (error) {

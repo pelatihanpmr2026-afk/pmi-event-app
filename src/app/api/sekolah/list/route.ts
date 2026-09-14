@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
     const pageSize = Math.min(100, Math.max(1, Number.parseInt(sp.get('pageSize') ?? String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE))
     const search = (sp.get('search') ?? '').trim()
     const kategori = (sp.get('kategori') ?? '').trim()
+    const sortBy = (sp.get('sortBy') ?? 'default').trim()
 
     const where: Prisma.SekolahWhereInput = {
       ...(search
@@ -35,10 +36,14 @@ export async function GET(req: NextRequest) {
         : {}),
     }
 
+    const orderBy = sortBy === 'nomor'
+      ? [{ nomorPendaftaran: { sort: 'asc' as const, nulls: 'last' as const } }]
+      : [{ createdAt: 'desc' as const }]
+
     const [sekolahList, total] = await Promise.all([
       prisma.sekolah.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip: (page - 1) * pageSize,
         take: pageSize,
         include: {

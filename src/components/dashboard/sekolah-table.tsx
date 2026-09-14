@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Eye, Check, X, Trash2, Loader2, MoreVertical, ExternalLink, FileSpreadsheet, FileText, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Eye, Check, X, Trash2, Loader2, MoreVertical, ExternalLink, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -57,6 +57,7 @@ export function SekolahTable({
   const [search, setSearch] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [filterKategori, setFilterKategori] = useState('')
+  const [sortBy, setSortBy] = useState<'default' | 'nomor'>('default')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [confirmingPaymentId, setConfirmingPaymentId] = useState<string | null>(null)
@@ -70,7 +71,7 @@ export function SekolahTable({
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  async function fetchPage(nextPage: number, q: string, kategori: string) {
+  async function fetchPage(nextPage: number, q: string, kategori: string, sort: 'default' | 'nomor') {
     setLoading(true)
     try {
       const params = new URLSearchParams({
@@ -78,6 +79,7 @@ export function SekolahTable({
         pageSize: String(PAGE_SIZE),
         search: q,
         kategori,
+        sortBy: sort,
       })
       const res = await fetch(`/api/sekolah/list?${params}`)
       const result = await res.json()
@@ -104,8 +106,8 @@ export function SekolahTable({
       firstRun.current = false
       return
     }
-    void fetchPage(page, debouncedSearch, filterKategori)
-  }, [page, debouncedSearch, filterKategori])
+    void fetchPage(page, debouncedSearch, filterKategori, sortBy)
+  }, [page, debouncedSearch, filterKategori, sortBy])
 
   function openDetail(id: string) {
     setOpenMenuId(null)
@@ -114,7 +116,7 @@ export function SekolahTable({
   }
 
   async function refreshList() {
-    await fetchPage(page, debouncedSearch, filterKategori)
+    await fetchPage(page, debouncedSearch, filterKategori, sortBy)
   }
 
   async function confirmPayment(paymentId: string, label: string) {
@@ -304,6 +306,18 @@ export function SekolahTable({
               options={[...KATEGORI_SEKOLAH_OPTIONS]}
             />
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSortBy((prev) => (prev === 'default' ? 'nomor' : 'default'))
+              setPage(1)
+            }}
+            className="flex items-center gap-1.5 h-11 border-3 border-event-navy bg-white px-3 font-body text-xs text-event-navy hover:bg-event-cream transition-colors"
+            aria-label={sortBy === 'nomor' ? 'Urutkan berdasarkan tanggal daftar' : 'Urutkan berdasarkan nomor pendaftaran'}
+          >
+            <ArrowUpDown size={14} />
+            {sortBy === 'nomor' ? 'No. Urut' : 'Terbaru'}
+          </button>
         </div>
         {data.length === 0 ? (
           <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] bg-white py-12 flex flex-col items-center justify-center gap-2">
@@ -484,6 +498,18 @@ export function SekolahTable({
             options={[...KATEGORI_SEKOLAH_OPTIONS]}
           />
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            setSortBy((prev) => (prev === 'default' ? 'nomor' : 'default'))
+            setPage(1)
+          }}
+          className="flex items-center gap-1.5 h-11 border-3 border-event-navy bg-white px-3 font-body text-xs text-event-navy hover:bg-event-cream transition-colors"
+          aria-label={sortBy === 'nomor' ? 'Urutkan berdasarkan tanggal daftar' : 'Urutkan berdasarkan nomor pendaftaran'}
+        >
+          <ArrowUpDown size={14} />
+          {sortBy === 'nomor' ? 'No. Urut' : 'Terbaru'}
+        </button>
       </div>
       {data.length === 0 ? (
         <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] bg-white py-12 flex flex-col items-center justify-center gap-2">

@@ -29,10 +29,11 @@ function rp(n: number) {
   return `Rp${n.toLocaleString('id-ID')}`
 }
 
-export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; nama: string }[] }) {
+export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; nama: string; namaVendor: string | null }[] }) {
   const [data, setData] = useState<SewaRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filterTenda, setFilterTenda] = useState('')
+  const [filterVendor, setFilterVendor] = useState('')
   const [isExporting, setIsExporting] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [editingRow, setEditingRow] = useState<SewaRow | null>(null)
@@ -40,10 +41,28 @@ export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; na
   const [editJumlah, setEditJumlah] = useState<Record<string, number>>({})
   const [isSaving, setIsSaving] = useState(false)
 
+  const vendorOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const list: { nama: string }[] = []
+    for (const t of tendaOptions) {
+      const vendor = t.namaVendor?.trim()
+      if (!vendor || seen.has(vendor)) continue
+      seen.add(vendor)
+      list.push({ nama: vendor })
+    }
+    return list.sort((a, b) => a.nama.localeCompare(b.nama))
+  }, [tendaOptions])
+
   const filteredData = useMemo(() => {
-    if (!filterTenda) return data
-    return data.filter((row) => row.tenda.some((t) => t.tendaJenisId === filterTenda))
-  }, [data, filterTenda])
+    const vendorIds = filterVendor
+      ? tendaOptions.filter((t) => t.namaVendor?.trim() === filterVendor).map((t) => t.id)
+      : []
+    return data.filter((row) => {
+      if (filterTenda && !row.tenda.some((t) => t.tendaJenisId === filterTenda)) return false
+      if (filterVendor && !row.tenda.some((t) => vendorIds.includes(t.tendaJenisId))) return false
+      return true
+    })
+  }, [data, filterTenda, filterVendor, tendaOptions])
 
   async function fetchData() {
     try {
@@ -123,6 +142,7 @@ export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; na
     try {
       const params = new URLSearchParams()
       if (filterTenda) params.set('tendaJenisId', filterTenda)
+      if (filterVendor) params.set('vendor', filterVendor)
       const res = await fetch(`/api/tenda/sewa-list/download?${params.toString()}`)
       if (!res.ok) {
         const result = await res.json().catch(() => null)
@@ -131,9 +151,12 @@ export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; na
       const blob = await res.blob()
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      const tendaNama = tendaOptions.find((t) => t.id === filterTenda)?.nama
+      const filterParts = [
+        tendaOptions.find((t) => t.id === filterTenda)?.nama ?? null,
+        filterVendor || null,
+      ].filter(Boolean).join('_')
       a.href = url
-      a.download = `Sewa_Tenda_${tendaNama ? tendaNama.replace(/[^a-z0-9]+/gi, '_') : 'Semua'}.pdf`
+      a.download = `Sewa_Tenda_${filterParts ? filterParts.replace(/[^a-z0-9]+/gi, '_') : 'Semua'}.pdf`
       document.body.appendChild(a)
       a.click()
       a.remove()
@@ -165,6 +188,17 @@ export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; na
               <option key={t.id} value={t.id}>{t.nama}</option>
             ))}
           </select>
+          <select
+            value={filterVendor}
+            onChange={(e) => setFilterVendor(e.target.value)}
+            className="h-11 border-3 border-event-navy bg-white px-3 font-body text-xs text-event-navy outline-none"
+            aria-label="Filter berdasarkan vendor"
+          >
+            <option value="">Semua Vendor</option>
+            {vendorOptions.map((v) => (
+              <option key={v.nama} value={v.nama}>{v.nama}</option>
+            ))}
+          </select>
           <Button
             variant="secondary"
             onClick={() => void handleExportPdf()}
@@ -184,7 +218,7 @@ export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; na
         </div>
       ) : filteredData.length === 0 ? (
         <div className="border-3 border-event-navy bg-white py-10 text-center">
-          <p className="font-body text-sm text-event-navy/50">Tidak ada sekolah dengan filter jenis tenda ini</p>
+          <p className="font-body text-sm text-event-navy/50">Tidak ada sekolah yang cocok dengan filter yang dipilih</p>
         </div>
       ) : (
         <div className="border-3 border-event-navy overflow-x-auto bg-white">
