@@ -20,6 +20,7 @@ kategoriPengeluaran: z
       .enum(['SETOR_TENDA', 'OPERASIONAL_DIVISI', 'BEBAN_PENGELUARAN'])
       .optional(),
     vendorName: z.string().trim().optional(),
+    pengajuanId: z.string().optional(),
     nominal: nominalSchema,
     divisi: z.string().min(1, 'Pilih divisi'),
     pic: z.string().trim().min(2, 'Pilih atau isi nama PIC'),

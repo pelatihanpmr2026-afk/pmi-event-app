@@ -7,12 +7,16 @@ export function PengajuanStats({
   disetujui,
   ditolak,
   totalNominalDisetujui,
+  totalBelanjaDisetujui,
+  totalSisaAnggaran,
 }: {
   total: number
   menunggu: number
   disetujui: number
   ditolak: number
   totalNominalDisetujui: number
+  totalBelanjaDisetujui: number
+  totalSisaAnggaran: number
 }) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -49,6 +53,17 @@ export function PengajuanStats({
           <span className="font-body text-xs text-gray-500">Ditolak</span>
         </div>
         <span className="font-body text-2xl font-bold text-event-navy">{ditolak}</span>
+      </Card>
+
+      <Card className="p-4 sm:p-5 flex flex-col gap-2 bg-event-blue text-white">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 size={18} />
+          <span className="font-body text-xs font-medium">Sisa Anggaran Disetujui</span>
+        </div>
+        <span className="font-body text-2xl font-bold">Rp{totalSisaAnggaran.toLocaleString('id-ID')}</span>
+        <span className="font-body text-[10px] opacity-80">
+          Dari Rp{totalNominalDisetujui.toLocaleString('id-ID')} — sudah dibelanjakan Rp{totalBelanjaDisetujui.toLocaleString('id-ID')}
+        </span>
       </Card>
     </div>
   )

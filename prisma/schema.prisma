@@ -341,7 +341,7 @@ model TransaksiKeuangan {
   divisi Divisi?
   pic    String?
 
-  pengajuanId String?            @unique
+  pengajuanId String?
   pengajuan   PengajuanAnggaran? @relation(fields: [pengajuanId], references: [id])
 
   createdAt DateTime @default(now())
@@ -379,7 +379,7 @@ model PengajuanAnggaran {
   updatedAt DateTime @updatedAt
 
   items     PengajuanItem[]
-  transaksi TransaksiKeuangan?
+  transaksi TransaksiKeuangan[]
 
   @@map("pengajuan_anggaran")
 }

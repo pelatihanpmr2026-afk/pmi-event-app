@@ -56,23 +56,6 @@ export async function POST(
         },
       })
 
-      if (aksi === 'DISETUJUI') {
-        await tx.transaksiKeuangan.create({
-          data: {
-            tanggal: diprosesPada,
-            keterangan: `Pengajuan ${pengajuan.nomorPengajuan} — ${pengajuan.namaKoordinator}`,
-            jenis: 'PENGELUARAN',
-            kategoriPengeluaran: 'OPERASIONAL_DIVISI',
-            debit: 0,
-            kredit: pengajuan.totalPengajuan,
-            utang: 0,
-            divisi: pengajuan.divisi,
-            pic: pengajuan.namaKoordinator,
-            pengajuanId: pengajuan.id,
-          },
-        })
-      }
-
       return pengajuanUpdated
     })
 

@@ -23,6 +23,7 @@ export default async function DashboardPengajuanPage() {
       totalPengajuan: true,
       status: true,
       createdAt: true,
+      transaksi: { select: { kredit: true } },
     },
   })
 
@@ -30,11 +31,13 @@ export default async function DashboardPengajuanPage() {
   const menunggu = pengajuanList.filter((p) => p.status === 'MENUNGGU').length
   const disetujui = pengajuanList.filter((p) => p.status === 'DISETUJUI').length
   const ditolak = pengajuanList.filter((p) => p.status === 'DITOLAK').length
-  const totalNominalDisetujui = pengajuanList
-    .filter((p) => p.status === 'DISETUJUI')
-    .reduce((sum, p) => sum + p.totalPengajuan, 0)
 
-  const serializedData = pengajuanList.map((p) => ({
+  const disetujuiList = pengajuanList.filter((p) => p.status === 'DISETUJUI')
+  const totalNominalDisetujui = disetujuiList.reduce((sum, p) => sum + p.totalPengajuan, 0)
+  const totalBelanjaDisetujui = disetujuiList.reduce((sum, p) => sum + p.transaksi.reduce((s, t) => s + t.kredit, 0), 0)
+  const totalSisaAnggaran = Math.max(totalNominalDisetujui - totalBelanjaDisetujui, 0)
+
+  const serializedData = pengajuanList.map(({ transaksi: _, ...p }) => ({
     ...p,
     createdAt: p.createdAt.toISOString(),
   }))
@@ -55,6 +58,8 @@ export default async function DashboardPengajuanPage() {
         disetujui={disetujui}
         ditolak={ditolak}
         totalNominalDisetujui={totalNominalDisetujui}
+        totalBelanjaDisetujui={totalBelanjaDisetujui}
+        totalSisaAnggaran={totalSisaAnggaran}
       />
       <PengajuanTable initialData={serializedData} />
     </div>

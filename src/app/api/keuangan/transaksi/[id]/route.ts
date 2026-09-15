@@ -30,15 +30,27 @@ export async function PATCH(
     if (!existing) {
       return NextResponse.json({ success: false, message: 'Transaksi tidak ditemukan' }, { status: 404 })
     }
-    if (existing.pengajuanId) {
-      return NextResponse.json(
-        { success: false, message: 'Transaksi dari pengajuan anggaran bersifat otomatis dan tidak bisa diedit' },
-        { status: 409 }
-      )
-    }
 
-    // FIX: Hapus const utang = data.utang ... 
-    // Kita langsung tentukan nilai utang berdasarkan jenis transaksi di bawah.
+    if (data.pengajuanId) {
+      const pengajuan = await prisma.pengajuanAnggaran.findFirst({ where: { id: data.pengajuanId } })
+      if (!pengajuan || pengajuan.status !== 'DISETUJUI') {
+        return NextResponse.json(
+          { success: false, message: 'Pengajuan terkait tidak ditemukan atau belum disetujui' },
+          { status: 400 }
+        )
+      }
+      const sudahDipakai = await prisma.transaksiKeuangan.aggregate({
+        where: { pengajuanId: data.pengajuanId, id: { not: id } },
+        _sum: { kredit: true },
+      })
+      const sisa = pengajuan.totalPengajuan - (sudahDipakai._sum.kredit ?? 0)
+      if (nominal > sisa) {
+        return NextResponse.json(
+          { success: false, message: `Nominal melebihi sisa anggaran pengajuan (Rp${sisa.toLocaleString('id-ID')})` },
+          { status: 400 }
+        )
+      }
+    }
 
     const transaksi = await prisma.transaksiKeuangan.update({
       where: { id },
@@ -49,6 +61,7 @@ export async function PATCH(
         kategoriPemasukan: data.jenis === 'PEMASUKAN' ? data.kategoriPemasukan : null,
         kategoriPengeluaran: data.jenis === 'PENGELUARAN' ? data.kategoriPengeluaran : null,
         vendorName: data.vendorName ?? null,
+        pengajuanId: data.pengajuanId ?? null,
         debit: data.jenis === 'PEMASUKAN' ? nominal : 0,
         kredit: data.jenis === 'PENGELUARAN' ? nominal : 0,
         utang: data.jenis === 'UTANG' ? nominal : 0,
@@ -100,12 +113,6 @@ export async function DELETE(
     })
     if (!transaksi) {
       return NextResponse.json({ success: false, message: 'Transaksi tidak ditemukan' }, { status: 404 })
-    }
-    if (transaksi.pengajuanId) {
-      return NextResponse.json(
-        { success: false, message: 'Transaksi dari pengajuan anggaran bersifat otomatis dan tidak bisa dihapus' },
-        { status: 409 }
-      )
     }
 
     await prisma.transaksiKeuangan.delete({ where: { id } })

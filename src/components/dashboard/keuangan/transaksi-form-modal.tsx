@@ -37,6 +37,7 @@ export interface TransaksiData {
   pic: string | null
   pengajuanId: string | null
   nomorPengajuan: string | null
+  namaKoordinatorPengajuan: string | null
 }
 
 const JENIS_OPTIONS = [
@@ -58,6 +59,7 @@ export function TransaksiFormModal({
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [vendorOptions, setVendorOptions] = useState<{ value: string; label: string }[]>([])
+  const [pengajuanOptions, setPengajuanOptions] = useState<{ value: string; label: string }[]>([])
 
   const { register, watch, setValue, handleSubmit, reset, formState: { errors } } = useForm<TransaksiKeuanganFormValues>({
     resolver: zodResolver(transaksiKeuanganSchema),
@@ -77,6 +79,34 @@ export function TransaksiFormModal({
 
   useEffect(() => {
     if (!isOpen) return
+    fetch('/api/keuangan/pengajuan-tersedia')
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.success) {
+          const options = result.data.map((p: { id: string; nomorPengajuan: string; namaKoordinator: string; sisa: number }) => ({
+            value: p.id,
+            label: `${p.nomorPengajuan} — ${p.namaKoordinator} (sisa Rp${p.sisa.toLocaleString('id-ID')})`,
+          }))
+          if (
+            editing?.pengajuanId &&
+            options.length > 0 &&
+            !options.some((o: { value: string }) => o.value === editing.pengajuanId)
+          ) {
+            options.unshift({
+              value: editing.pengajuanId,
+              label: `${editing.nomorPengajuan ?? 'Pengajuan'} — ${editing.namaKoordinatorPengajuan ?? ''} (terkait)`,
+            })
+          }
+          setPengajuanOptions(options)
+        }
+      })
+      .catch(() => {
+        setPengajuanOptions([])
+      })
+  }, [isOpen, editing])
+
+  useEffect(() => {
+    if (!isOpen) return
     if (editing) {
       const nominalValue =
         editing.jenis === 'PEMASUKAN'
@@ -93,6 +123,7 @@ export function TransaksiFormModal({
         kategoriPengeluaran:
           (editing.kategoriPengeluaran as TransaksiKeuanganFormValues['kategoriPengeluaran']) ?? undefined,
         vendorName: editing.vendorName ?? undefined,
+        pengajuanId: editing.pengajuanId ?? undefined,
         nominal: String(nominalValue),
         divisi: editing.divisi ?? undefined,
         pic: editing.pic ?? undefined,
@@ -105,6 +136,7 @@ export function TransaksiFormModal({
         kategoriPemasukan: undefined,
         kategoriPengeluaran: undefined,
         vendorName: undefined,
+        pengajuanId: undefined,
         nominal: '',
         divisi: undefined,
         pic: undefined,
@@ -198,6 +230,15 @@ export function TransaksiFormModal({
             options={vendorOptions}
             error={errors.vendorName?.message}
             {...register('vendorName')}
+          />
+        )}
+        {kategoriPengeluaran === 'OPERASIONAL_DIVISI' && (
+          <Select
+            label="Pengajuan Terkait (opsional)"
+            placeholder="Pilih pengajuan untuk mengurangi sisa anggaran"
+            options={pengajuanOptions}
+            error={errors.pengajuanId?.message}
+            {...register('pengajuanId')}
           />
         )}
 

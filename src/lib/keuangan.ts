@@ -224,7 +224,7 @@ export function formatRp(n: number) {
 export async function getTransaksiListData() {
   const transaksi = await prisma.transaksiKeuangan.findMany({
     orderBy: [{ tanggal: 'asc' }, { createdAt: 'asc' }],
-    include: { pengajuan: { select: { nomorPengajuan: true } } },
+    include: { pengajuan: { select: { nomorPengajuan: true, namaKoordinator: true } } },
   })
 
   let saldoBerjalan = 0
@@ -247,6 +247,7 @@ export async function getTransaksiListData() {
       pic: t.pic,
       pengajuanId: t.pengajuanId,
       nomorPengajuan: t.pengajuan?.nomorPengajuan ?? null,
+      namaKoordinatorPengajuan: t.pengajuan?.namaKoordinator ?? null,
     }
   })
 }
