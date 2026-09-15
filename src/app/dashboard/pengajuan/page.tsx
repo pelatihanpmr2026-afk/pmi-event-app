@@ -37,6 +37,22 @@ export default async function DashboardPengajuanPage() {
   const totalBelanjaDisetujui = disetujuiList.reduce((sum, p) => sum + p.transaksi.reduce((s, t) => s + t.kredit, 0), 0)
   const totalSisaAnggaran = Math.max(totalNominalDisetujui - totalBelanjaDisetujui, 0)
 
+  const divisiAnggaran = new Map<string, { disetujui: number; dicairkan: number }>()
+  for (const p of disetujuiList) {
+    const current = divisiAnggaran.get(p.divisi) ?? { disetujui: 0, dicairkan: 0 }
+    current.disetujui += p.totalPengajuan
+    current.dicairkan += p.transaksi.reduce((s, t) => s + t.kredit, 0)
+    divisiAnggaran.set(p.divisi, current)
+  }
+  const divisiBreakdown = [...divisiAnggaran.entries()]
+    .map(([divisi, v]) => ({
+      divisi,
+      disetujui: v.disetujui,
+      dicairkan: v.dicairkan,
+      sisa: Math.max(v.disetujui - v.dicairkan, 0),
+    }))
+    .sort((a, b) => b.disetujui - a.disetujui)
+
   const serializedData = pengajuanList.map(({ transaksi: _, ...p }) => ({
     ...p,
     createdAt: p.createdAt.toISOString(),
@@ -60,6 +76,7 @@ export default async function DashboardPengajuanPage() {
         totalNominalDisetujui={totalNominalDisetujui}
         totalBelanjaDisetujui={totalBelanjaDisetujui}
         totalSisaAnggaran={totalSisaAnggaran}
+        divisiBreakdown={divisiBreakdown}
       />
       <PengajuanTable initialData={serializedData} />
     </div>
