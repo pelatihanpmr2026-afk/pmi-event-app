@@ -1,0 +1,1 @@
+ALTER TABLE `transaksi_keuangan` CHANGE COLUMN `vendor_name` `vendorName` VARCHAR(255) NULL;
