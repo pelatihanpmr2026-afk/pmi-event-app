@@ -16,6 +16,7 @@ import { PanitiaEditModal, type PanitiaUpdated } from './panitia-edit-modal'
 import { PanitiaAddModal } from './panitia-add-modal'
 import { PanitiaKuotaModal } from './panitia-kuota-modal'
 import { PanitiaPerdiemModal } from './panitia-perdiem-modal'
+import { PanitiaPerdiemBulkModal } from './panitia-perdiem-bulk-modal'
 
 function findLabel(options: readonly { value: string; label: string }[], value: string) {
   return options.find((opt) => opt.value === value)?.label ?? value
@@ -40,6 +41,7 @@ export function PanitiaTable({
   const [isKuotaOpen, setIsKuotaOpen] = useState(false)
   const [perdiemTarget, setPerdiemTarget] = useState<PanitiaData | null>(null)
   const [isPerdiemOpen, setIsPerdiemOpen] = useState(false)
+  const [isBulkPerdiemOpen, setIsBulkPerdiemOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
@@ -71,6 +73,11 @@ export function PanitiaTable({
 
   function handlePerdiemSaved(id: string, perdiem: number) {
     setData((prev) => prev.map((p) => (p.id === id ? { ...p, perdiem } : p)))
+  }
+
+  function handleBulkPerdiemSaved(ids: string[], perdiem: number) {
+    const idSet = new Set(ids)
+    setData((prev) => prev.map((p) => (idSet.has(p.id) ? { ...p, perdiem } : p)))
   }
 
   function handleSaved(updated: PanitiaUpdated) {
@@ -365,6 +372,10 @@ export function PanitiaTable({
           <FileDown size={14} />
           PDF Tabel
         </Button>
+        <Button variant="secondary" onClick={() => setIsBulkPerdiemOpen(true)} className="flex items-center gap-1.5">
+          <Wallet size={14} />
+          Perdiem Massal
+        </Button>
         <Button variant="primary" onClick={handleExportIdCard} className="flex items-center gap-1.5">
           <CreditCard size={14} />
           ID Card PDF
@@ -413,6 +424,13 @@ export function PanitiaTable({
         isOpen={isPerdiemOpen}
         onClose={() => setIsPerdiemOpen(false)}
         onSaved={handlePerdiemSaved}
+      />
+      <PanitiaPerdiemBulkModal
+        key={isBulkPerdiemOpen ? 'bulk-buka' : 'bulk-tutup'}
+        ids={filtered.map((p) => p.id)}
+        isOpen={isBulkPerdiemOpen}
+        onClose={() => setIsBulkPerdiemOpen(false)}
+        onSaved={handleBulkPerdiemSaved}
       />
     </div>
   )
