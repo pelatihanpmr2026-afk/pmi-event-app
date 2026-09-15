@@ -336,6 +336,8 @@ model TransaksiKeuangan {
   kredit Int @default(0)
   utang  Int @default(0)
 
+  vendorName String?  // nama vendor yang dituju saat SETOR_TENDA
+
   divisi Divisi?
   pic    String?
 

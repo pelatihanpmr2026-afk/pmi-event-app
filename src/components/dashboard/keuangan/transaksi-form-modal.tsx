@@ -28,6 +28,7 @@ export interface TransaksiData {
   jenis: 'PEMASUKAN' | 'PENGELUARAN' | 'UTANG'
   kategoriPemasukan: string | null
   kategoriPengeluaran: string | null
+  vendorName: string | null
   debit: number
   kredit: number
   utang: number
@@ -56,10 +57,23 @@ export function TransaksiFormModal({
   onSaved: () => void
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [vendorOptions, setVendorOptions] = useState<{ value: string; label: string }[]>([])
 
   const { register, watch, setValue, handleSubmit, reset, formState: { errors } } = useForm<TransaksiKeuanganFormValues>({
     resolver: zodResolver(transaksiKeuanganSchema),
   })
+
+  useEffect(() => {
+    if (!isOpen) return
+    fetch('/api/keuangan/vendor-list')
+      .then((res) => res.json())
+      .then((result) => {
+        if (result.success) setVendorOptions(result.data)
+      })
+      .catch(() => {
+        setVendorOptions([])
+      })
+  }, [isOpen])
 
   useEffect(() => {
     if (!isOpen) return
@@ -78,6 +92,7 @@ export function TransaksiFormModal({
           (editing.kategoriPemasukan as TransaksiKeuanganFormValues['kategoriPemasukan']) ?? undefined,
         kategoriPengeluaran:
           (editing.kategoriPengeluaran as TransaksiKeuanganFormValues['kategoriPengeluaran']) ?? undefined,
+        vendorName: editing.vendorName ?? undefined,
         nominal: String(nominalValue),
         divisi: editing.divisi ?? undefined,
         pic: editing.pic ?? undefined,
@@ -89,6 +104,7 @@ export function TransaksiFormModal({
         jenis: undefined,
         kategoriPemasukan: undefined,
         kategoriPengeluaran: undefined,
+        vendorName: undefined,
         nominal: '',
         divisi: undefined,
         pic: undefined,
@@ -98,6 +114,7 @@ export function TransaksiFormModal({
 
   const jenis = watch('jenis')
   const divisi = watch('divisi')
+  const kategoriPengeluaran = watch('kategoriPengeluaran')
 
   const picOptions = divisi ? (PIC_PER_DIVISI[divisi] ?? []) : []
 
@@ -172,6 +189,15 @@ export function TransaksiFormModal({
             options={[...KATEGORI_PENGELUARAN_OPTIONS]}
             error={errors.kategoriPengeluaran?.message}
             {...register('kategoriPengeluaran')}
+          />
+        )}
+        {kategoriPengeluaran === 'SETOR_TENDA' && (
+          <Select
+            label="Disetorkan ke Vendor"
+            placeholder="Pilih vendor"
+            options={vendorOptions}
+            error={errors.vendorName?.message}
+            {...register('vendorName')}
           />
         )}
 

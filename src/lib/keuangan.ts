@@ -76,20 +76,39 @@ export async function getKeuanganStatsData() {
     },
   })
 
-  const vendorMap = new Map<string, { vendor: string; nominal: number }>()
-  let harusDisetorVendor = 0
+  const setorTendaByVendor = await prisma.transaksiKeuangan.groupBy({
+    by: ['vendorName'],
+    where: { jenis: 'PENGELUARAN', kategoriPengeluaran: 'SETOR_TENDA' },
+    _sum: { kredit: true },
+  })
+  const depositedMap = new Map<string, number>()
+  for (const row of setorTendaByVendor) {
+    if (!row.vendorName) continue
+    depositedMap.set(row.vendorName, row._sum.kredit ?? 0)
+  }
+
+  const vendorMap = new Map<string, { kewajiban: number; disetor: number }>()
+  let totalKewajibanVendor = 0
   for (const s of sekolahTendaLunas) {
     for (const t of s.tendaSewa) {
       const nominal = t.jumlah * t.tendaJenis.hargaVendor
-      harusDisetorVendor += nominal
+      totalKewajibanVendor += nominal
       const vendor = t.tendaJenis.namaVendor?.trim() || 'Vendor Belum Diisi'
       const existing = vendorMap.get(vendor)
-      if (existing) existing.nominal += nominal
-      else vendorMap.set(vendor, { vendor, nominal })
+      if (existing) existing.kewajiban += nominal
+      else vendorMap.set(vendor, { kewajiban: nominal, disetor: depositedMap.get(vendor) ?? 0 })
     }
   }
-  const vendorBreakdown = [...vendorMap.values()].sort((a, b) => b.nominal - a.nominal)
-  const keuntunganSewaTenda = sewaTendaOnline - harusDisetorVendor
+  const vendorBreakdown = [...vendorMap.entries()]
+    .map(([vendor, row]) => ({
+      vendor,
+      kewajiban: row.kewajiban,
+      disetor: Math.min(row.disetor, row.kewajiban),
+      sisa: Math.max(row.kewajiban - row.disetor, 0),
+    }))
+    .sort((a, b) => b.sisa - a.sisa || b.kewajiban - a.kewajiban)
+  const harusDisetorVendor = vendorBreakdown.reduce((acc, row) => acc + row.sisa, 0)
+  const keuntunganSewaTenda = sewaTendaOnline - totalKewajibanVendor
 
   const saldoBersihEstimasi = pemasukanPendaftaran + keuntunganSewaTenda
   const saldoKotorEstimasi = pemasukanPendaftaran + sewaTendaOnline
@@ -219,6 +238,7 @@ export async function getTransaksiListData() {
       jenis: t.jenis,
       kategoriPemasukan: t.kategoriPemasukan,
       kategoriPengeluaran: t.kategoriPengeluaran,
+      vendorName: t.vendorName,
       debit: t.debit,
       kredit: t.kredit,
       utang: t.utang,

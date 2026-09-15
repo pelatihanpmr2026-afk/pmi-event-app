@@ -52,6 +52,7 @@ export function TransaksiTable({ initialData }: { initialData: TransaksiData[] }
           t.uraian.toLowerCase().includes(q) ||
           (t.pic ?? '').toLowerCase().includes(q) ||
           findDivisiLabel(t.divisi).toLowerCase().includes(q) ||
+          (t.vendorName ?? '').toLowerCase().includes(q) ||
           (t.nomorPengajuan ?? '').toLowerCase().includes(q)
       )
     }
@@ -128,6 +129,17 @@ export function TransaksiTable({ initialData }: { initialData: TransaksiData[] }
           {row.pengajuanId && <Badge variant="warning">{row.nomorPengajuan ?? 'Pengajuan'}</Badge>}
         </span>
       ),
+    },
+    {
+      key: 'vendorName',
+      header: 'Vendor',
+      render: (row) =>
+        row.vendorName ? (
+          <Badge variant="danger">{row.vendorName}</Badge>
+        ) : (
+          <span className="text-gray-300">-</span>
+        ),
+      hideOnMobile: true,
     },
     { key: 'debit', header: 'Debit', align: 'right', sortable: true, render: (row) => <span className="text-green-600 font-medium">{formatRp(row.debit)}</span> },
     { key: 'kredit', header: 'Kredit', align: 'right', sortable: true, render: (row) => <span className="text-pmi-red font-medium">{formatRp(row.kredit)}</span> },

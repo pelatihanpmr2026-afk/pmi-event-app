@@ -98,10 +98,10 @@ export function KeuanganStats({ data }: { data: KeuanganStatsData }) {
           <Card className="p-4 sm:p-5 flex flex-col gap-2 h-full">
             <div className="flex items-center gap-2 text-event-navy">
               <Truck size={18} />
-              <span className="font-body text-xs text-gray-500">Harus Disetor Vendor</span>
+              <span className="font-body text-xs text-gray-500">Sisa Setoran Vendor</span>
             </div>
             <span className="font-body text-2xl font-bold text-pmi-red">{formatRp(data.estimasi.harusDisetorVendor)}</span>
-            <span className="font-body text-[10px] text-gray-400">Estimasi · klik untuk rincian per vendor</span>
+            <span className="font-body text-[10px] text-gray-400">Kewajiban dikurangi yang sudah disetor · klik rincian</span>
           </Card>
         </button>
 
@@ -253,17 +253,30 @@ export function KeuanganStats({ data }: { data: KeuanganStatsData }) {
           </p>
         ) : (
           <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-3 gap-2 pb-1 text-[10px] font-heading text-gray-400">
+              <span>Vendor</span>
+              <span className="text-right">Kewajiban</span>
+              <span className="text-right">Sisa Belum Disetor</span>
+            </div>
             {data.estimasi.vendorBreakdown.map((row) => (
               <div
                 key={row.vendor}
-                className="flex items-center justify-between border-b border-[var(--color-border)] pb-2"
+                className="border-b border-[var(--color-border)] pb-2"
               >
-                <span className="font-body text-sm text-event-navy">{row.vendor}</span>
-                <span className="font-body font-bold text-sm text-event-navy">{formatRp(row.nominal)}</span>
+                <div className="grid grid-cols-3 gap-2 items-center">
+                  <span className="font-body text-sm text-event-navy">{row.vendor}</span>
+                  <span className="font-body text-xs text-gray-500 font-medium text-right">
+                    {formatRp(row.kewajiban)}
+                    {row.disetor > 0 && (
+                      <span className="block text-[10px] text-gray-400">sudah disetor {formatRp(row.disetor)}</span>
+                    )}
+                  </span>
+                  <span className="font-body font-bold text-sm text-event-navy text-right">{formatRp(row.sisa)}</span>
+                </div>
               </div>
             ))}
             <div className="flex items-center justify-between pt-2">
-              <span className="font-body font-bold text-sm text-event-navy">Total</span>
+              <span className="font-body font-bold text-sm text-event-navy">Total Sisa</span>
               <span className="font-body font-bold text-sm text-event-navy">{formatRp(data.estimasi.harusDisetorVendor)}</span>
             </div>
           </div>

@@ -48,9 +48,10 @@ export async function POST(req: NextRequest) {
         jenis: data.jenis,
         kategoriPemasukan: data.jenis === 'PEMASUKAN' ? data.kategoriPemasukan : null,
         kategoriPengeluaran: data.jenis === 'PENGELUARAN' ? data.kategoriPengeluaran : null,
+        vendorName: data.vendorName ?? null,
         debit: data.jenis === 'PEMASUKAN' ? nominal : 0,
         kredit: data.jenis === 'PENGELUARAN' ? nominal : 0,
-        utang: data.jenis === 'UTANG' ? nominal : 0, // <-- Perbaikan di sini
+        utang: data.jenis === 'UTANG' ? nominal : 0,
         divisi: data.divisi as Divisi,
         pic: data.pic,
       },

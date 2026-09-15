@@ -611,7 +611,60 @@ git commit -m "Perbarui dependency"
 
 Deploy ke VPS melalui prosedur update standar. Untuk upgrade Next.js, Prisma, Node.js, atau React, baca changelog versi target dan lakukan backup terlebih dahulu.
 
-## 16. Referensi resmi
+## 17. Backup otomatis harian + tarik ke lokal
+
+Skrip `scripts/backup-vps.sh` (VPS) membuat backup tiap hari dan otomatis
+menghapus arsip di luar 7 terbaru. Skrip `scripts/pull-backup-local.ps1`
+(Windows) menarik hasilnya ke komputer lokal dan merotasi 14 terbaru.
+
+### 17.1 Siapkan kredensial MySQL tanpa password interaktif (VPS)
+
+```bash
+printf '[client]\nuser="pmi_app"\npassword="ISI_PASSWORD_DB"\nhost="127.0.0.1"\n' > /home/deploy/.my.cnf
+chmod 600 /home/deploy/.my.cnf
+```
+
+### 17.2 Pasang skrip backup + cron harian (VPS)
+
+```bash
+mkdir -p /home/deploy/backups /home/deploy/logs
+# salin scripts/backup-vps.sh dari repo ke VPS, lalu:
+chmod +x /home/deploy/bin/backup-vps.sh
+crontab -e
+```
+
+Isi crontab (jalan tiap jam 02:00 WIB):
+
+```cron
+0 2 * * * /home/deploy/bin/backup-vps.sh >> /home/deploy/logs/backup.log 2>&1
+```
+
+Tes manual sekali: `/home/deploy/bin/backup-vps.sh`, lalu cek `ls -lt /home/deploy/backups`.
+
+### 17.3 Tarik otomatis ke komputer lokal (Windows, sekali setup)
+
+1. Buat SSH key tanpa passphrase dan daftarkan ke VPS:
+
+```powershell
+ssh-keygen -t ed25519 -f "$env:USERPROFILE\.ssh\id_ed25519" -N '""'
+type "$env:USERPROFILE\.ssh\id_ed25519.pub" | ssh deploy@IP_VPS "cat >> .ssh/authorized_keys"
+```
+
+2. Tes tarik manual:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\pull-backup-local.ps1 -VpsHost "IP_VPS"
+```
+
+3. Jadwalkan tiap hari jam 06:00 lewat Task Scheduler (jalankan sebagai user kamu):
+
+```powershell
+schtasks /create /tn "PMI Tarik Backup" /tr "powershell -ExecutionPolicy Bypass -File C:\laragon\www\pmi-event-app\scripts\pull-backup-local.ps1 -VpsHost IP_VPS" /sc daily /st 06:00
+```
+
+Hasil tersimpan di `%USERPROFILE%\backups\pmi-event`. Ganti `IP_VPS` dengan IP server.
+
+## 18. Referensi resmi
 
 - [Next.js self-hosting](https://nextjs.org/docs/app/guides/self-hosting)
 - [Next.js CLI dan `next start`](https://nextjs.org/docs/app/api-reference/cli/next)

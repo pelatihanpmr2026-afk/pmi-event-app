@@ -16,9 +16,10 @@ export const transaksiKeuanganSchema = z
     kategoriPemasukan: z
       .enum(['PENDAFTARAN', 'SEWA_TENDA', 'SPONSOR', 'PERSENTASE_TENDA'])
       .optional(),
-    kategoriPengeluaran: z
+kategoriPengeluaran: z
       .enum(['SETOR_TENDA', 'OPERASIONAL_DIVISI', 'BEBAN_PENGELUARAN'])
       .optional(),
+    vendorName: z.string().trim().optional(),
     nominal: nominalSchema,
     divisi: z.string().min(1, 'Pilih divisi'),
     pic: z.string().trim().min(2, 'Pilih atau isi nama PIC'),
@@ -32,6 +33,13 @@ export const transaksiKeuanganSchema = z
         code: 'custom',
         path: ['kategoriPengeluaran'],
         message: 'Pilih kategori pengeluaran',
+      })
+    }
+    if (data.jenis === 'PENGELUARAN' && data.kategoriPengeluaran === 'SETOR_TENDA' && !data.vendorName) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['vendorName'],
+        message: 'Pilih vendor tujuan setoran',
       })
     }
   })
