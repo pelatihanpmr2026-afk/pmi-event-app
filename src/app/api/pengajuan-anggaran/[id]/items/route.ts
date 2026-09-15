@@ -4,6 +4,7 @@ import {
   updatePengajuanItems,
   NotFoundPengajuanError,
   PengajuanTerkunciError,
+  TotalDiBawahPencairanError,
 } from '@/lib/pengajuan-items'
 import { logAdminAction } from '@/lib/admin-log'
 import { requireRole } from '@/lib/api-guard'
@@ -30,14 +31,25 @@ export async function PATCH(
 
     let updated: Awaited<ReturnType<typeof updatePengajuanItems>>
     try {
-      updated = await updatePengajuanItems(id, parsed.data.items)
+      // Dashboard boleh mengedit pengajuan MENUNGGU maupun DISETUJUI
+      // (status tetap, DITOLAK selalu terkunci).
+      updated = await updatePengajuanItems(id, parsed.data.items, { allowApproved: true })
     } catch (error) {
       if (error instanceof NotFoundPengajuanError) {
         return NextResponse.json({ success: false, message: 'Pengajuan tidak ditemukan' }, { status: 404 })
       }
       if (error instanceof PengajuanTerkunciError) {
         return NextResponse.json(
-          { success: false, message: 'Pengajuan yang sudah diproses tidak bisa diedit lagi' },
+          { success: false, message: 'Pengajuan yang ditolak tidak bisa diedit' },
+          { status: 409 }
+        )
+      }
+      if (error instanceof TotalDiBawahPencairanError) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Total baru (Rp${error.totalBaru.toLocaleString('id-ID')}) lebih kecil dari yang sudah dicairkan (Rp${error.dicairkan.toLocaleString('id-ID')})`,
+          },
           { status: 409 }
         )
       }
@@ -55,7 +67,8 @@ export async function PATCH(
     metadata: {
       totalJenisBarang: updated.totalJenisBarang,
       totalPengajuanBaru: updated.totalPengajuan,
-      status: 'MENUNGGU'
+      status: updated.status,
+      dieditSetelahDisetujui: updated.status === 'DISETUJUI',
     }
   }
 )

@@ -149,7 +149,11 @@ useEffect(() => {
       const result = await res.json()
       if (!res.ok) throw new Error(result?.message || 'Gagal menyimpan perubahan')
 
-      toast.success('Perubahan tersimpan, pengajuan menunggu proses')
+      toast.success(
+        data?.status === 'DISETUJUI'
+          ? 'Perubahan tersimpan, pengajuan tetap disetujui'
+          : 'Perubahan tersimpan, pengajuan menunggu proses'
+      )
       setIsEditing(false)
       await fetchDetail()
       onProcessed()
@@ -234,7 +238,7 @@ useEffect(() => {
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="font-body font-bold text-xs text-event-navy/70">Rincian Barang</p>
-              {data.status === 'MENUNGGU' && !isEditing && (
+              {(data.status === 'MENUNGGU' || data.status === 'DISETUJUI') && !isEditing && (
                 <button
                   type="button"
                   onClick={startEdit}
@@ -268,6 +272,12 @@ useEffect(() => {
               </div>
             ) : (
               <div className="flex flex-col gap-2">
+                {data.status === 'DISETUJUI' && (
+                  <div className="border-2 border-event-navy bg-event-yellow/20 px-3 py-2 font-body text-[11px] text-event-navy">
+                    Pengajuan ini sudah disetujui — perubahan langsung berlaku dan tercatat di log admin.
+                    Total baru tidak boleh lebih kecil dari nominal yang sudah dicairkan.
+                  </div>
+                )}
                 {editRows.map((row, i) => (
                   <div key={i} className="border-2 border-event-navy/20 p-2.5 flex flex-col gap-2">
                     <div className="flex items-center justify-between">

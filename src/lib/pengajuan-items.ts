@@ -14,12 +14,16 @@ export interface ItemPengajuanUpdate {
  * dalam satu transaksi. Dipakai oleh route admin (PATCH /items) DAN route
  * publik verifikasi no WA (POST /edit) supaya logikanya tidak duplikat.
  *
- * Hanya boleh saat status MENUNGGU. Mengembalikan pengajuan ter-update
+ * Hanya boleh saat status MENUNGGU. Dengan opsi `allowApproved`, pengajuan
+ * DISETUJUI juga boleh diedit (status tetap DISETUJUI) selama total baru
+ * tidak lebih kecil dari nominal yang sudah dicairkan via transaksi ter-link.
+ * Pengajuan DITOLAK selalu terkunci. Mengembalikan pengajuan ter-update
  * (termasuk items). PDF lama dihapus setelah sukses.
  */
 export async function updatePengajuanItems(
   pengajuanId: string,
-  items: ItemPengajuanUpdate[]
+  items: ItemPengajuanUpdate[],
+  options?: { allowApproved?: boolean }
 ) {
   const pengajuan = await prisma.pengajuanAnggaran.findUnique({ where: { id: pengajuanId } })
 
@@ -28,7 +32,20 @@ export async function updatePengajuanItems(
   }
 
   if (pengajuan.status !== 'MENUNGGU') {
-    throw new PengajuanTerkunciError()
+    if (pengajuan.status !== 'DISETUJUI' || !options?.allowApproved) {
+      throw new PengajuanTerkunciError()
+    }
+    // Guard: total baru tidak boleh di bawah yang sudah dicairkan, supaya
+    // transaksi pencairan ter-link tidak menjadi over-budget.
+    const totalBaru = items.reduce((s, it) => s + it.qty * it.hargaSatuan, 0)
+    const agg = await prisma.transaksiKeuangan.aggregate({
+      where: { pengajuanId: pengajuan.id },
+      _sum: { kredit: true },
+    })
+    const dicairkan = agg._sum.kredit ?? 0
+    if (totalBaru < dicairkan) {
+      throw new TotalDiBawahPencairanError(dicairkan, totalBaru)
+    }
   }
 
   return applyItemsUpdate(pengajuan, items)
@@ -36,6 +53,15 @@ export async function updatePengajuanItems(
 
 export class NotFoundPengajuanError extends Error {}
 export class PengajuanTerkunciError extends Error {}
+export class TotalDiBawahPencairanError extends Error {
+  dicairkan: number
+  totalBaru: number
+  constructor(dicairkan: number, totalBaru: number) {
+    super('Total baru lebih kecil dari yang sudah dicairkan')
+    this.dicairkan = dicairkan
+    this.totalBaru = totalBaru
+  }
+}
 
 async function applyItemsUpdate(
   pengajuan: NonNullable<Awaited<ReturnType<typeof prisma.pengajuanAnggaran.findUnique>>>,
