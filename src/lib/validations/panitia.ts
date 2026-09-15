@@ -64,10 +64,23 @@ export const perdiemSchema = z.object({
 })
 export type PerdiemValues = z.infer<typeof perdiemSchema>
 
-// Perdiem massal: nominal per hari/sesi dikali jumlah kehadiran tiap panitia.
+// Perdiem massal dua mode:
+// - per_hari: nominal per hari/sesi dikali jumlah kehadiran tiap panitia.
+// - borongan: total dana dibagi rata ke panitia yang hadir (>=1 absensi);
+//   sisa pembulatan dibagikan +Rp1 dari depan (urut nomor registrasi).
 // Daftar id menentukan cakupan (mengikuti filter aktif di dashboard).
-export const perdiemBulkSchema = z.object({
-  nominalPerHari: z.number().int('Nominal per hari harus bilangan bulat').min(0, 'Nominal per hari minimal 0').max(999999999, 'Nominal per hari terlalu besar'),
-  ids: z.array(z.string().min(1)).min(1, 'Minimal 1 panitia dipilih').max(5000, 'Maksimal 5000 panitia sekaligus'),
-})
+const perdiemBulkIds = z.array(z.string().min(1)).min(1, 'Minimal 1 panitia dipilih').max(5000, 'Maksimal 5000 panitia sekaligus')
+export const perdiemBulkSchema = z.discriminatedUnion('mode', [
+  z.object({
+    mode: z.literal('per_hari'),
+    nominalPerHari: z.number().int('Nominal per hari harus bilangan bulat').min(0, 'Nominal per hari minimal 0').max(999999999, 'Nominal per hari terlalu besar'),
+    ids: perdiemBulkIds,
+  }),
+  z.object({
+    mode: z.literal('borongan'),
+    totalDana: z.number().int('Total dana harus bilangan bulat').min(1, 'Total dana minimal Rp1').max(9999999999, 'Total dana terlalu besar'),
+    unit: z.string().min(1).optional(),
+    ids: perdiemBulkIds,
+  }),
+])
 export type PerdiemBulkValues = z.infer<typeof perdiemBulkSchema>

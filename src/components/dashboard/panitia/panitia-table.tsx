@@ -385,7 +385,7 @@ export function PanitiaTable({
       />
       <PanitiaPerdiemBulkModal
         key={isBulkPerdiemOpen ? 'bulk-buka' : 'bulk-tutup'}
-        ids={filtered.map((p) => p.id)}
+        panitia={filtered.map((p) => ({ id: p.id, asalUnit: p.asalUnit, hadir: p.absensiLogs.length }))}
         jumlahSesi={sesiList.length}
         isOpen={isBulkPerdiemOpen}
         onClose={() => setIsBulkPerdiemOpen(false)}
