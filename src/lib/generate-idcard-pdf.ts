@@ -76,7 +76,7 @@ export async function generateIdCardPdf(items: IdCardPdfItem[]): Promise<Buffer>
       currentPage = pdf.addPage([A4_WIDTH_PT, A4_HEIGHT_PT])
     }
 
-    drawCard(currentPage, cardPosition(placedCount), image)
+    drawCard(currentPage, cardPosition(placedCount % CARDS_PER_PAGE), image)
     placedCount += 1
   }
 
