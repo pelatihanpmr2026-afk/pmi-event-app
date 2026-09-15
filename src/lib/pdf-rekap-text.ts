@@ -1,4 +1,7 @@
-import { PDFDocument, PDFFont, PDFPage, rgb, StandardFonts } from 'pdf-lib'
+import path from 'path'
+import { readFile } from 'fs/promises'
+import { PDFDocument, PDFFont, PDFPage, rgb } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
 
 export const REKAP_A4_W = 595.28
 export const REKAP_A4_H = 841.89
@@ -8,10 +11,17 @@ export const REKAP_YELLOW = rgb(0.9, 0.9, 0.9)
 export const REKAP_MUTED = rgb(0.45, 0.45, 0.45)
 export const REKAP_STRIPE = rgb(0.95, 0.95, 0.95)
 
+// Menggunakan font TTF embedded (bukan StandardFonts) agar karakter Unicode
+// (mis. nama dengan huruf Korea/aksara non-Latin) tidak memicu
+// "WinAnsi cannot encode" yang menggagalkan pembuatan PDF.
 export async function createRekapPdf(title: string) {
   const pdf = await PDFDocument.create()
-  const regular = await pdf.embedFont(StandardFonts.Helvetica)
-  const bold = await pdf.embedFont(StandardFonts.HelveticaBold)
+  pdf.registerFontkit(fontkit)
+  const fontDir = path.join(process.cwd(), 'src', 'assets', 'fonts')
+  const [regular, bold] = await Promise.all([
+    pdf.embedFont(await readFile(path.join(fontDir, 'Arial-Regular.ttf'))),
+    pdf.embedFont(await readFile(path.join(fontDir, 'Arial-Bold.ttf'))),
+  ])
   pdf.setTitle(title)
   pdf.setProducer('Sistem Pendaftaran PMR 2026')
   return { pdf, regular, bold }

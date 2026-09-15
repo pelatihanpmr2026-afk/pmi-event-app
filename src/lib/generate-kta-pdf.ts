@@ -1,6 +1,7 @@
 import path from 'path'
 import { readFile } from 'fs/promises'
-import { PDFDocument, PDFFont, PDFImage, PDFPage, rgb, StandardFonts } from 'pdf-lib'
+import { PDFDocument, PDFFont, PDFImage, PDFPage, rgb } from 'pdf-lib'
+import fontkit from '@pdf-lib/fontkit'
 import QRCode from 'qrcode'
 import sharp from 'sharp'
 
@@ -185,7 +186,11 @@ export async function generateKtaPdf({ namaSekolah, peserta }: KtaPdfParams) {
   const cleanedTemplateBuffer = await cleanTemplatePlaceholders(templateBuffer)
   const backTemplateBuffer = await readFile(path.join(process.cwd(), 'public', 'assets', 'template-kta-back.png'))
   const pdf = await PDFDocument.create()
-  const [regularFont, boldFont] = await Promise.all([pdf.embedFont(StandardFonts.Helvetica), pdf.embedFont(StandardFonts.HelveticaBold)])
+  pdf.registerFontkit(fontkit)
+  const [regularFont, boldFont] = await Promise.all([
+    pdf.embedFont(await readFile(path.join(process.cwd(), 'src', 'assets', 'fonts', 'Arial-Regular.ttf'))),
+    pdf.embedFont(await readFile(path.join(process.cwd(), 'src', 'assets', 'fonts', 'Arial-Bold.ttf'))),
+  ])
   const frontTemplateImage = await pdf.embedPng(cleanedTemplateBuffer)
   const backImage = await pdf.embedPng(backTemplateBuffer)
   pdf.setTitle(`KTA PMR - ${namaSekolah}`)
