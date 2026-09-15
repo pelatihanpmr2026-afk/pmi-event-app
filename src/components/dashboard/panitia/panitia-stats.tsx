@@ -10,6 +10,7 @@ const UNIT_LABELS: Record<string, string> = {
   KSR_MARKAS: 'KSR Markas',
   KSR_UNSUR: 'KSR Univ. UNSUR',
   KSR_UNPI: 'KSR Univ. UNPI',
+  FORPIS: 'FORPIS',
 }
 
 export function PanitiaStats({ total, perUnit }: PanitiaStatsProps) {

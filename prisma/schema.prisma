@@ -16,6 +16,7 @@ enum AsalUnit {
   KSR_MARKAS
   KSR_UNSUR
   KSR_UNPI
+  FORPIS
 }
 
 enum Divisi {

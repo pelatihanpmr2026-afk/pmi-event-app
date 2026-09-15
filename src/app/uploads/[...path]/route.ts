@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFile, stat } from 'fs/promises'
 import path from 'path'
 import { getUploadRootPath } from '@/lib/save-file'
-import { validateFileContent } from '@/lib/file-type'
+import { validateFileContent, detectFileType } from '@/lib/file-type'
 
 const MIME_TYPES: Record<string, string> = {
   '.png': 'image/png',
@@ -11,6 +11,12 @@ const MIME_TYPES: Record<string, string> = {
   '.webp': 'image/webp',
   '.pdf': 'application/pdf',
   '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+}
+
+const IMAGE_CONTENT_TYPES: Record<string, string> = {
+  png: 'image/png',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
 }
 
 export async function GET(
@@ -40,12 +46,22 @@ export async function GET(
 
     const buffer = await readFile(filePath)
     const ext = path.extname(filePath).toLowerCase()
-    const contentType = MIME_TYPES[ext] ?? 'application/octet-stream'
+    let contentType = MIME_TYPES[ext] ?? 'application/octet-stream'
 
     // Validasi isi ulang dengan magic bytes saat diserve — jangan percaya
-    // begitu saja pada ekstensi. File yang isinya tidak cocok ditolak.
+    // begitu saja pada ekstensi. File yang isinya tidak cocok ditolak
+    // KECUALI isinya gambar valid (png/jpeg/webp) — ekstensi salah tidak
+    // berbahaya untuk gambar, browser tetap bisa menampilkannya.
     if (!validateFileContent(buffer, filePath)) {
-      return NextResponse.json({ success: false, message: 'File tidak valid' }, { status: 400 })
+      const detected = detectFileType(buffer)
+      if (detected && detected in IMAGE_CONTENT_TYPES) {
+        // Isi file adalah gambar valid tetapi ekstensinya berbeda —
+        // tetap layani agar file lama tidak rusak.
+        console.warn(`[GET /uploads/...] ekstensi "${ext}" tidak cocok dengan isi "${detected}" untuk ${filePath}`)
+        contentType = IMAGE_CONTENT_TYPES[detected]
+      } else {
+        return NextResponse.json({ success: false, message: 'File tidak valid' }, { status: 400 })
+      }
     }
 
     return new NextResponse(buffer, {

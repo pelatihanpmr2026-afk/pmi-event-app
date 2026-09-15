@@ -125,15 +125,21 @@ async function drawFrontCard(pdf: PDFDocument, page: PDFPage, templateImage: PDF
   page.drawImage(templateImage, { x: cardX, y: cardY, width: ID_CARD_WIDTH_PT, height: ID_CARD_HEIGHT_PT })
 
   if (participant.fotoBuffer) {
-    // Render pada resolusi 4x agar foto tetap tajam saat PDF dizoom/cetak.
-    // Ukuran fisik di kartu tetap mengikuti PHOTO_WIDTH/PHOTO_HEIGHT.
-    const photoBuffer = await sharp(participant.fotoBuffer)
-      .rotate()
-      .resize({ width: PHOTO_WIDTH * PHOTO_RENDER_SCALE, height: PHOTO_HEIGHT * PHOTO_RENDER_SCALE, fit: 'cover', withoutEnlargement: true })
-      .jpeg({ quality: 95, chromaSubsampling: '4:4:4', mozjpeg: true })
-      .toBuffer()
-    const photoImage = await pdf.embedJpg(photoBuffer)
-    page.drawImage(photoImage, { x: cardX + pxToPtX(PHOTO_X), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(PHOTO_Y + PHOTO_HEIGHT), width: pxToPtX(PHOTO_WIDTH), height: pxToPtY(PHOTO_HEIGHT) })
+    try {
+      // Render pada resolusi 4x agar foto tetap tajam saat PDF dizoom/cetak.
+      // Ukuran fisik di kartu tetap mengikuti PHOTO_WIDTH/PHOTO_HEIGHT.
+      const photoBuffer = await sharp(participant.fotoBuffer)
+        .rotate()
+        .resize({ width: PHOTO_WIDTH * PHOTO_RENDER_SCALE, height: PHOTO_HEIGHT * PHOTO_RENDER_SCALE, fit: 'cover', withoutEnlargement: true })
+        .jpeg({ quality: 95, chromaSubsampling: '4:4:4', mozjpeg: true })
+        .toBuffer()
+      const photoImage = await pdf.embedJpg(photoBuffer)
+      page.drawImage(photoImage, { x: cardX + pxToPtX(PHOTO_X), y: cardY + ID_CARD_HEIGHT_PT - pxToPtY(PHOTO_Y + PHOTO_HEIGHT), width: pxToPtX(PHOTO_WIDTH), height: pxToPtY(PHOTO_HEIGHT) })
+    } catch (e) {
+      // Foto gagal diproses (rusak / format tak dikenali) — lewati foto
+      // ini, jangan sampai menggagalkan pembuatan PDF seluruh sekolah.
+      console.warn(`[generateKtaPdf] Foto gagal diproses untuk ${participant.namaLengkap}:`, e instanceof Error ? e.message : e)
+    }
   }
 
   const white = rgb(1, 1, 1)

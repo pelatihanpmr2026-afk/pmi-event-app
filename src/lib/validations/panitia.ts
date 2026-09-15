@@ -21,7 +21,7 @@ export const panitiaBiodataSchema = z.object({
 })
 
 export const panitiaKeanggotaanSchema = z.object({
-  asalUnit: z.enum(['KSR_MARKAS', 'KSR_UNSUR', 'KSR_UNPI'], {
+  asalUnit: z.enum(['KSR_MARKAS', 'KSR_UNSUR', 'KSR_UNPI', 'FORPIS'], {
     error: (issue) => (issue.input === undefined ? 'Pilih asal unit' : 'Asal unit tidak valid'),
   }),
   divisi: z.enum(

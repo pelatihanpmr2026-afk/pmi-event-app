@@ -26,6 +26,7 @@ export default function PreviewPage() {
               { value: 'KSR_MARKAS', label: 'KSR Markas' },
               { value: 'KSR_UNSUR', label: 'KSR Univ. UNSUR' },
               { value: 'KSR_UNPI', label: 'KSR Univ. UNPI' },
+              { value: 'FORPIS', label: 'FORPIS' },
             ]}
           />
           <div className="flex gap-3">

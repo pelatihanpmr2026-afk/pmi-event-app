@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { Search, Eye, Pencil, Trash2, FileDown, FileSpreadsheet, Check, X, UserPlus, Settings } from 'lucide-react'
+import { Search, Eye, Pencil, Trash2, FileDown, FileSpreadsheet, Check, X, UserPlus, Settings, CreditCard } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -140,6 +140,14 @@ export function PanitiaTable({
     if (filterUnit) params.set('unit', filterUnit)
     if (filterDivisi) params.set('divisi', filterDivisi)
     window.open(`/api/panitia/export-lengkap?${params}`, '_blank', 'noopener,noreferrer')
+  }
+
+  function handleExportIdCard() {
+    const params = new URLSearchParams()
+    if (search.trim()) params.set('search', search.trim())
+    if (filterUnit) params.set('unit', filterUnit)
+    if (filterDivisi) params.set('divisi', filterDivisi)
+    window.open(`/api/panitia/export-idcard?${params}`, '_blank', 'noopener,noreferrer')
   }
 
   const columns: ResponsiveTableColumn<PanitiaData>[] = [
@@ -327,6 +335,10 @@ export function PanitiaTable({
         <Button variant="outline" onClick={() => handleExportLengkap('pdf')} className="flex items-center gap-1.5">
           <FileDown size={14} />
           PDF Tabel
+        </Button>
+        <Button variant="primary" onClick={handleExportIdCard} className="flex items-center gap-1.5">
+          <CreditCard size={14} />
+          ID Card PDF
         </Button>
       </div>
 

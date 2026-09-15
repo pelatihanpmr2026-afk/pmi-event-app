@@ -2,6 +2,7 @@ export const ASAL_UNIT_OPTIONS = [
   { value: 'KSR_MARKAS', label: 'KSR Markas' },
   { value: 'KSR_UNSUR', label: 'KSR Univ. UNSUR' },
   { value: 'KSR_UNPI', label: 'KSR Univ. UNPI' },
+  { value: 'FORPIS', label: 'FORPIS' },
 ] as const
 
 export const DIVISI_OPTIONS = [
