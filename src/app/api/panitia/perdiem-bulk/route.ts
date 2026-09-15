@@ -6,7 +6,8 @@ import { requireRole } from '@/lib/api-guard'
 
 /**
  * PATCH /api/panitia/perdiem-bulk
- * Set satu nominal perdiem untuk banyak panitia sekaligus.
+ * Hitung perdiem massal: nominal per hari/sesi dikali jumlah kehadiran
+ * (absensiLogs) tiap panitia. Panitia tanpa kehadiran mendapat 0.
  */
 export async function PATCH(req: NextRequest) {
   try {
@@ -22,12 +23,26 @@ export async function PATCH(req: NextRequest) {
         { status: 400 }
       )
     }
-    const { perdiem, ids } = parsed.data
+    const { nominalPerHari, ids } = parsed.data
 
-    const result = await prisma.panitia.updateMany({
+    const panitiaList = await prisma.panitia.findMany({
       where: { id: { in: ids } },
-      data: { perdiem },
+      select: { id: true, absensiLogs: { select: { sesiId: true } } },
     })
+
+    const items = panitiaList.map((p) => ({
+      id: p.id,
+      hadir: p.absensiLogs.length,
+      perdiem: nominalPerHari * p.absensiLogs.length,
+    }))
+
+    await prisma.$transaction(
+      items.map((item) =>
+        prisma.panitia.update({ where: { id: item.id }, data: { perdiem: item.perdiem } })
+      )
+    )
+
+    const totalPerdiem = items.reduce((sum, item) => sum + item.perdiem, 0)
 
     await logAdminAction(
       session.adminId,
@@ -37,14 +52,18 @@ export async function PATCH(req: NextRequest) {
       {
         targetType: 'PANITIA',
         metadata: {
-          perdiemBaru: perdiem,
+          nominalPerHari,
           jumlahDiminta: ids.length,
-          jumlahDiperbarui: result.count,
+          jumlahDiperbarui: items.length,
+          totalPerdiem,
         },
       }
     )
 
-    return NextResponse.json({ success: true, data: { perdiem, jumlahDiperbarui: result.count } })
+    return NextResponse.json({
+      success: true,
+      data: { nominalPerHari, jumlahDiperbarui: items.length, totalPerdiem, items },
+    })
   } catch (error) {
     console.error('[PATCH /api/panitia/perdiem-bulk]', error)
     return NextResponse.json(

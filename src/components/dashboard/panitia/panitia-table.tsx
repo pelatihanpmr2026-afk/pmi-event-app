@@ -7,7 +7,6 @@ import { Search, Eye, Pencil, Trash2, FileDown, FileSpreadsheet, Check, X, UserP
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/responsive-table'
 import { ASAL_UNIT_OPTIONS, DIVISI_OPTIONS } from '@/lib/constants'
 import { formatRp } from '@/lib/keuangan'
@@ -16,7 +15,7 @@ import { PanitiaEditModal, type PanitiaUpdated } from './panitia-edit-modal'
 import { PanitiaAddModal } from './panitia-add-modal'
 import { PanitiaKuotaModal } from './panitia-kuota-modal'
 import { PanitiaPerdiemModal } from './panitia-perdiem-modal'
-import { PanitiaPerdiemBulkModal } from './panitia-perdiem-bulk-modal'
+import { PanitiaPerdiemBulkModal, type BulkPerdiemItem } from './panitia-perdiem-bulk-modal'
 
 function findLabel(options: readonly { value: string; label: string }[], value: string) {
   return options.find((opt) => opt.value === value)?.label ?? value
@@ -75,9 +74,9 @@ export function PanitiaTable({
     setData((prev) => prev.map((p) => (p.id === id ? { ...p, perdiem } : p)))
   }
 
-  function handleBulkPerdiemSaved(ids: string[], perdiem: number) {
-    const idSet = new Set(ids)
-    setData((prev) => prev.map((p) => (idSet.has(p.id) ? { ...p, perdiem } : p)))
+  function handleBulkPerdiemSaved(items: BulkPerdiemItem[]) {
+    const perdiemMap = new Map(items.map((item) => [item.id, item.perdiem]))
+    setData((prev) => prev.map((p) => (perdiemMap.has(p.id) ? { ...p, perdiem: perdiemMap.get(p.id) ?? 0 } : p)))
   }
 
   function handleSaved(updated: PanitiaUpdated) {
@@ -127,28 +126,6 @@ export function PanitiaTable({
     }
   }
 
-  function handleExportCsv() {
-    const headers = ['No Registrasi', 'Nama', 'Gender', 'WhatsApp', 'Alamat', 'Asal Unit', 'Divisi', 'Status']
-    const rows = filtered.map((p) => [
-      p.nomorRegistrasi,
-      p.nama,
-      p.gender === 'LAKI_LAKI' ? 'Laki-laki' : 'Perempuan',
-      p.noWhatsapp,
-      p.alamat.replace(/,/g, ';'),
-      findLabel(ASAL_UNIT_OPTIONS, p.asalUnit),
-      findLabel(DIVISI_OPTIONS, p.divisi),
-      p.status,
-    ])
-    const csvContent = [headers, ...rows].map((row) => row.join(',')).join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `data-panitia-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
   function handleExportExcel() {
     const query = filterDivisi ? `?divisi=${encodeURIComponent(filterDivisi)}` : ''
     window.open(`/api/panitia/export${query}`, '_blank', 'noopener,noreferrer')
@@ -190,11 +167,6 @@ export function PanitiaTable({
       render: (row) => <span className="font-semibold">{row.nama}</span>,
     },
     {
-      key: 'registrasi',
-      header: 'No. Registrasi',
-      render: (row) => <span className="text-gray-500">{row.nomorRegistrasi}</span>,
-    },
-    {
       key: 'unit',
       header: 'Unit',
       render: (row) => <span className="text-gray-600">{findLabel(ASAL_UNIT_OPTIONS, row.asalUnit)}</span>,
@@ -226,12 +198,6 @@ export function PanitiaTable({
       header: 'Perdiem',
       align: 'right',
       render: (row) => <span className="font-semibold whitespace-nowrap">{formatRp(row.perdiem ?? 0)}</span>,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      align: 'center',
-      render: (row) => <Badge variant={row.status === 'HADIR' ? 'success' : 'info'}>{row.status}</Badge>,
     },
     {
       key: 'aksi',
@@ -279,9 +245,9 @@ export function PanitiaTable({
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-body font-semibold text-event-navy">{row.nama}</p>
-          <p className="font-body text-xs text-gray-400">{row.nomorRegistrasi}</p>
+          <p className="font-body text-xs text-gray-400">{findLabel(DIVISI_OPTIONS, row.divisi)}</p>
         </div>
-        <Badge variant={row.status === 'HADIR' ? 'success' : 'info'}>{row.status}</Badge>
+        <span className="font-body text-xs font-semibold text-event-navy whitespace-nowrap">{formatRp(row.perdiem ?? 0)}</span>
         <button
           onClick={() => openEdit(row)}
           aria-label={`Edit ${row.nama}`}
@@ -327,7 +293,7 @@ export function PanitiaTable({
 <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
           <Input
-            placeholder="Cari nama atau nomor registrasi..."
+            placeholder="Cari nama panitia..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -348,35 +314,27 @@ export function PanitiaTable({
             options={[...DIVISI_OPTIONS]}
           />
         </div>
-        <Button variant="primary" onClick={() => setIsAddOpen(true)} className="flex items-center gap-1.5">
+        <Button size="sm" variant="primary" onClick={() => setIsAddOpen(true)} className="flex items-center gap-1.5">
           <UserPlus size={14} />
           Tambah Panitia
         </Button>
-        <Button variant="secondary" onClick={() => setIsKuotaOpen(true)} className="flex items-center gap-1.5">
+        <Button size="sm" variant="secondary" onClick={() => setIsKuotaOpen(true)} className="flex items-center gap-1.5">
           <Settings size={14} />
           Atur Kuota Divisi
         </Button>
-        <Button variant="secondary" onClick={handleExportCsv} className="flex items-center gap-1.5">
-          <FileDown size={14} />
-          Export CSV
-        </Button>
-        <Button variant="primary" onClick={handleExportExcel} className="flex items-center gap-1.5">
+        <Button size="sm" variant="primary" onClick={handleExportExcel} className="flex items-center gap-1.5">
           <FileSpreadsheet size={14} />
           Export Excel per Divisi
         </Button>
-        <Button variant="secondary" onClick={() => handleExportLengkap('excel')} className="flex items-center gap-1.5">
-          <FileSpreadsheet size={14} />
-          Excel Tabel
-        </Button>
-        <Button variant="outline" onClick={() => handleExportLengkap('pdf')} className="flex items-center gap-1.5">
+        <Button size="sm" variant="outline" onClick={() => handleExportLengkap('pdf')} className="flex items-center gap-1.5">
           <FileDown size={14} />
           PDF Tabel
         </Button>
-        <Button variant="secondary" onClick={() => setIsBulkPerdiemOpen(true)} className="flex items-center gap-1.5">
+        <Button size="sm" variant="secondary" onClick={() => setIsBulkPerdiemOpen(true)} className="flex items-center gap-1.5">
           <Wallet size={14} />
           Perdiem Massal
         </Button>
-        <Button variant="primary" onClick={handleExportIdCard} className="flex items-center gap-1.5">
+        <Button size="sm" variant="primary" onClick={handleExportIdCard} className="flex items-center gap-1.5">
           <CreditCard size={14} />
           ID Card PDF
         </Button>
@@ -428,6 +386,7 @@ export function PanitiaTable({
       <PanitiaPerdiemBulkModal
         key={isBulkPerdiemOpen ? 'bulk-buka' : 'bulk-tutup'}
         ids={filtered.map((p) => p.id)}
+        jumlahSesi={sesiList.length}
         isOpen={isBulkPerdiemOpen}
         onClose={() => setIsBulkPerdiemOpen(false)}
         onSaved={handleBulkPerdiemSaved}
