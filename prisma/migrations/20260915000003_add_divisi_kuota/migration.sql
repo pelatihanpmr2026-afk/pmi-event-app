@@ -1,0 +1,32 @@
+-- CreateTable
+CREATE TABLE `divisi_kuota` (
+    `divisi` ENUM('KOMANDAN', 'KETUA_PELAKSANA', 'WAKIL_KETUA', 'BENDAHARA', 'WAKIL_BENDAHARA_1', 'WAKIL_BENDAHARA_2', 'SEKRETARIS', 'WAKIL_SEKRETARIS', 'KESEKRETARIATAN', 'ACARA', 'HUMAS_DAN_DOKUMENTASI', 'GIAT', 'KEAMANAN_DAN_EVAKUASI', 'SANITASI', 'TRANSPORTASI', 'PERKEMAHAN', 'DAPUR_UMUM', 'PERALATAN', 'YANKES') NOT NULL,
+    `maksimal` INTEGER NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    PRIMARY KEY (`divisi`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Seed nilai default mengikuti DIVISI_CAPACITY (constants.ts) supaya
+-- pengaturan kuota punya nilai awal dan bisa disesuaikan admin kemudian.
+INSERT INTO `divisi_kuota` (`divisi`, `maksimal`, `createdAt`, `updatedAt`) VALUES
+('KOMANDAN', 1, NOW(3), NOW(3)),
+('KETUA_PELAKSANA', 1, NOW(3), NOW(3)),
+('WAKIL_KETUA', 1, NOW(3), NOW(3)),
+('BENDAHARA', 1, NOW(3), NOW(3)),
+('WAKIL_BENDAHARA_1', 1, NOW(3), NOW(3)),
+('WAKIL_BENDAHARA_2', 1, NOW(3), NOW(3)),
+('SEKRETARIS', 1, NOW(3), NOW(3)),
+('WAKIL_SEKRETARIS', 1, NOW(3), NOW(3)),
+('ACARA', 15, NOW(3), NOW(3)),
+('GIAT', 15, NOW(3), NOW(3)),
+('PERKEMAHAN', 15, NOW(3), NOW(3)),
+('HUMAS_DAN_DOKUMENTASI', 15, NOW(3), NOW(3)),
+('KESEKRETARIATAN', 15, NOW(3), NOW(3)),
+('KEAMANAN_DAN_EVAKUASI', 15, NOW(3), NOW(3)),
+('PERALATAN', 10, NOW(3), NOW(3)),
+('DAPUR_UMUM', 10, NOW(3), NOW(3)),
+('YANKES', 10, NOW(3), NOW(3)),
+('SANITASI', 5, NOW(3), NOW(3)),
+('TRANSPORTASI', 5, NOW(3), NOW(3));

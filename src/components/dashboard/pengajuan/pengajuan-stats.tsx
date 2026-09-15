@@ -107,28 +107,27 @@ export function PengajuanStats({
           </p>
         ) : (
           <div className="flex flex-col gap-2">
-            <div className="grid grid-cols-3 gap-2 pb-1 text-[10px] font-heading text-gray-400">
+            <div className="grid grid-cols-4 gap-2 pb-1 text-[10px] font-heading text-gray-400">
               <span>Divisi</span>
               <span className="text-right">Disetujui</span>
               <span className="text-right">Sudah Dicairkan</span>
+              <span className="text-right">Sisa Anggaran</span>
             </div>
             {divisiBreakdown.map((row) => (
               <div
                 key={row.divisi}
                 className="border-b border-[var(--color-border)] pb-2"
               >
-                <div className="grid grid-cols-3 gap-2 items-center">
+                <div className="grid grid-cols-4 gap-2 items-center">
                   <span className="font-body text-sm text-event-navy">{divisiLabel(row.divisi)}</span>
                   <span className="font-body text-xs text-gray-500 font-medium text-right">
                     {formatRp(row.disetujui)}
                   </span>
-                  <span className="font-body font-bold text-sm text-event-navy text-right">
+                  <span className="font-body text-xs text-gray-500 font-medium text-right">
                     {formatRp(row.dicairkan)}
                   </span>
-                </div>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="font-body text-[10px] text-gray-400">
-                    Sisa anggaran divisi: {formatRp(row.sisa)}
+                  <span className="font-body font-bold text-sm text-event-navy text-right">
+                    {formatRp(row.sisa)}
                   </span>
                 </div>
               </div>

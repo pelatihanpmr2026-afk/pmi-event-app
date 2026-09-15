@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { Search, Eye, Pencil, Trash2, FileDown, FileSpreadsheet, Check, X } from 'lucide-react'
+import { Search, Eye, Pencil, Trash2, FileDown, FileSpreadsheet, Check, X, UserPlus, Settings } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,8 @@ import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/res
 import { ASAL_UNIT_OPTIONS, DIVISI_OPTIONS } from '@/lib/constants'
 import { PanitiaDetailModal, type PanitiaData, type SesiRingkas } from './panitia-detail-modal'
 import { PanitiaEditModal, type PanitiaUpdated } from './panitia-edit-modal'
+import { PanitiaAddModal } from './panitia-add-modal'
+import { PanitiaKuotaModal } from './panitia-kuota-modal'
 
 function findLabel(options: readonly { value: string; label: string }[], value: string) {
   return options.find((opt) => opt.value === value)?.label ?? value
@@ -32,6 +34,8 @@ export function PanitiaTable({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editing, setEditing] = useState<PanitiaData | null>(null)
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isAddOpen, setIsAddOpen] = useState(false)
+  const [isKuotaOpen, setIsKuotaOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
@@ -64,6 +68,26 @@ export function PanitiaTable({
           : p
       )
     )
+  }
+
+  function handleAdded(created: PanitiaUpdated & { createdAt?: string }) {
+    const newRow: PanitiaData = {
+      id: created.id,
+      nomorRegistrasi: created.nomorRegistrasi,
+      nama: created.nama,
+      gender: created.gender,
+      noWhatsapp: created.noWhatsapp,
+      alamat: created.alamat,
+      asalUnit: created.asalUnit,
+      divisi: created.divisi,
+      fotoUrl: created.fotoUrl,
+      qrCodeUrl: created.qrCodeUrl,
+      idCardUrl: created.idCardUrl,
+      status: created.status,
+      createdAt: created.createdAt ?? new Date().toISOString(),
+      absensiLogs: [],
+    }
+    setData((prev) => [newRow, ...prev])
   }
 
   async function handleDelete(id: string, nama: string) {
@@ -256,7 +280,7 @@ export function PanitiaTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-col sm:flex-row gap-3">
+<div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">
           <Input
             placeholder="Cari nama atau nomor registrasi..."
@@ -280,6 +304,14 @@ export function PanitiaTable({
             options={[...DIVISI_OPTIONS]}
           />
         </div>
+        <Button variant="primary" onClick={() => setIsAddOpen(true)} className="flex items-center gap-1.5">
+          <UserPlus size={14} />
+          Tambah Panitia
+        </Button>
+        <Button variant="secondary" onClick={() => setIsKuotaOpen(true)} className="flex items-center gap-1.5">
+          <Settings size={14} />
+          Atur Kuota Divisi
+        </Button>
         <Button variant="secondary" onClick={handleExportCsv} className="flex items-center gap-1.5">
           <FileDown size={14} />
           Export CSV
@@ -324,6 +356,15 @@ export function PanitiaTable({
         isOpen={isEditOpen}
         onClose={() => setIsEditOpen(false)}
         onSaved={handleSaved}
+      />
+      <PanitiaAddModal
+        isOpen={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        onSaved={handleAdded}
+      />
+      <PanitiaKuotaModal
+        isOpen={isKuotaOpen}
+        onClose={() => setIsKuotaOpen(false)}
       />
     </div>
   )

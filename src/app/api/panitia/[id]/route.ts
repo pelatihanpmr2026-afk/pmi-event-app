@@ -4,7 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { panitiaServerSchema } from '@/lib/validations/panitia'
 import { saveUploadedFile, getFileExtension, getAbsolutePathFromUrl } from '@/lib/save-file'
 import { generateIdCard } from '@/lib/generate-idcard'
-import { DIVISI_OPTIONS, DIVISI_CAPACITY, MAX_FOTO_SIZE, ACCEPTED_FOTO_TYPES } from '@/lib/constants'
+import { DIVISI_OPTIONS, MAX_FOTO_SIZE, ACCEPTED_FOTO_TYPES } from '@/lib/constants'
+import { getDivisiKuota } from '@/lib/divisi-kuota'
 import { logAdminAction } from '@/lib/admin-log'
 import { requireRole } from '@/lib/api-guard'
 
@@ -120,7 +121,8 @@ export async function PUT(
 
     // Validasi kapasitas jika divisi diganti (di luar dirinya sendiri).
     if (data.divisi !== panitia.divisi) {
-      const maxKapasitas = DIVISI_CAPACITY[data.divisi]
+      const kuota = await getDivisiKuota()
+      const maxKapasitas = kuota[data.divisi]
       const jumlahTerdaftar = await prisma.panitia.count({
         where: { divisi: data.divisi, id: { not: id } },
       })

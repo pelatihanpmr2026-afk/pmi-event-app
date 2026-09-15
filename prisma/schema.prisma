@@ -78,6 +78,16 @@ model Panitia {
   @@map("panitia")
 }
 
+model DivisiKuota {
+  divisi   Divisi @id
+  maksimal Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("divisi_kuota")
+}
+
 model Admin {
   id           String     @id @default(cuid())
   username     String     @unique

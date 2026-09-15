@@ -7,9 +7,12 @@ import { generateNomorRegistrasi } from '@/lib/generate-nomor-registrasi'
 import { saveUploadedFile, getFileExtension, getAbsolutePathFromUrl } from '@/lib/save-file'
 import { generateQrCode } from '@/lib/generate-qrcode'
 import { generateIdCard } from '@/lib/generate-idcard'
-import { DIVISI_OPTIONS, DIVISI_CAPACITY, MAX_FOTO_SIZE, ACCEPTED_FOTO_TYPES } from '@/lib/constants'
+import { DIVISI_OPTIONS, MAX_FOTO_SIZE, ACCEPTED_FOTO_TYPES } from '@/lib/constants'
+import { getDivisiKuota } from '@/lib/divisi-kuota'
 import { requireRole } from '@/lib/api-guard'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { logAdminAction } from '@/lib/admin-log'
+import { getSession } from '@/lib/get-session'
 
 const MAX_RETRY_NOMOR = 3
 
@@ -65,7 +68,8 @@ export async function POST(req: NextRequest) {
     // Validasi kapasitas divisi — dibungkus transaction supaya count + create
     // relatif atomic dan mengurangi risiko race condition saat 2 orang submit
     // divisi yang sama nyaris bersamaan di detik-detik terakhir kuota.
-    const maxKapasitas = DIVISI_CAPACITY[data.divisi]
+    const kuota = await getDivisiKuota()
+    const maxKapasitas = kuota[data.divisi]
     const jumlahTerdaftar = await prisma.panitia.count({
       where: { divisi: data.divisi },
     })
@@ -168,6 +172,32 @@ const idCardUrl = await generateIdCard({
         )
       }
 
+      // Jika dipanggil dari sesi admin (tambah panitia oleh panitia admin),
+      // catat Admin Log agar ada jejak. Endpoint juga bisa dipakai publik
+      // (halaman registrasi panitia) — saat itu session null, skip log.
+      try {
+        const session = await getSession()
+        if (session) {
+          await logAdminAction(
+            session.adminId,
+            session.nama,
+            session.role,
+            'TAMBAH_PANITIA',
+            {
+              targetType: 'PANITIA',
+              targetId: panitia.id,
+              metadata: {
+                targetName: panitia.nama,
+                nomorRegistrasi: panitia.nomorRegistrasi,
+                divisi: panitia.divisi,
+              },
+            }
+          )
+        }
+      } catch (error) {
+        console.error('[POST /api/panitia] Gagal catat admin log:', error)
+      }
+
       return NextResponse.json(
         {
           success: true,
@@ -175,8 +205,17 @@ const idCardUrl = await generateIdCard({
           data: {
             id: panitia.id,
             nomorRegistrasi: panitia.nomorRegistrasi,
-            idCardUrl: panitia.idCardUrl,
+            nama: panitia.nama,
+            gender: panitia.gender,
+            noWhatsapp: panitia.noWhatsapp,
+            alamat: panitia.alamat,
+            asalUnit: panitia.asalUnit,
+            divisi: panitia.divisi,
+            fotoUrl: panitia.fotoUrl,
             qrCodeUrl: panitia.qrCodeUrl,
+            idCardUrl: panitia.idCardUrl,
+            status: panitia.status,
+            createdAt: panitia.createdAt.toISOString(),
           },
         },
         { status: 201 }

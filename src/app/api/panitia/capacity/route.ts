@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { DIVISI_CAPACITY } from '@/lib/constants'
+import { DIVISI_OPTIONS } from '@/lib/constants'
+import { getDivisiKuota } from '@/lib/divisi-kuota'
 
 export async function GET() {
   try {
+    const kuota = await getDivisiKuota()
     const counts = await prisma.panitia.groupBy({
       by: ['divisi'],
       _count: { divisi: true },
@@ -14,10 +16,12 @@ export async function GET() {
       countMap[c.divisi] = c._count.divisi
     }
 
-    const capacity = Object.entries(DIVISI_CAPACITY).map(([divisi, max]) => {
-      const terisi = countMap[divisi] ?? 0
+    const capacity = DIVISI_OPTIONS.map((d) => {
+      const max = kuota[d.value]
+      const terisi = countMap[d.value] ?? 0
       return {
-        divisi,
+        divisi: d.value,
+        label: d.label,
         max,
         terisi,
         sisa: Math.max(max - terisi, 0),
