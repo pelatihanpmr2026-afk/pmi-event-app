@@ -57,3 +57,9 @@ export type PanitiaFormValues = z.infer<typeof panitiaFormSchema>
 // Skema khusus server (foto divalidasi terpisah di API karena FormData berbeda dengan File instance browser)
 export const panitiaServerSchema = panitiaBiodataSchema.merge(panitiaKeanggotaanSchema)
 export type PanitiaServerValues = z.infer<typeof panitiaServerSchema>
+
+// Nominal perdiem (insentif panitia) — diinput manual oleh admin via dashboard.
+export const perdiemSchema = z.object({
+  perdiem: z.number().int('Nominal perdiem harus bilangan bulat').min(0, 'Nominal perdiem minimal 0').max(999999999, 'Nominal perdiem terlalu besar'),
+})
+export type PerdiemValues = z.infer<typeof perdiemSchema>

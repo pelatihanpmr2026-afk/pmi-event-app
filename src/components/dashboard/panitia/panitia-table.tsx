@@ -3,17 +3,19 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { Search, Eye, Pencil, Trash2, FileDown, FileSpreadsheet, Check, X, UserPlus, Settings, CreditCard } from 'lucide-react'
+import { Search, Eye, Pencil, Trash2, FileDown, FileSpreadsheet, Check, X, UserPlus, Settings, CreditCard, Wallet } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/responsive-table'
 import { ASAL_UNIT_OPTIONS, DIVISI_OPTIONS } from '@/lib/constants'
+import { formatRp } from '@/lib/keuangan'
 import { PanitiaDetailModal, type PanitiaData, type SesiRingkas } from './panitia-detail-modal'
 import { PanitiaEditModal, type PanitiaUpdated } from './panitia-edit-modal'
 import { PanitiaAddModal } from './panitia-add-modal'
 import { PanitiaKuotaModal } from './panitia-kuota-modal'
+import { PanitiaPerdiemModal } from './panitia-perdiem-modal'
 
 function findLabel(options: readonly { value: string; label: string }[], value: string) {
   return options.find((opt) => opt.value === value)?.label ?? value
@@ -36,6 +38,8 @@ export function PanitiaTable({
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isKuotaOpen, setIsKuotaOpen] = useState(false)
+  const [perdiemTarget, setPerdiemTarget] = useState<PanitiaData | null>(null)
+  const [isPerdiemOpen, setIsPerdiemOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
@@ -58,6 +62,15 @@ export function PanitiaTable({
   function openEdit(panitia: PanitiaData) {
     setEditing(panitia)
     setIsEditOpen(true)
+  }
+
+  function openPerdiem(panitia: PanitiaData) {
+    setPerdiemTarget(panitia)
+    setIsPerdiemOpen(true)
+  }
+
+  function handlePerdiemSaved(id: string, perdiem: number) {
+    setData((prev) => prev.map((p) => (p.id === id ? { ...p, perdiem } : p)))
   }
 
   function handleSaved(updated: PanitiaUpdated) {
@@ -84,6 +97,7 @@ export function PanitiaTable({
       qrCodeUrl: created.qrCodeUrl,
       idCardUrl: created.idCardUrl,
       status: created.status,
+      perdiem: created.perdiem ?? 0,
       createdAt: created.createdAt ?? new Date().toISOString(),
       absensiLogs: [],
     }
@@ -201,6 +215,12 @@ export function PanitiaTable({
       },
     })),
     {
+      key: 'perdiem',
+      header: 'Perdiem',
+      align: 'right',
+      render: (row) => <span className="font-semibold whitespace-nowrap">{formatRp(row.perdiem ?? 0)}</span>,
+    },
+    {
       key: 'status',
       header: 'Status',
       align: 'center',
@@ -224,6 +244,13 @@ export function PanitiaTable({
             className="p-1.5 text-gray-500 hover:text-event-navy hover:bg-[var(--color-surface-muted)] rounded-[var(--radius-input)] transition-colors"
           >
             <Pencil size={16} />
+          </button>
+          <button
+            onClick={() => openPerdiem(row)}
+            title={`Input perdiem ${row.nama}`}
+            className="p-1.5 text-gray-500 hover:text-event-navy hover:bg-[var(--color-surface-muted)] rounded-[var(--radius-input)] transition-colors"
+          >
+            <Wallet size={16} />
           </button>
           <button
             onClick={() => handleDelete(row.id, row.nama)}
@@ -263,6 +290,8 @@ export function PanitiaTable({
         <span className="font-medium text-event-navy">{findLabel(DIVISI_OPTIONS, row.divisi)}</span>
         <span className="text-gray-400">No. WhatsApp:</span>
         <span className="font-medium text-event-navy">{row.noWhatsapp}</span>
+        <span className="text-gray-400">Perdiem:</span>
+        <span className="font-medium text-event-navy">{formatRp(row.perdiem ?? 0)}</span>
       </div>
       {sesiList.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
@@ -377,6 +406,13 @@ export function PanitiaTable({
       <PanitiaKuotaModal
         isOpen={isKuotaOpen}
         onClose={() => setIsKuotaOpen(false)}
+      />
+      <PanitiaPerdiemModal
+        key={perdiemTarget?.id ?? 'tutup'}
+        panitia={perdiemTarget}
+        isOpen={isPerdiemOpen}
+        onClose={() => setIsPerdiemOpen(false)}
+        onSaved={handlePerdiemSaved}
       />
     </div>
   )

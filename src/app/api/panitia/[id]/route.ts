@@ -205,6 +205,7 @@ export async function PUT(
         qrCodeUrl: updated.qrCodeUrl,
         idCardUrl: updated.idCardUrl,
         status: updated.status,
+        perdiem: updated.perdiem,
       },
     })
   } catch (error) {

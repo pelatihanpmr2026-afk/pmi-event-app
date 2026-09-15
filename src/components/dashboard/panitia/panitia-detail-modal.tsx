@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Download, Check, X } from 'lucide-react'
 import { ASAL_UNIT_OPTIONS, DIVISI_OPTIONS, GENDER_OPTIONS } from '@/lib/constants'
+import { formatRp } from '@/lib/keuangan'
 
 export interface AbsensiLogData {
   sesiId: string
@@ -31,6 +32,7 @@ export interface PanitiaData {
   qrCodeUrl: string | null
   idCardUrl: string | null
   status: string
+  perdiem: number
   createdAt: string
   absensiLogs: AbsensiLogData[]
 }
@@ -60,6 +62,7 @@ export function PanitiaDetailModal({
     { label: 'Alamat', value: panitia.alamat },
     { label: 'Asal Unit', value: findLabel(ASAL_UNIT_OPTIONS, panitia.asalUnit) },
     { label: 'Divisi', value: findLabel(DIVISI_OPTIONS, panitia.divisi) },
+    { label: 'Perdiem', value: formatRp(panitia.perdiem ?? 0) },
   ]
 
   return (

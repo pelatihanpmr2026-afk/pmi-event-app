@@ -23,6 +23,7 @@ export interface PanitiaUpdated {
   qrCodeUrl: string | null
   idCardUrl: string | null
   status: string
+  perdiem: number
 }
 
 export function PanitiaEditModal({

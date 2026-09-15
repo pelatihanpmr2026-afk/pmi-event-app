@@ -71,6 +71,8 @@ model Panitia {
 
   status StatusPanitia @default(TERDAFTAR)
 
+  perdiem Int @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -215,6 +215,7 @@ const idCardUrl = await generateIdCard({
             qrCodeUrl: panitia.qrCodeUrl,
             idCardUrl: panitia.idCardUrl,
             status: panitia.status,
+            perdiem: panitia.perdiem,
             createdAt: panitia.createdAt.toISOString(),
           },
         },

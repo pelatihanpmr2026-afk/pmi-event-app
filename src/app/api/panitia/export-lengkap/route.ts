@@ -57,6 +57,7 @@ export async function GET(req: NextRequest) {
           asalUnit: true,
           divisi: true,
           status: true,
+          perdiem: true,
           createdAt: true,
           absensiLogs: { select: { sesiId: true } },
         },
@@ -86,6 +87,7 @@ export async function GET(req: NextRequest) {
       divisi: findLabel(DIVISI_OPTIONS, p.divisi),
       hadirSesiIds: p.absensiLogs.map((l) => l.sesiId),
       status: p.status,
+      perdiem: p.perdiem,
     }))
 
     const now = new Date()
