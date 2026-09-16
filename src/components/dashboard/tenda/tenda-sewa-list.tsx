@@ -29,7 +29,7 @@ function rp(n: number) {
   return `Rp${n.toLocaleString('id-ID')}`
 }
 
-export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; nama: string; namaVendor: string | null }[] }) {
+export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; nama: string; namaVendor: string | null; harga: number }[] }) {
   const [data, setData] = useState<SewaRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [filterTenda, setFilterTenda] = useState('')
@@ -57,11 +57,21 @@ export function TendaSewaList({ tendaOptions }: { tendaOptions: { id: string; na
     const vendorIds = filterVendor
       ? tendaOptions.filter((t) => t.namaVendor?.trim() === filterVendor).map((t) => t.id)
       : []
-    return data.filter((row) => {
-      if (filterTenda && !row.tenda.some((t) => t.tendaJenisId === filterTenda)) return false
-      if (filterVendor && !row.tenda.some((t) => vendorIds.includes(t.tendaJenisId))) return false
-      return true
-    })
+
+    return data
+      .map((row) => {
+        let tenda = row.tenda
+        if (filterTenda) tenda = tenda.filter((t) => t.tendaJenisId === filterTenda)
+        if (filterVendor) tenda = tenda.filter((t) => vendorIds.includes(t.tendaJenisId))
+        if (tenda.length === 0) return null
+        const totalUnit = tenda.reduce((sum, t) => sum + t.jumlah, 0)
+        const totalBiaya = tenda.reduce((sum, t) => {
+          const opt = tendaOptions.find((o) => o.id === t.tendaJenisId)
+          return sum + (opt ? opt.harga * t.jumlah : 0)
+        }, 0)
+        return { ...row, tenda, totalUnit, totalBiaya }
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null)
   }, [data, filterTenda, filterVendor, tendaOptions])
 
   async function fetchData() {
