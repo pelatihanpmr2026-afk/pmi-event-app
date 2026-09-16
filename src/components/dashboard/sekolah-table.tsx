@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Eye, Check, X, Trash2, Loader2, MoreVertical, ExternalLink, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react'
+import { Search, Eye, Check, X, Trash2, Loader2, MoreVertical, ExternalLink, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, ArrowUpDown, ArrowRightLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
@@ -65,10 +65,12 @@ export function SekolahTable({
   const [deletingSchoolId, setDeletingSchoolId] = useState<string | null>(null)
   const [markingPrintedId, setMarkingPrintedId] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [changingKategoriId, setChangingKategoriId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const firstRun = useRef(true)
   const readOnly = isReadOnlySekolah(role)
   const isKTA = isKtaRole(role)
+  const canChangeKategori = role === 'SUPERADMIN' || role === 'KESEKRETARIATAN'
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -208,6 +210,28 @@ export function SekolahTable({
       toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
     } finally {
       setMarkingPrintedId(null)
+    }
+  }
+
+  async function changeKategori(id: string, currentKategori: string, namaSekolah: string) {
+    const newKategori = currentKategori === 'WIRA' ? 'MADYA' : 'WIRA'
+    if (!window.confirm(`Ubah kategori ${namaSekolah} dari ${currentKategori} menjadi ${newKategori}?\n\nPerubahan akan:\n• Mengubah kode pendaftaran\n• Mengubah nomor peserta semua peserta\n• Regenerate kwitansi yang sudah ada`)) return
+    setOpenMenuId(null)
+    setChangingKategoriId(id)
+    try {
+      const res = await fetch(`/api/sekolah/${id}/kategori`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kategori: newKategori }),
+      })
+      const result = await res.json()
+      if (!res.ok) throw new Error(result?.message || 'Gagal mengubah kategori')
+      toast.success(result.message || `Kategori berhasil diubah ke ${newKategori}`)
+      await refreshList()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
+    } finally {
+      setChangingKategoriId(null)
     }
   }
 
@@ -386,6 +410,7 @@ export function SekolahTable({
             </button>
             {menuOpen && <div className="absolute right-0 z-50 mt-1 w-64 overflow-hidden rounded-[var(--radius-card)] border border-[var(--color-border)] bg-white py-1 text-left shadow-[var(--shadow-pixel-md)]">
               <button type="button" onClick={() => openDetail(s.id)} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)]"><Eye size={14} /> Lihat Detail Sekolah</button>
+              {canChangeKategori && <button type="button" onClick={() => void changeKategori(s.id, s.kategori, s.namaLengkap)} disabled={changingKategoriId !== null} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)] disabled:opacity-50"><ArrowRightLeft size={14} /> Ubah Kategori</button>}
               {s.pembayaranPeserta?.status === 'MENUNGGU_KONFIRMASI' && <button type="button" onClick={() => { setOpenMenuId(null); void confirmPayment(s.pembayaranPeserta!.id, 'pendaftaran') }} disabled={confirmingPaymentId !== null} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)] disabled:opacity-50"><Check size={14} /> Konfirmasi Pendaftaran</button>}
               {s.pembayaranPeserta?.status === 'MENUNGGU_KONFIRMASI' && <button type="button" onClick={() => { setOpenMenuId(null); void rejectPayment(s.pembayaranPeserta!.id, 'pendaftaran') }} disabled={confirmingPaymentId !== null} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-pmi-red hover:bg-pmi-red/10 disabled:opacity-50"><X size={14} /> Tolak Pendaftaran</button>}
               {s.pembayaranTenda?.status === 'MENUNGGU_KONFIRMASI' && <button type="button" onClick={() => { setOpenMenuId(null); void confirmPayment(s.pembayaranTenda!.id, 'sewa tenda') }} disabled={confirmingPaymentId !== null} className="flex w-full items-center gap-2 px-3 py-2 text-xs text-event-navy hover:bg-[var(--color-surface-muted)] disabled:opacity-50"><Check size={14} /> Konfirmasi Sewa Tenda</button>}
@@ -465,6 +490,17 @@ export function SekolahTable({
           >
             {confirmingPaymentId === row.pembayaranTenda.id ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
             Konfirmasi Sewa Tenda
+          </button>
+        )}
+        {canChangeKategori && (
+          <button
+            type="button"
+            onClick={() => void changeKategori(row.id, row.kategori, row.namaLengkap)}
+            disabled={changingKategoriId !== null}
+            className="flex items-center justify-center gap-1.5 py-2 rounded-[var(--radius-btn)] border-2 border-event-navy text-event-navy text-xs font-medium hover:bg-event-cream transition-colors disabled:opacity-50"
+          >
+            {changingKategoriId === row.id ? <Loader2 size={14} className="animate-spin" /> : <ArrowRightLeft size={14} />}
+            Ubah Kategori
           </button>
         )}
         <button

@@ -172,16 +172,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       )
     }
 
-    const fotoFiles: File[] = []
+    const fotoFiles: (File | null)[] = []
     for (let i = 0; i < pesertaList.length; i++) {
       const foto = formData.get(`foto_${i}`) as File | null
-      if (!foto || !(foto instanceof File) || foto.size === 0) {
-        return NextResponse.json(
-          { success: false, message: `Foto untuk peserta susulan #${i + 1} tidak ditemukan` },
-          { status: 400 }
-        )
-      }
-      fotoFiles.push(foto)
+      fotoFiles.push(foto && foto instanceof File && foto.size > 0 ? foto : null)
     }
 
     // Tentukan batch berikutnya berdasarkan histori Pembayaran PESERTA
@@ -205,11 +199,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Foto peserta & bukti transfer disimpan lebih dulu; kalau ada yang gagal,
     // user langsung melihat error dan TIDAK ada peserta/pembayaran yang
     // tercatat di DB (file yang sudah tersimpan dibersihkan).
-    const pesertaFotoData: { url: string; buffer: Buffer }[] = []
+    const pesertaFotoData: { url: string }[] = []
     let buktiTransferUrl: string | null = null
     try {
       for (let i = 0; i < fotoFiles.length; i++) {
         const file = fotoFiles[i]
+        if (!file) {
+          pesertaFotoData.push({ url: '' })
+          continue
+        }
         let buffer: Buffer
         try {
           buffer = await normalizeParticipantPhotoBuffer(Buffer.from(await file.arrayBuffer()))
@@ -222,7 +220,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
         const filename = `${uid}-susulan${batchKe}-${i}.jpg`
         const url = await saveBuffer(buffer, 'peserta-photos', filename)
-        pesertaFotoData.push({ url, buffer })
+        pesertaFotoData.push({ url })
         savedFiles.push(url)
       }
 
@@ -268,7 +266,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             noHp: p.noHp || null,
             gender: p.gender,
             riwayatPenyakit: p.riwayatPenyakit,
-            fotoUrl: pesertaFotoData[i].url,
+            fotoUrl: pesertaFotoData[i]?.url || null,
           })),
           ...pendampingList.map((p) => ({
             sekolahId: id,
