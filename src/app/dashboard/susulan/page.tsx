@@ -12,6 +12,9 @@ export default async function DashboardSusulanPage() {
   const sekolahList = await prisma.sekolah.findMany({
     select: { id: true, namaLengkap: true, kategori: true, nomorPendaftaran: true },
     orderBy: { nomorPendaftaran: 'asc' },
+    where: {
+      peserta: { some: { batchKe: { gt: 1 } } },
+    },
   })
 
   return (
