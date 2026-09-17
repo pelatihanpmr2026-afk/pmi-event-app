@@ -1,4 +1,4 @@
-import { Users,StarIcon, ScanLine, School, Tent, ClipboardCheck, Wallet, FileSpreadsheet, UserCog, Users2, CalendarClock, History, ListChecks, FileText } from 'lucide-react'
+import { Users,StarIcon, ScanLine, School, Tent, ClipboardCheck, Wallet, FileSpreadsheet, UserCog, Users2, CalendarClock, History, ListChecks, FileText, UserPlus } from 'lucide-react'
 import { isPathAllowedForRole, type AdminRoleType } from '@/lib/admin-role'
 
 export const DASHBOARD_NAV_ITEMS = [
@@ -9,6 +9,7 @@ export const DASHBOARD_NAV_ITEMS = [
   { href: '/dashboard/daftar-ulang', label: 'Daftar Ulang', icon: ClipboardCheck },
   { href: '/dashboard/peserta', label: 'Peserta', icon: UserCog },
   { href: '/dashboard/pendamping', label: 'Pendamping', icon: Users2 },
+  { href: '/dashboard/susulan', label: 'Susulan', icon: UserPlus },
   { href: '/dashboard/tenda', label: 'Tenda', icon: Tent },
   { href: '/dashboard/keuangan', label: 'Keuangan', icon: Wallet },
   { href: '/dashboard/rekap-harian', label: 'Rekap Harian', icon: CalendarClock },

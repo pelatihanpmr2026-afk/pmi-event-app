@@ -7,6 +7,7 @@ KESEKRETARIATAN: [
     '/dashboard/daftar-ulang',
     '/dashboard/peserta',
     '/dashboard/pendamping',
+    '/dashboard/susulan',
     '/dashboard/tenda',
     '/dashboard/panitia',
     '/dashboard/absensi',
