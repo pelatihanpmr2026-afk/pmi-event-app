@@ -105,19 +105,29 @@ export function SekolahTable({
   async function fetchReadOnlyData(q: string) {
     setLoadingReadOnly(true)
     try {
-      const params = new URLSearchParams({
-        page: '1',
-        pageSize: '1000',
-        search: q,
-        kategori: '',
-        sortBy: 'nomor',
-      })
-      const res = await fetch(`/api/sekolah/list?${params}`)
-      const result = await res.json()
-      if (result.success) {
-        setWiraData(result.data.filter((s: SekolahListItem) => s.kategori === 'WIRA'))
-        setMadyaData(result.data.filter((s: SekolahListItem) => s.kategori === 'MADYA'))
+      const PAGE = 100
+      let current = 1
+      let allData: SekolahListItem[] = []
+      while (true) {
+        const params = new URLSearchParams({
+          page: String(current),
+          pageSize: String(PAGE),
+          search: q,
+          kategori: '',
+          sortBy: 'nomor',
+        })
+        const res = await fetch(`/api/sekolah/list?${params}`)
+        const result = await res.json()
+        if (result.success) {
+          allData = allData.concat(result.data)
+          if (current >= result.pagination.totalPages) break
+          current++
+        } else {
+          break
+        }
       }
+      setWiraData(allData.filter((s) => s.kategori === 'WIRA'))
+      setMadyaData(allData.filter((s) => s.kategori === 'MADYA'))
     } finally {
       setLoadingReadOnly(false)
     }
@@ -429,14 +439,14 @@ export function SekolahTable({
               <table className="w-full text-left">
                 <thead>
                   <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
-                    <th className="px-4 py-3 font-body text-xs font-semibold text-event-navy">No. Pendaftaran</th>
+                    <th className="px-4 py-3 font-body text-xs font-semibold text-event-navy">Kode Pendaftaran</th>
                     <th className="px-4 py-3 font-body text-xs font-semibold text-event-navy">Nama Sekolah</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredList.map((s) => (
                     <tr key={s.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-surface-muted)]">
-                      <td className="px-4 py-3 font-body text-xs text-gray-500">{s.nomorPendaftaran ?? '-'}</td>
+                      <td className="px-4 py-3 font-body text-xs text-gray-500">{s.kodePendaftaran ?? '-'}</td>
                       <td className="px-4 py-3 font-body text-sm font-semibold text-event-navy">{s.namaLengkap}</td>
                     </tr>
                   ))}

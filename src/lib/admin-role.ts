@@ -15,7 +15,7 @@ KESEKRETARIATAN: [
     '/dashboard/draft',
   ],
   KEUANGAN: ['/dashboard/sekolah', '/dashboard/keuangan', '/dashboard/rekap-harian', '/dashboard/pengajuan', '/dashboard/draft'],
-  ACARA: ['/dashboard/sekolah', '/dashboard/draft'],
+  ACARA: ['/dashboard/sekolah'],
   KTA: ['/dashboard/sekolah', '/dashboard/draft'],
 }
 
