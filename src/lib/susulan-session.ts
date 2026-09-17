@@ -1,7 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose'
 
 export const SUSULAN_SESSION_COOKIE = 'pmi_susulan_session'
-export const SUSULAN_SESSION_MAX_AGE = 60 * 30
+export const SUSULAN_SESSION_MAX_AGE = 60 * 60 * 24 // 1 hari
 
 interface SusulanSessionPayload {
   sekolahId: string

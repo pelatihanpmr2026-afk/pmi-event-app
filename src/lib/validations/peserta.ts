@@ -125,6 +125,19 @@ export const pendampingOnlySchema = z.object({
   pendamping: z.array(pendampingItemSchema),
 })
 
+export const editPesertaSchema = baseItemSchema.extend({
+  riwayatPenyakit: z.enum(
+    [
+      'TIDAK_ADA', 'ASMA_BERAT', 'EPILEPSI', 'JANTUNG', 'DIABETES', 'HIPERTENSI_BERAT',
+      'GANGGUAN_GINJAL', 'GANGGUAN_PERNAPASAN_KRONIS', 'RIWAYAT_KEJANG', 'HEMOFILIA',
+      'ANEMIA_BERAT', 'LAINNYA',
+    ],
+    { error: (issue) => (issue.input === undefined ? 'Pilih riwayat penyakit' : 'Pilihan tidak valid') }
+  ).optional(),
+})
+
+export type EditPesertaValues = z.infer<typeof editPesertaSchema>
+
 export type PesertaItemValues = z.infer<typeof pesertaItemSchema>
 export type PendampingItemValues = z.infer<typeof pendampingItemSchema>
 export type PesertaPendampingValues = z.infer<typeof pesertaPendampingSchema>

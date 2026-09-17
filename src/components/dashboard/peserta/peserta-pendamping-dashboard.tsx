@@ -10,7 +10,7 @@ import { Tabs } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
 import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/responsive-table'
-import { RIWAYAT_PENYAKIT_OPTIONS, RIWAYAT_PENYAKIT_PERLU_PERHATIAN } from '@/lib/constants-sekolah'
+import { RIWAYAT_PENYAKIT_OPTIONS, RIWAYAT_PENYAKIT_PERLU_PERHATIAN, AGAMA_OPTIONS, GOLONGAN_DARAH_OPTIONS } from '@/lib/constants-sekolah'
 import { ACCEPTED_FOTO_TYPES } from '@/lib/constants'
 
 interface Row {
@@ -67,6 +67,23 @@ export function PesertaPendampingDashboard({
   const [editPreview, setEditPreview] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [editError, setEditError] = useState('')
+
+  // === State modal edit data ==
+  const [editingDataRow, setEditingDataRow] = useState<Row | null>(null)
+  const [editDataForm, setEditDataForm] = useState({
+    namaLengkap: '',
+    tempatLahir: '',
+    tanggalLahir: '',
+    alamat: '',
+    agama: '',
+    golonganDarah: '',
+    tahunMasuk: '',
+    noHp: '',
+    gender: '',
+    riwayatPenyakit: '',
+  })
+  const [isSavingData, setIsSavingData] = useState(false)
+  const [editDataError, setEditDataError] = useState('')
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
@@ -194,6 +211,55 @@ export function PesertaPendampingDashboard({
     }
   }
 
+  // === EDIT DATA PESERTA ===
+  function openEditData(row: Row) {
+    setEditingDataRow(row)
+    setEditDataForm({
+      namaLengkap: row.namaLengkap,
+      tempatLahir: row.tempatLahir,
+      tanggalLahir: row.tanggalLahir.split('T')[0],
+      alamat: row.alamat,
+      agama: row.agama,
+      golonganDarah: row.golonganDarah,
+      tahunMasuk: String(row.tahunMasuk),
+      noHp: row.noHp ?? '',
+      gender: row.gender,
+      riwayatPenyakit: row.riwayatPenyakit ?? 'TIDAK_ADA',
+    })
+    setEditDataError('')
+  }
+
+  function closeEditData() {
+    setEditingDataRow(null)
+    setEditDataError('')
+  }
+
+  function updateEditDataField(field: string, value: string) {
+    setEditDataForm((prev) => ({ ...prev, [field]: value }))
+  }
+
+  async function submitEditData() {
+    if (!editingDataRow) return
+    setIsSavingData(true)
+    setEditDataError('')
+    try {
+      const res = await fetch(`/api/peserta/${editingDataRow.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editDataForm),
+      })
+      const result = await res.json().catch(() => null)
+      if (!res.ok || !result?.success) throw new Error(result?.message || 'Gagal memperbarui data')
+      toast.success(result.message || 'Data peserta berhasil diperbarui')
+      closeEditData()
+      setRefreshKey((k) => k + 1)
+    } catch (error) {
+      setEditDataError(error instanceof Error ? error.message : 'Terjadi kesalahan')
+    } finally {
+      setIsSavingData(false)
+    }
+  }
+
   // === KOLOM TABEL ===
   const columns: ResponsiveTableColumn<Row>[] = [
     {
@@ -292,6 +358,24 @@ export function PesertaPendampingDashboard({
     )
   }
 
+  columns.push({
+    key: 'aksi',
+    header: 'Aksi',
+    width: '80px',
+    align: 'center',
+    hideOnMobile: true,
+    render: (row) => (
+      <button
+        type="button"
+        onClick={() => openEditData(row)}
+        className="inline-flex items-center gap-1 px-2 py-1 text-[10px] text-event-navy border border-event-navy hover:bg-event-cream transition-colors"
+      >
+        <Pencil size={10} />
+        Edit
+      </button>
+    ),
+  })
+
   // === RENDER KARTU MOBILE KHUSUS (Mengganti default ResponsiveTable) ===
   const renderMobileCard = (row: Row) => (
     <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] bg-white p-4 flex flex-col gap-3">
@@ -322,10 +406,18 @@ export function PesertaPendampingDashboard({
           onClick={() => openEditFoto(row)}
           className="flex items-center justify-center gap-1 text-xs text-event-blue underline py-1 hover:text-event-blue-dark"
         >
-          <Pencil size={12} />
+          <Camera size={12} />
           {row.fotoUrl ? 'Ubah Foto' : 'Tambah Foto'}
         </button>
       )}
+      <button
+        type="button"
+        onClick={() => openEditData(row)}
+        className="flex items-center justify-center gap-1 text-xs text-event-navy border border-event-navy py-1.5 hover:bg-event-cream transition-colors"
+      >
+        <Pencil size={12} />
+        Edit Data
+      </button>
       <div className="grid grid-cols-2 gap-2 text-[11px] font-body">
         <div className="bg-[var(--color-surface-muted)] px-2 py-1.5 rounded-[var(--radius-input)]">
           <span className="text-gray-400 block">Tempat, Tgl Lahir</span>
@@ -503,6 +595,137 @@ export function PesertaPendampingDashboard({
                   Simpan
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal isOpen={editingDataRow !== null} onClose={closeEditData} title={`Edit Data ${tipe === 'PESERTA' ? 'Peserta' : 'Pendamping'}`}>
+        {editingDataRow && (
+          <div className="flex flex-col gap-4">
+            <div>
+              <p className="font-body text-sm font-medium text-event-navy">{editingDataRow.namaLengkap}</p>
+              <p className="font-body text-xs text-gray-400">
+                {editingDataRow.noPeserta} • {editingDataRow.sekolahNama}
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <label className="font-body text-xs font-medium text-event-navy">Nama Lengkap *</label>
+                <input
+                  type="text"
+                  value={editDataForm.namaLengkap}
+                  onChange={(e) => updateEditDataField('namaLengkap', e.target.value)}
+                  className="font-body w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-input)] text-sm text-event-navy focus:outline-none focus:border-event-blue"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-body text-xs font-medium text-event-navy">Tempat Lahir *</label>
+                <input
+                  type="text"
+                  value={editDataForm.tempatLahir}
+                  onChange={(e) => updateEditDataField('tempatLahir', e.target.value)}
+                  className="font-body w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-input)] text-sm text-event-navy focus:outline-none focus:border-event-blue"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-body text-xs font-medium text-event-navy">Tanggal Lahir *</label>
+                <input
+                  type="date"
+                  value={editDataForm.tanggalLahir}
+                  onChange={(e) => updateEditDataField('tanggalLahir', e.target.value)}
+                  className="font-body w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-input)] text-sm text-event-navy focus:outline-none focus:border-event-blue"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-body text-xs font-medium text-event-navy">Gender *</label>
+                <select
+                  value={editDataForm.gender}
+                  onChange={(e) => updateEditDataField('gender', e.target.value)}
+                  className="font-body w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-input)] text-sm text-event-navy focus:outline-none focus:border-event-blue"
+                >
+                  <option value="LAKI_LAKI">Laki-laki</option>
+                  <option value="PEREMPUAN">Perempuan</option>
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-body text-xs font-medium text-event-navy">Agama *</label>
+                <select
+                  value={editDataForm.agama}
+                  onChange={(e) => updateEditDataField('agama', e.target.value)}
+                  className="font-body w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-input)] text-sm text-event-navy focus:outline-none focus:border-event-blue"
+                >
+                  {AGAMA_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-body text-xs font-medium text-event-navy">Golongan Darah *</label>
+                <select
+                  value={editDataForm.golonganDarah}
+                  onChange={(e) => updateEditDataField('golonganDarah', e.target.value)}
+                  className="font-body w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-input)] text-sm text-event-navy focus:outline-none focus:border-event-blue"
+                >
+                  {GOLONGAN_DARAH_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-body text-xs font-medium text-event-navy">Tahun Masuk *</label>
+                <input
+                  type="text"
+                  value={editDataForm.tahunMasuk}
+                  onChange={(e) => updateEditDataField('tahunMasuk', e.target.value)}
+                  placeholder="YYYY"
+                  className="font-body w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-input)] text-sm text-event-navy focus:outline-none focus:border-event-blue"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="font-body text-xs font-medium text-event-navy">No. HP</label>
+                <input
+                  type="text"
+                  value={editDataForm.noHp}
+                  onChange={(e) => updateEditDataField('noHp', e.target.value)}
+                  className="font-body w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-input)] text-sm text-event-navy focus:outline-none focus:border-event-blue"
+                />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="font-body text-xs font-medium text-event-navy">Alamat *</label>
+              <textarea
+                rows={2}
+                value={editDataForm.alamat}
+                onChange={(e) => updateEditDataField('alamat', e.target.value)}
+                className="font-body w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-input)] text-sm text-event-navy focus:outline-none focus:border-event-blue"
+              />
+            </div>
+            {tipe === 'PESERTA' && (
+              <div className="flex flex-col gap-1.5">
+                <label className="font-body text-xs font-medium text-event-navy">Riwayat Penyakit</label>
+                <select
+                  value={editDataForm.riwayatPenyakit}
+                  onChange={(e) => updateEditDataField('riwayatPenyakit', e.target.value)}
+                  className="font-body w-full px-3 py-2 border border-[var(--color-border)] rounded-[var(--radius-input)] text-sm text-event-navy focus:outline-none focus:border-event-blue"
+                >
+                  {RIWAYAT_PENYAKIT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {editDataError && <p className="text-xs font-medium text-pmi-red text-center">{editDataError}</p>}
+
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={closeEditData} disabled={isSavingData}>
+                Batal
+              </Button>
+              <Button type="button" variant="primary" size="sm" onClick={() => void submitEditData()} isLoading={isSavingData}>
+                Simpan Perubahan
+              </Button>
             </div>
           </div>
         )}
