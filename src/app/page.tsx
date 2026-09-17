@@ -228,20 +228,6 @@ export default async function HomePage() {
         <PixelMarquee items={MARQUEE_ITEMS} variant="pink" />
 
         {/* ===== STATS ===== */}
-        <section className="px-4 sm:px-6 py-14 sm:py-20">
-          <div className="max-w-3xl mx-auto">
-            <div className="grid grid-cols-2 gap-3 sm:gap-6">
-              <Reveal delay={0}>
-                <div className="relative bg-white border-2 border-event-navy shadow-pixel overflow-hidden">
-                  <div className="h-2 bg-gradient-to-r from-event-navy via-event-blue to-event-pink" />
-                  <div className="px-3 py-6 sm:px-6 sm:py-8">
-                    <StatCounter value={totalSekolah} label="Sekolah Terdaftar" />
-                  </div>
-                </div>
-              </Reveal>
-            </div>
-          </div>
-        </section>
 
         {/* ===== TENTANG ===== */}
         <section id="tentang" className="px-4 sm:px-6 py-12 sm:py-16 scroll-mt-20 relative">
