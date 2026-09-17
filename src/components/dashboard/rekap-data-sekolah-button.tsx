@@ -22,6 +22,23 @@ export function RekapDataSekolahButton() {
         <Download size={14} />
         Rekap Madya (PDF)
       </Button>
+      <span className="text-gray-300">|</span>
+      <Button
+        variant="primary"
+        onClick={() => window.open('/api/sekolah/pembina/download?kategori=WIRA', '_blank')}
+        className="flex items-center gap-1.5"
+      >
+        <Download size={14} />
+        Pembina Wira
+      </Button>
+      <Button
+        variant="primary"
+        onClick={() => window.open('/api/sekolah/pembina/download?kategori=MADYA', '_blank')}
+        className="flex items-center gap-1.5"
+      >
+        <Download size={14} />
+        Pembina Madya
+      </Button>
     </div>
   )
 }

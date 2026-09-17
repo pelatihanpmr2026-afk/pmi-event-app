@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Tabs } from '@/components/ui/tabs'
@@ -102,6 +102,18 @@ export function SusulanTable({ sekolahOptions }: { sekolahOptions: SekolahOption
         })),
     [sekolahOptions, tab]
   )
+
+  function handleExport(withPhoto: boolean) {
+    if (withPhoto) {
+      const ok = window.confirm(
+        'Ekspor ini menyertakan FOTO dan RIWAYAT KESEHATAN peserta susulan (data pribadi). Pastikan Anda berwenang dan menyimpannya dengan aman. Lanjutkan?'
+      )
+      if (!ok) return
+    }
+    const params = new URLSearchParams({ tipe: 'PESERTA', kategori: tab, withPhoto: String(withPhoto) })
+    if (filterSekolah) params.set('sekolahId', filterSekolah)
+    window.open(`/api/susulan/export?${params.toString()}`, '_blank')
+  }
 
   const columns: ResponsiveTableColumn<SusulanRow>[] = [
     {
@@ -223,6 +235,16 @@ export function SusulanTable({ sekolahOptions }: { sekolahOptions: SekolahOption
             options={sekolahOptionsForTab}
           />
         </div>
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        <Button variant="secondary" onClick={() => handleExport(false)} className="flex items-center gap-1.5">
+          <Download size={14} />
+          Excel Tanpa Foto
+        </Button>
+        <Button variant="primary" onClick={() => handleExport(true)} className="flex items-center gap-1.5">
+          <Download size={14} />
+          Excel Dengan Foto
+        </Button>
       </div>
 
       {data.length === 0 ? (
