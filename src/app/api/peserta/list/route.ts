@@ -30,7 +30,6 @@ export async function GET(req: NextRequest) {
         kategori: kategori ? (kategori as 'WIRA' | 'MADYA') : undefined,
         // Hanya tampilkan data dari sekolah yang pembayaran pesertanya sudah LUNAS.
         pembayaran: { some: { tipe: 'PESERTA', statusPembayaran: 'LUNAS' } },
-        ...(search ? { OR: [{ namaLengkap: { contains: search } }] } : {}),
       },
       ...(search
         ? {
