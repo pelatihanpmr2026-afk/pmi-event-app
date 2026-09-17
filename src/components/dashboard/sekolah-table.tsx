@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Search, Eye, Check, X, Trash2, Loader2, MoreVertical, ExternalLink, FileSpreadsheet, FileText, ChevronLeft, ChevronRight, ArrowUpDown, ArrowRightLeft } from 'lucide-react'
 import { toast } from 'sonner'
 import { Input } from '@/components/ui/input'
+import { Tabs } from '@/components/ui/tabs'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -67,6 +68,10 @@ export function SekolahTable({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [changingKategoriId, setChangingKategoriId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [wiraData, setWiraData] = useState<SekolahListItem[]>([])
+  const [madyaData, setMadyaData] = useState<SekolahListItem[]>([])
+  const [activeTab, setActiveTab] = useState<'WIRA' | 'MADYA'>('WIRA')
+  const [loadingReadOnly, setLoadingReadOnly] = useState(false)
   const firstRun = useRef(true)
   const readOnly = isReadOnlySekolah(role)
   const isKTA = isKtaRole(role)
@@ -97,6 +102,27 @@ export function SekolahTable({
     }
   }
 
+  async function fetchReadOnlyData(q: string) {
+    setLoadingReadOnly(true)
+    try {
+      const params = new URLSearchParams({
+        page: '1',
+        pageSize: '1000',
+        search: q,
+        kategori: '',
+        sortBy: 'nomor',
+      })
+      const res = await fetch(`/api/sekolah/list?${params}`)
+      const result = await res.json()
+      if (result.success) {
+        setWiraData(result.data.filter((s: SekolahListItem) => s.kategori === 'WIRA'))
+        setMadyaData(result.data.filter((s: SekolahListItem) => s.kategori === 'MADYA'))
+      }
+    } finally {
+      setLoadingReadOnly(false)
+    }
+  }
+
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearch(search)
@@ -108,10 +134,17 @@ export function SekolahTable({
   useEffect(() => {
     if (firstRun.current) {
       firstRun.current = false
+      if (readOnly) {
+        void fetchReadOnlyData(debouncedSearch)
+      }
       return
     }
-    void fetchPage(page, debouncedSearch, filterKategori, filterDaftarUlang, sortBy)
-  }, [page, debouncedSearch, filterKategori, filterDaftarUlang, sortBy])
+    if (readOnly) {
+      void fetchReadOnlyData(debouncedSearch)
+    } else {
+      void fetchPage(page, debouncedSearch, filterKategori, filterDaftarUlang, sortBy)
+    }
+  }, [page, debouncedSearch, filterKategori, filterDaftarUlang, sortBy, readOnly])
 
   function openDetail(id: string) {
     setOpenMenuId(null)
@@ -359,16 +392,60 @@ export function SekolahTable({
   }
 
   if (readOnly) {
-    const readonlyColumns: ResponsiveTableColumn<SekolahListItem>[] = [
-      { key: 'kode', header: 'Kode Pendaftaran', render: (s) => s.kodePendaftaran ?? 'Tanpa nomor pendaftaran' },
-      { key: 'nama', header: 'Nama Sekolah', render: (s) => <span className="font-semibold">{s.namaLengkap}</span> },
-    ]
+    const filteredList = (activeTab === 'WIRA' ? wiraData : madyaData).filter(
+      (s) =>
+        s.namaLengkap.toLowerCase().includes(search.toLowerCase()) ||
+        (s.kodePendaftaran ?? '').toLowerCase().includes(search.toLowerCase())
+    )
     return (
       <div className="flex flex-col gap-4">
-        <Input placeholder="Cari nama sekolah atau kode pendaftaran..." value={search} onChange={(e) => setSearch(e.target.value)} />
-        <ResponsiveTable columns={readonlyColumns} data={data} emptyMessage="Tidak ada data yang cocok" />
-        {paginationControls}
-        <p className="font-body text-xs text-gray-400">Mode read-only — role Acara hanya bisa melihat daftar kode pendaftaran & nama sekolah.</p>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1">
+            <Input placeholder="Cari nama sekolah atau kode pendaftaran..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <div className="w-full sm:w-52">
+            <Tabs
+              tabs={[
+                { key: 'WIRA', label: 'WIRA', badge: wiraData.length },
+                { key: 'MADYA', label: 'MADYA', badge: madyaData.length },
+              ]}
+              activeKey={activeTab}
+              onChange={(key) => setActiveTab(key as 'WIRA' | 'MADYA')}
+            />
+          </div>
+        </div>
+        <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] bg-white overflow-hidden">
+          {loadingReadOnly ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 size={20} className="animate-spin text-event-navy" />
+            </div>
+          ) : filteredList.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-2">
+              <Search size={24} className="text-gray-300" />
+              <p className="font-body text-sm text-gray-400">Tidak ada data yang cocok</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-[var(--color-border)] bg-[var(--color-surface-muted)]">
+                    <th className="px-4 py-3 font-body text-xs font-semibold text-event-navy">No. Pendaftaran</th>
+                    <th className="px-4 py-3 font-body text-xs font-semibold text-event-navy">Nama Sekolah</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredList.map((s) => (
+                    <tr key={s.id} className="border-b border-[var(--color-border)] last:border-0 hover:bg-[var(--color-surface-muted)]">
+                      <td className="px-4 py-3 font-body text-xs text-gray-500">{s.nomorPendaftaran ?? '-'}</td>
+                      <td className="px-4 py-3 font-body text-sm font-semibold text-event-navy">{s.namaLengkap}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+        <p className="font-body text-xs text-gray-400">Mode read-only — role Acara hanya bisa melihat daftar nomor pendaftaran & nama sekolah.</p>
       </div>
     )
   }
