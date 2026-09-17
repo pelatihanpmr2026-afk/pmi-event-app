@@ -239,14 +239,6 @@ export default async function HomePage() {
                   </div>
                 </div>
               </Reveal>
-              <Reveal delay={120}>
-                <div className="relative bg-white border-2 border-event-navy shadow-pixel overflow-hidden">
-                  <div className="h-2 bg-gradient-to-r from-event-pink via-event-yellow to-event-blue" />
-                  <div className="px-3 py-6 sm:px-6 sm:py-8">
-                    <StatCounter value={totalPeserta} label="Peserta" />
-                  </div>
-                </div>
-              </Reveal>
             </div>
           </div>
         </section>
