@@ -7,7 +7,7 @@ const DEFAULT_PAGE_SIZE = 50
 
 export async function GET(req: NextRequest) {
   try {
-    const guard = await requireRole('KESEKRETARIATAN')
+    const guard = await requireRole('KESEKRETARIATAN', 'KTA')
     if (!guard.ok) return guard.response
 
     const { searchParams } = new URL(req.url)
