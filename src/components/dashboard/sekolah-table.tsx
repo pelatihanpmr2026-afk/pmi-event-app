@@ -126,8 +126,8 @@ export function SekolahTable({
           break
         }
       }
-      setWiraData(allData.filter((s) => s.kategori === 'WIRA'))
-      setMadyaData(allData.filter((s) => s.kategori === 'MADYA'))
+      setWiraData(allData.filter((s) => s.kategori === 'WIRA' && s.kodePendaftaran))
+      setMadyaData(allData.filter((s) => s.kategori === 'MADYA' && s.kodePendaftaran))
     } finally {
       setLoadingReadOnly(false)
     }

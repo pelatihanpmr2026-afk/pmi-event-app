@@ -19,7 +19,17 @@ export const DASHBOARD_NAV_ITEMS = [
   { href: '/dashboard/admin-logs', label: 'Admin Logs', icon: History },
 ] as const
 
+export const KOMANDAN_NAV_ITEMS = [
+  { href: '/komandan', label: 'Umum', icon: StarIcon },
+  { href: '/komandan/sekolah', label: 'Sekolah', icon: School },
+  { href: '/komandan/peserta', label: 'Peserta', icon: UserCog },
+  { href: '/komandan/pendamping', label: 'Pendamping', icon: Users2 },
+] as const
+
 export function getNavItemsForRole(role: AdminRoleType) {
+  if (role === 'KOMANDAN') {
+    return KOMANDAN_NAV_ITEMS
+  }
   // SUPERADMIN melihat SEMUA item, termasuk Admin Logs
   if (role === 'SUPERADMIN') {
     return DASHBOARD_NAV_ITEMS

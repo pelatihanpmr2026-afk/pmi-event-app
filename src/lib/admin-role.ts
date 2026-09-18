@@ -1,4 +1,4 @@
-export type AdminRoleType = 'SUPERADMIN' | 'KESEKRETARIATAN' | 'KEUANGAN' | 'ACARA' | 'KTA'
+export type AdminRoleType = 'SUPERADMIN' | 'KESEKRETARIATAN' | 'KEUANGAN' | 'ACARA' | 'KTA' | 'KOMANDAN'
 
 export const ROLE_PATH_ACCESS: Record<Exclude<AdminRoleType, 'SUPERADMIN'>, string[]> = {
 KESEKRETARIATAN: [
@@ -17,6 +17,7 @@ KESEKRETARIATAN: [
   KEUANGAN: ['/dashboard/sekolah', '/dashboard/keuangan', '/dashboard/rekap-harian', '/dashboard/pengajuan', '/dashboard/draft'],
   ACARA: ['/dashboard/sekolah'],
   KTA: ['/dashboard/sekolah', '/dashboard/draft'],
+  KOMANDAN: ['/komandan', '/komandan/sekolah', '/komandan/peserta', '/komandan/pendamping'],
 }
 
 export function isPathAllowedForRole(role: AdminRoleType, pathname: string): boolean {

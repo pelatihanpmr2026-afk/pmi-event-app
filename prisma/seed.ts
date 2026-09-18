@@ -66,6 +66,14 @@ async function main() {
     'Petugas KTA'
   )
 
+  // Akun KOMANDAN (dashboard terbatas)
+  await seedAdminFromEnv(
+    process.env.KOMANDAN_INITIAL_USERNAME,
+    process.env.KOMANDAN_INITIAL_PASSWORD,
+    'KOMANDAN',
+    'Komandan KSR'
+  )
+
   const existingTenda = await prisma.tendaJenis.count()
   if (existingTenda === 0) {
     await prisma.tendaJenis.createMany({ data: TENDA_SEED_DATA })

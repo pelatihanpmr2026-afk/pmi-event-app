@@ -52,6 +52,7 @@ enum AdminRole {
   KEUANGAN
   ACARA
   KTA
+  KOMANDAN
 }
 
 model Panitia {

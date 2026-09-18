@@ -21,7 +21,7 @@ async function main() {
   }
 
   // Validasi Role
-  const validRoles = ['SUPERADMIN', 'KESEKRETARIATAN', 'KEUANGAN', 'ACARA']
+  const validRoles = ['SUPERADMIN', 'KESEKRETARIATAN', 'KEUANGAN', 'ACARA', 'KTA', 'KOMANDAN']
   if (!validRoles.includes(roleInput)) {
     console.log(`❌ Role tidak valid. Pilihan: ${validRoles.join(', ')}`)
     process.exit(1)

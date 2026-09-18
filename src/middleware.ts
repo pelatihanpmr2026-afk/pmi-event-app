@@ -34,11 +34,11 @@ export async function middleware(req: NextRequest) {
   const session = token ? await verifySessionToken(token) : null
 
   const isLoginPage = pathname === '/login'
-  const isDashboardPage = pathname.startsWith('/dashboard')
+  const isProtectedPage = pathname.startsWith('/dashboard') || pathname.startsWith('/komandan')
 
   // API memakai guard dan respons JSON masing-masing; jangan redirect fetch
   // API ke /login karena browser akan mengubahnya menjadi POST ke halaman.
-  if (!session && isDashboardPage) {
+  if (!session && isProtectedPage) {
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('redirect', req.nextUrl.pathname)
     return NextResponse.redirect(loginUrl)
@@ -48,7 +48,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL(getDefaultPathForRole(session.role), req.url))
   }
 
-  if (session && isDashboardPage) {
+  if (session && isProtectedPage) {
     if (!isPathAllowedForRole(session.role, pathname)) {
       return NextResponse.redirect(new URL(getDefaultPathForRole(session.role), req.url))
     }
