@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/get-session'
 import { prisma } from '@/lib/prisma'
 import { SekolahStats } from '@/components/dashboard/sekolah-stats'
-import { SekolahTable } from '@/components/dashboard/sekolah-table'
+import { DashboardSekolahTabs } from '@/components/dashboard/sekolah-tabs'
 import { RekapDataSekolahButton } from '@/components/dashboard/rekap-data-sekolah-button'
 
 export const dynamic = 'force-dynamic'
@@ -110,7 +110,7 @@ export default async function DashboardSekolahPage() {
         sudahDaftarUlang={sudahDaftarUlang}
         belumDaftarUlang={belumDaftarUlang}
       />
-      <SekolahTable initialData={serializedData.slice(0, 20)} initialTotal={totalSekolah} role={session.role} />
+      <DashboardSekolahTabs initialData={serializedData.slice(0, 20)} initialTotal={totalSekolah} role={session.role} />
     </div>
   )
 }

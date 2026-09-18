@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
     const where: Prisma.PesertaWhereInput = {
       tipe,
       sekolahId,
+      batchKe: 1,
       sekolah: {
         kategori: kategori ? (kategori as 'WIRA' | 'MADYA') : undefined,
         // Hanya tampilkan data dari sekolah yang pembayaran pesertanya sudah LUNAS.

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { CornerDownLeft, RefreshCw } from 'lucide-react'
+import { CornerDownLeft, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -80,9 +80,20 @@ export default function DraftListPage() {
     void fetchDrafts(query, 1)
   }
 
-  // Salin link resume: draft lama (belum punya resumeToken) dibuatin token dulu
-  // lewat endpoint admin, baru URL disalin. Link dipakai pembina sekolah tanpa
-  // login — selalu berbentuk ?draft=<id>&token=<uuid acak>.
+  async function handleDelete(d: DraftItem) {
+    if (!confirm(`Hapus draft "${d.namaSekolah}"?`)) return
+    try {
+      const res = await fetch(`/api/draft/${d.id}`, { method: 'DELETE' })
+      const json = await res.json()
+      if (!res.ok || !json.success) throw new Error(json.message || 'Gagal menghapus draft')
+      toast.success('Draft berhasil dihapus')
+      setDrafts((cur) => cur.filter((x) => x.id !== d.id))
+      setTotal((t) => t - 1)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Gagal menghapus draft')
+    }
+  }
+
   async function handleCopyResumeLink(d: DraftItem) {
     let token = d.resumeToken
     if (!token) {
@@ -197,6 +208,13 @@ export default function DraftListPage() {
                                 Lanjutkan
                               </Button>
                             </Link>
+                            <button
+                              onClick={() => void handleDelete(d)}
+                              className="p-1.5 text-gray-400 hover:text-pmi-red hover:bg-red-50 rounded-[var(--radius-input)] transition-colors"
+                              title="Hapus draft"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -232,6 +250,13 @@ export default function DraftListPage() {
                     <CornerDownLeft className="w-3.5 h-3.5" />
                     Salin Link
                   </Button>
+                  <button
+                    onClick={() => void handleDelete(d)}
+                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-pmi-red transition-colors w-fit"
+                  >
+                    <Trash2 size={12} />
+                    Hapus
+                  </button>
                 </CardContent>
               </Card>
             ))}

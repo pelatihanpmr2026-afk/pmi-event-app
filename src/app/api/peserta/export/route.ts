@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
       where: {
         tipe,
         sekolahId,
+        batchKe: 1,
         sekolah: {
           kategori: kategori ? (kategori as 'WIRA' | 'MADYA') : undefined,
           pembayaran: { some: { tipe: 'PESERTA', statusPembayaran: 'LUNAS' } },
