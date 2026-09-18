@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const guard = await requireRole('KESEKRETARIATAN', 'SUPERADMIN')
+    const guard = await requireRole('KTA', 'KESEKRETARIATAN', 'SUPERADMIN')
     if (!guard.ok) return guard.response
 
     const { id } = await params
