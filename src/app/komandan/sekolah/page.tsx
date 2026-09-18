@@ -19,11 +19,14 @@ export default async function KomandanSekolahPage() {
   })
 
   const totalSekolah = sekolahList.length
+  const lunasSekolah = sekolahList.filter((s) =>
+    s.pembayaran.some((p) => p.tipe === 'PESERTA' && p.statusPembayaran === 'LUNAS')
+  )
   const totalPeserta = Math.floor(
-    sekolahList.reduce((sum, s) => sum + s.peserta.filter((p) => p.tipe === 'PESERTA').length, 0) / 2
+    lunasSekolah.reduce((sum, s) => sum + s.peserta.filter((p) => p.tipe === 'PESERTA').length, 0) / 2
   )
   const totalPendamping = Math.floor(
-    sekolahList.reduce((sum, s) => sum + s.peserta.filter((p) => p.tipe === 'PENDAMPING').length, 0) / 2
+    lunasSekolah.reduce((sum, s) => sum + s.peserta.filter((p) => p.tipe === 'PENDAMPING').length, 0) / 2
   )
 
   function pilihPembayaranPeserta<T extends { tipe: string; statusPembayaran: string; batchKe: number; jumlahBiaya: number }>(payments: T[]) {

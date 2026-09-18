@@ -10,11 +10,13 @@ export default async function KomandanHomePage() {
   const session = await getSession()
   if (!session) redirect('/login')
 
+  const lunasWhere = { pembayaran: { some: { tipe: 'PESERTA' as const, statusPembayaran: 'LUNAS' as const } } }
+
   const [totalSekolah, totalLunas, totalPeserta, totalPendamping] = await Promise.all([
     prisma.sekolah.count(),
-    prisma.sekolah.count({ where: { pembayaran: { some: { tipe: 'PESERTA', statusPembayaran: 'LUNAS' } } } }),
-    prisma.peserta.count({ where: { tipe: 'PESERTA' } }),
-    prisma.peserta.count({ where: { tipe: 'PENDAMPING' } }),
+    prisma.sekolah.count({ where: lunasWhere }),
+    prisma.peserta.count({ where: { tipe: 'PESERTA', sekolah: lunasWhere } }),
+    prisma.peserta.count({ where: { tipe: 'PENDAMPING', sekolah: lunasWhere } }),
   ])
 
   const recentSchools = await prisma.sekolah.findMany({

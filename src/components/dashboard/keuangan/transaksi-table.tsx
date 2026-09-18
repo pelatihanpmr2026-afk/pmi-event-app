@@ -154,24 +154,18 @@ export function TransaksiTable({ initialData }: { initialData: TransaksiData[] }
       hideOnMobile: true,
       render: (row) => (
         <div className="flex items-center justify-center gap-2">
-          {row.pengajuanId ? (
-            <span className="text-[10px] text-gray-400">Otomatis</span>
-          ) : (
-            <>
-              <button
-                onClick={() => openEdit(row)}
-                className="p-1.5 text-gray-500 hover:text-event-navy hover:bg-[var(--color-surface-muted)] rounded-[var(--radius-input)] transition-colors"
-              >
-                <Pencil size={16} />
-              </button>
-              <button
-                onClick={() => handleDelete(row.id, row.keterangan)}
-                className="p-1.5 text-gray-500 hover:text-pmi-red hover:bg-red-50 rounded-[var(--radius-input)] transition-colors"
-              >
-                <Trash2 size={16} />
-              </button>
-            </>
-          )}
+          <button
+            onClick={() => openEdit(row)}
+            className="p-1.5 text-gray-500 hover:text-event-navy hover:bg-[var(--color-surface-muted)] rounded-[var(--radius-input)] transition-colors"
+          >
+            <Pencil size={16} />
+          </button>
+          <button
+            onClick={() => handleDelete(row.id, row.keterangan)}
+            className="p-1.5 text-gray-500 hover:text-pmi-red hover:bg-red-50 rounded-[var(--radius-input)] transition-colors"
+          >
+            <Trash2 size={16} />
+          </button>
         </div>
       ),
     },

@@ -115,6 +115,10 @@ export async function DELETE(
       return NextResponse.json({ success: false, message: 'Transaksi tidak ditemukan' }, { status: 404 })
     }
 
+    // Jika transaksi terkait pengajuan, kembalikan budget (sisa anggaran naik)
+    // Tidak perlu update status pengajuan — cukup hapus transaksinya saja.
+    // Sisa anggaran akan otomatis bertambah karena aggregate di frontend & stats.
+
     await prisma.transaksiKeuangan.delete({ where: { id } })
 
     await logAdminAction(
