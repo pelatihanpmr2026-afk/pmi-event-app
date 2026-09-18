@@ -29,12 +29,16 @@ export function KomandanSekolahTable({
   totalPeserta,
   totalPendamping,
   menungguKonfirmasi,
+  sudahDaftarUlang,
+  belumDaftarUlang,
 }: {
   initialData: SekolahListItem[]
   initialTotal: number
   totalPeserta: number
   totalPendamping: number
   menungguKonfirmasi: number
+  sudahDaftarUlang: number
+  belumDaftarUlang: number
 }) {
   const [wiraData, setWiraData] = useState<SekolahListItem[]>([])
   const [madyaData, setMadyaData] = useState<SekolahListItem[]>([])
@@ -107,6 +111,8 @@ export function KomandanSekolahTable({
         totalPeserta={totalPeserta}
         totalPendamping={totalPendamping}
         menungguKonfirmasi={menungguKonfirmasi}
+        sudahDaftarUlang={sudahDaftarUlang}
+        belumDaftarUlang={belumDaftarUlang}
       />
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1">

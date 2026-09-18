@@ -1,26 +1,32 @@
 import { Card } from '@/components/ui/card'
-import { School, Users, Clock } from 'lucide-react'
+import { School, Users, Clock, ClipboardCheck, ClipboardList } from 'lucide-react'
 
 export function SekolahStats({
   totalSekolah,
   totalPeserta,
   totalPendamping,
   menungguKonfirmasi,
+  sudahDaftarUlang,
+  belumDaftarUlang,
 }: {
   totalSekolah: number
   totalPeserta: number
   totalPendamping: number
   menungguKonfirmasi: number
+  sudahDaftarUlang: number
+  belumDaftarUlang: number
 }) {
   const cards = [
     { icon: School, label: 'Total Sekolah', value: totalSekolah, tint: 'text-event-blue bg-event-blue/10' },
     { icon: Users, label: 'Total Peserta', value: totalPeserta, tint: 'text-event-pink bg-event-pink/10' },
     { icon: Users, label: 'Total Pendamping', value: totalPendamping, tint: 'text-event-navy bg-event-navy/10' },
     { icon: Clock, label: 'Menunggu Konfirmasi', value: menungguKonfirmasi, tint: 'text-amber-600 bg-amber-50' },
+    { icon: ClipboardCheck, label: 'Sudah Daftar Ulang', value: sudahDaftarUlang, tint: 'text-green-600 bg-green-50' },
+    { icon: ClipboardList, label: 'Belum Daftar Ulang', value: belumDaftarUlang, tint: 'text-red-500 bg-red-50' },
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
       {cards.map((c) => (
         <Card key={c.label} className="p-4 sm:p-5 flex flex-col gap-3">
           <div className={`w-10 h-10 rounded-[var(--radius-input)] flex items-center justify-center ${c.tint}`}>

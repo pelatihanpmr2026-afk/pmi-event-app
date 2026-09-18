@@ -43,6 +43,12 @@ export default async function DashboardSekolahPage() {
     return sum + count
   }, 0)
 
+  const sudahDaftarUlang = sekolahList.filter((s) => {
+    const pembayaranPeserta = pilihPembayaranPeserta(s.pembayaran)
+    return pembayaranPeserta?.statusDaftarUlang === true
+  }).length
+  const belumDaftarUlang = totalSekolah - sudahDaftarUlang
+
   const serializedData = sekolahList.map((s) => {
     const jp = s.peserta.filter((p) => p.tipe === 'PESERTA').length
     const jd = s.peserta.filter((p) => p.tipe === 'PENDAMPING').length
@@ -101,6 +107,8 @@ export default async function DashboardSekolahPage() {
         totalPeserta={totalPeserta}
         totalPendamping={totalPendamping}
         menungguKonfirmasi={menungguKonfirmasi}
+        sudahDaftarUlang={sudahDaftarUlang}
+        belumDaftarUlang={belumDaftarUlang}
       />
       <SekolahTable initialData={serializedData.slice(0, 20)} initialTotal={totalSekolah} role={session.role} />
     </div>
