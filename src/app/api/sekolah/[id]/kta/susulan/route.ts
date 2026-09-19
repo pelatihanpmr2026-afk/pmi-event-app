@@ -54,7 +54,7 @@ export async function GET(
       return { ...participant, fotoBuffer }
     }))
 
-    const buffer = await generateKtaPdf({ namaSekolah: `${sekolah.namaLengkap} (Susulan)`, peserta })
+    const buffer = await generateKtaPdf({ namaSekolah: sekolah.namaLengkap, peserta })
     await logAdminAction(guard.session.adminId, guard.session.nama, guard.session.role, 'EXPORT_KTA_SUSULAN', {
       targetType: 'SEKOLAH',
       targetId: id,
