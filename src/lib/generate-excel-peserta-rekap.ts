@@ -7,7 +7,7 @@ const PHOTO_WIDTH_PX = 76 // 2 cm at 96 DPI
 const PHOTO_HEIGHT_PX = 113 // 3 cm at 96 DPI
 const PHOTO_ROW_HEIGHT_PT = 120
 
-interface RekapRow {
+export interface RekapRow {
   noPeserta: string
   namaLengkap: string
   sekolahNama: string
@@ -96,6 +96,60 @@ export async function generateExcelPesertaRekapBuffer(
       }
     }
   }
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  return Buffer.from(buffer)
+}
+
+export async function generateExcelSusulanMultiSheetBuffer(
+  pesertaRows: RekapRow[],
+  pendampingRows: RekapRow[]
+): Promise<Buffer> {
+  const workbook = new ExcelJS.Workbook()
+
+  async function addSheet(name: string, rows: RekapRow[], isPeserta: boolean) {
+    const sheet = workbook.addWorksheet(name)
+    const columns = [
+      { header: `No ${isPeserta ? 'Peserta' : 'Pendamping'}`, key: 'no', width: 12 },
+      { header: 'Nama Lengkap', key: 'nama', width: 26 },
+      { header: 'Sekolah', key: 'sekolah', width: 28 },
+      { header: 'Tempat Lahir', key: 'tempatLahir', width: 16 },
+      { header: 'Tanggal Lahir', key: 'tanggalLahir', width: 14 },
+      { header: 'Alamat', key: 'alamat', width: 30 },
+      { header: 'Agama', key: 'agama', width: 12 },
+      { header: 'Gol. Darah', key: 'golDarah', width: 10 },
+      { header: 'Tahun Masuk', key: 'tahunMasuk', width: 12 },
+      { header: 'No. HP', key: 'noHp', width: 16 },
+      { header: 'Gender', key: 'gender', width: 12 },
+      ...(isPeserta ? [{ header: 'Riwayat Penyakit', key: 'riwayat', width: 22 }] : []),
+    ]
+    sheet.columns = columns
+    sheet.getRow(1).eachCell((cell) => {
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3653A5' } }
+      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    })
+    for (const [i, r] of rows.entries()) {
+      const rowNum = i + 2
+      const values: (string | number)[] = [r.noPeserta]
+      values.push(
+        r.namaLengkap,
+        r.sekolahNama,
+        r.tempatLahir,
+        r.tanggalLahir.toLocaleDateString('id-ID'),
+        r.alamat,
+        r.agama,
+        r.golonganDarah,
+        r.tahunMasuk,
+        r.noHp || '-',
+        r.gender === 'LAKI_LAKI' ? 'Laki-laki' : 'Perempuan'
+      )
+      if (isPeserta) values.push(findRiwayatLabel(r.riwayatPenyakit))
+      sheet.getRow(rowNum).values = values
+    }
+  }
+
+  await addSheet('Data Peserta', pesertaRows, true)
+  await addSheet('Data Pendamping', pendampingRows, false)
 
   const buffer = await workbook.xlsx.writeBuffer()
   return Buffer.from(buffer)
