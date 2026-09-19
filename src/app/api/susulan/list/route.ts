@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { Prisma } from '@prisma/client'
 import { requireRole } from '@/lib/api-guard'
 
 const DEFAULT_PAGE_SIZE = 50
@@ -20,47 +19,44 @@ export async function GET(req: NextRequest) {
       Math.max(1, Number.parseInt(searchParams.get('pageSize') ?? String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE)
     )
 
-    // Cari sekolah yang memiliki peserta dengan batchKe > 1 (susulan)
-    const where: Prisma.SekolahWhereInput = {
+    const where = {
       kategori: kategori ? (kategori as 'WIRA' | 'MADYA') : undefined,
       ...(sekolahId ? { id: sekolahId } : {}),
       ...(search ? { namaLengkap: { contains: search } } : {}),
       peserta: { some: { batchKe: { gt: 1 } } },
     }
 
-    const [sekolahList, total] = await Promise.all([
-      prisma.sekolah.findMany({
-        where,
-        select: {
-          id: true,
-          namaLengkap: true,
-          kategori: true,
-          nomorPendaftaran: true,
-          kodePendaftaran: true,
-          peserta: {
-            where: { batchKe: { gt: 1 } },
-            select: { tipe: true, batchKe: true },
-          },
-          pembayaran: {
-            where: { tipe: 'PESERTA', batchKe: { gt: 1 } },
-            select: { batchKe: true, jumlahBiaya: true, statusPembayaran: true },
-            orderBy: { batchKe: 'desc' },
-          },
+    const allSekolah = await prisma.sekolah.findMany({
+      where,
+      select: {
+        id: true,
+        namaLengkap: true,
+        kategori: true,
+        nomorPendaftaran: true,
+        kodePendaftaran: true,
+        peserta: {
+          where: { batchKe: { gt: 1 } },
+          select: { tipe: true, batchKe: true },
         },
-        orderBy: { nomorPendaftaran: 'asc' },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      prisma.sekolah.count({ where }),
-    ])
+        pembayaran: {
+          where: { tipe: 'PESERTA', batchKe: { gt: 1 } },
+          select: { batchKe: true, jumlahBiaya: true, statusPembayaran: true },
+          orderBy: { batchKe: 'desc' as const },
+        },
+      },
+      orderBy: { nomorPendaftaran: 'asc' as const },
+    })
 
-    const data = sekolahList.map((s) => {
-      const jumlahPeserta = s.peserta.filter((p) => p.tipe === 'PESERTA').length
-      const jumlahPendamping = s.peserta.filter((p) => p.tipe === 'PENDAMPING').length
-      const batchTertinggi = s.pembayaran.length > 0 ? Math.max(...s.pembayaran.map((p) => p.batchKe)) : 1
-      const totalBiayaSusulan = s.pembayaran.reduce((sum, p) => sum + p.jumlahBiaya, 0)
-      // Status bayar dari batch susulan terakhir
-      const statusBayar = s.pembayaran[0]?.statusPembayaran ?? 'MENUNGGU_KONFIRMASI'
+    const mapped = allSekolah.map((s) => {
+      const batchDibatalkan = new Set(
+        s.pembayaran.filter((p) => p.statusPembayaran === 'DITOLAK').map((p) => p.batchKe)
+      )
+      const jumlahPeserta = s.peserta.filter((p) => p.tipe === 'PESERTA' && !batchDibatalkan.has(p.batchKe)).length
+      const jumlahPendamping = s.peserta.filter((p) => p.tipe === 'PENDAMPING' && !batchDibatalkan.has(p.batchKe)).length
+      const pembayaranAktif = s.pembayaran.filter((p) => p.statusPembayaran !== 'DITOLAK')
+      const batchTertinggi = pembayaranAktif.length > 0 ? Math.max(...pembayaranAktif.map((p) => p.batchKe)) : 1
+      const totalBiayaSusulan = pembayaranAktif.reduce((sum, p) => sum + p.jumlahBiaya, 0)
+      const statusBayar = pembayaranAktif[0]?.statusPembayaran ?? 'MENUNGGU_KONFIRMASI'
 
       return {
         id: s.id,
@@ -74,7 +70,11 @@ export async function GET(req: NextRequest) {
         totalBiayaSusulan,
         statusBayar,
       }
-    })
+    }).filter((s) => s.jumlahPeserta > 0 || s.jumlahPendamping > 0)
+
+    const total = mapped.length
+    const start = (page - 1) * pageSize
+    const data = mapped.slice(start, start + pageSize)
 
     return NextResponse.json({
       success: true,

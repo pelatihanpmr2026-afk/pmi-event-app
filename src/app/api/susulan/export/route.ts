@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
           batchKe: { gt: 1 },
           sekolah: sekolahFilter,
         },
-        include: { sekolah: { select: { namaLengkap: true } } },
+        include: { sekolah: { select: { namaLengkap: true, kodePendaftaran: true } } },
         orderBy: [{ sekolah: { nomorPendaftaran: 'asc' } }, { batchKe: 'asc' }, { createdAt: 'asc' }],
       }),
       prisma.peserta.findMany({
@@ -36,10 +36,26 @@ export async function GET(req: NextRequest) {
           batchKe: { gt: 1 },
           sekolah: sekolahFilter,
         },
-        include: { sekolah: { select: { namaLengkap: true } } },
+        include: { sekolah: { select: { namaLengkap: true, kodePendaftaran: true } } },
         orderBy: [{ sekolah: { nomorPendaftaran: 'asc' } }, { createdAt: 'asc' }],
       }),
     ])
+
+    // Ambil batchKe yang DITOLAK per sekolah
+    const sekolahIds = [...new Set([...pesertaData.map((p) => p.sekolahId), ...pendampingData.map((p) => p.sekolahId)])]
+    const dibatalkanList = await prisma.pembayaran.findMany({
+      where: { sekolahId: { in: sekolahIds }, tipe: 'PESERTA', statusPembayaran: 'DITOLAK' },
+      select: { sekolahId: true, batchKe: true },
+    })
+    const batchDibatalkanMap = new Map<string, Set<number>>()
+    for (const d of dibatalkanList) {
+      if (!batchDibatalkanMap.has(d.sekolahId)) batchDibatalkanMap.set(d.sekolahId, new Set())
+      batchDibatalkanMap.get(d.sekolahId)!.add(d.batchKe)
+    }
+
+    function isBatchValid(sid: string, batch: number): boolean {
+      return !batchDibatalkanMap.get(sid)?.has(batch)
+    }
 
     function toRow(p: (typeof pesertaData)[number]): RekapRow {
       return {
@@ -58,8 +74,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const pesertaRows = pesertaData.map(toRow)
-    const pendampingRows = pendampingData.map(toRow)
+    const pesertaRows = pesertaData.filter((p) => isBatchValid(p.sekolahId, p.batchKe)).map(toRow)
+    const pendampingRows = pendampingData.filter((p) => isBatchValid(p.sekolahId, p.batchKe)).map(toRow)
 
     const buffer = await generateExcelSusulanMultiSheetBuffer(pesertaRows, pendampingRows)
     const filename = `Data_Susulan_${new Date().toISOString().slice(0, 10)}.xlsx`

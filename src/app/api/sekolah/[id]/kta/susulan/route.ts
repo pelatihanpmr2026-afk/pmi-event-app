@@ -15,13 +15,24 @@ export async function GET(
     if (!guard.ok) return guard.response
 
     const { id } = await params
+
+    // Ambil batchKe yang DITOLAK agar bisa di-exclude
+    const dibatalkan = await prisma.pembayaran.findMany({
+      where: { sekolahId: id, tipe: 'PESERTA', statusPembayaran: 'DITOLAK' },
+      select: { batchKe: true },
+    })
+    const batchDibatalkan = dibatalkan.map((p) => p.batchKe)
+
     const sekolah = await prisma.sekolah.findUnique({
       where: { id },
       select: {
         namaLengkap: true,
         kodePendaftaran: true,
         peserta: {
-          where: { tipe: 'PESERTA', batchKe: { gt: 1 } },
+          where: {
+            tipe: 'PESERTA',
+            batchKe: { gt: 1, notIn: batchDibatalkan },
+          },
           orderBy: [{ noPeserta: 'asc' }, { createdAt: 'asc' }],
           select: {
             noPeserta: true,
