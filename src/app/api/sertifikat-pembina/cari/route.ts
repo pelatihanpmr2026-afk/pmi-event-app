@@ -14,8 +14,36 @@ export async function GET(req: NextRequest) {
     if (rl) return rl
 
     const { searchParams } = new URL(req.url)
+    const q = (searchParams.get('q') ?? '').trim()
     const nama = (searchParams.get('nama') ?? '').trim()
     const sekolah = (searchParams.get('sekolah') ?? '').trim()
+
+    // Mode autocomplete satu kolom: cocokkan nama pembina ATAU nama sekolah
+    if (q) {
+      if (q.length < 2) {
+        return NextResponse.json(
+          { success: false, message: 'Masukkan minimal 2 karakter' },
+          { status: 400 }
+        )
+      }
+      const hasil = await prisma.pembina.findMany({
+        where: {
+          OR: [{ nama: { contains: q } }, { sekolah: { namaLengkap: { contains: q } } }],
+        },
+        include: { sekolah: { select: { namaLengkap: true, kategori: true } } },
+        orderBy: [{ sekolah: { namaLengkap: 'asc' } }, { nama: 'asc' }],
+        take: 20,
+      })
+      return NextResponse.json({
+        success: true,
+        data: hasil.map((p) => ({
+          id: p.id,
+          namaPembina: p.nama,
+          namaSekolah: p.sekolah.namaLengkap,
+          kategori: p.sekolah.kategori,
+        })),
+      })
+    }
 
     if (nama.length < 3 && sekolah.length < 3) {
       return NextResponse.json(
