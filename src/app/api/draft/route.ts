@@ -126,9 +126,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Cek apakah sekolah sudah terdaftar (punya peserta)
+    // Cek apakah sekolah sudah terdaftar (punya peserta) dengan kategori yang sama
+    const kategoriFilter = parsedSekolah.data.kategori === 'WIRA' || parsedSekolah.data.kategori === 'MADYA'
+      ? parsedSekolah.data.kategori as 'WIRA' | 'MADYA'
+      : undefined
     const existing = await prisma.sekolah.findFirst({
-      where: { namaLengkap: namaLengkap },
+      where: { namaLengkap: namaLengkap, ...(kategoriFilter ? { kategori: kategoriFilter } : {}) },
       include: { _count: { select: { peserta: true } } },
     })
     if (existing && existing._count.peserta > 0) {

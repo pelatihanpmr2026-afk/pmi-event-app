@@ -149,6 +149,7 @@ export async function POST(req: NextRequest) {
     const kategori = dataSekolah.kategori
 
     const sekolahDenganNama = await prisma.sekolah.findMany({
+      where: { kategori },
       include: { peserta: { select: { id: true } } },
     })
     const existingSekolah = sekolahDenganNama.find(

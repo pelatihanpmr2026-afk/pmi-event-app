@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const { pilihan } = pilihanData.data
     if (pilihan.length === 0) return NextResponse.json({ success: false, message: 'Pilih minimal satu tenda' }, { status: 400 })
     const namaLengkap = normalizeNamaSekolah(sekolahData.data.namaSekolah)
-    const existing = await prisma.sekolah.findMany({ select: { namaLengkap: true } })
+    const existing = await prisma.sekolah.findMany({ where: { kategori: reservasi.kategori }, select: { namaLengkap: true } })
     if (existing.some((s) => namaSekolahKey(s.namaLengkap) === namaSekolahKey(namaLengkap))) return NextResponse.json({ success: false, message: 'Sekolah ini sudah terdaftar. Gunakan menu Cari Sekolah.' }, { status: 409 })
 
     const jenis = await prisma.tendaJenis.findMany({ where: { id: { in: pilihan.map((p) => p.tendaJenisId) } } })
