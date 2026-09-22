@@ -21,5 +21,7 @@ export async function POST() {
 }
 
 export async function GET() {
+  const guard = await requireRole('SUPERADMIN')
+  if (!guard.ok) return guard.response
   return POST()
 }
