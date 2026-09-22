@@ -19,3 +19,7 @@ export async function POST() {
     return NextResponse.json({ success: false, message: 'Gagal migrasi data pembina' }, { status: 500 })
   }
 }
+
+export async function GET() {
+  return POST()
+}
