@@ -18,26 +18,27 @@ export async function GET(req: NextRequest) {
     )
 
     const where = search
-      ? { namaLengkap: { contains: search } }
+      ? { sekolah: { namaLengkap: { contains: search } } }
       : {}
 
-    const allSekolah = await prisma.sekolah.findMany({
-      where,
-      select: {
-        id: true,
-        namaPembina: true,
-        namaLengkap: true,
-      },
-      orderBy: { namaLengkap: 'asc' },
-    })
+    const [allPembina, total] = await Promise.all([
+      prisma.pembina.findMany({
+        where,
+        include: { sekolah: { select: { id: true, namaLengkap: true, kategori: true } } },
+        orderBy: [{ sekolah: { namaLengkap: 'asc' } }, { nama: 'asc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.pembina.count({ where }),
+    ])
 
-    const total = allSekolah.length
-    const start = (page - 1) * pageSize
-    const data = allSekolah.slice(start, start + pageSize).map((s, i) => ({
-      id: s.id,
-      no: start + i + 1,
-      namaPembina: s.namaPembina,
-      namaSekolah: s.namaLengkap,
+    const data = allPembina.map((p, i) => ({
+      id: p.id,
+      no: (page - 1) * pageSize + i + 1,
+      namaPembina: p.nama,
+      namaSekolah: p.sekolah.namaLengkap,
+      kategori: p.sekolah.kategori,
+      sekolahId: p.sekolah.id,
     }))
 
     return NextResponse.json({

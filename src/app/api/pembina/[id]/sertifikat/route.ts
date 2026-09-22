@@ -13,29 +13,29 @@ export async function GET(
     if (!guard.ok) return guard.response
 
     const { id } = await params
-    const sekolah = await prisma.sekolah.findUnique({
+    const pembina = await prisma.pembina.findUnique({
       where: { id },
-      select: { namaPembina: true, namaLengkap: true },
+      include: { sekolah: { select: { namaLengkap: true } } },
     })
 
-    if (!sekolah) return NextResponse.json({ success: false, message: 'Sekolah tidak ditemukan' }, { status: 404 })
+    if (!pembina) return NextResponse.json({ success: false, message: 'Pembina tidak ditemukan' }, { status: 404 })
 
     const buffer = await generateSertifikatPembinaPdf({
-      namaPembina: sekolah.namaPembina,
-      namaSekolah: sekolah.namaLengkap,
+      namaPembina: pembina.nama,
+      namaSekolah: pembina.sekolah.namaLengkap,
     })
 
     await logAdminAction(guard.session.adminId, guard.session.nama, guard.session.role, 'EXPORT_SERTIFIKAT_PEMBINA', {
       targetType: 'SEKOLAH',
-      targetId: id,
-      metadata: { namaPembina: sekolah.namaPembina, namaSekolah: sekolah.namaLengkap },
+      targetId: pembina.sekolahId,
+      metadata: { namaPembina: pembina.nama, namaSekolah: pembina.sekolah.namaLengkap },
     })
 
-    const safeName = sekolah.namaLengkap.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || `Sekolah-${id}`
+    const safeName = pembina.sekolah.namaLengkap.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || `Sekolah-${pembina.sekolahId}`
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="Sertifikat_Pembina_${safeName}.pdf"`,
+        'Content-Disposition': `attachment; filename="Sertifikat_${safeName}_${pembina.nama.replace(/\s+/g, '_')}.pdf"`,
         'Cache-Control': 'no-store',
       },
     })

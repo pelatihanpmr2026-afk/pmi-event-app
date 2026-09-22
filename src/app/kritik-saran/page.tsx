@@ -20,7 +20,7 @@ interface KritikSaranItem {
 
 const KATEGORI_RATING = [
   { key: 'ratingPendaftaran', label: 'Pendaftaran' },
-  { key: 'ratingPerkemahan', label: 'Perkemahan' },
+  { key: 'ratingPerkemahan', label: 'Fasilitas' },
   { key: 'ratingAcara', label: 'Acara' },
 ] as const
 

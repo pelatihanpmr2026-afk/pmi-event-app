@@ -366,13 +366,13 @@ export async function POST(req: NextRequest) {
           if (!existingSekolah && target.includes('kodePendaftaran')) {
             continue
           }
-          // Nama sekolah sama terdaftar bersamaan oleh 2 tab (namaLengkap unique di DB).
-          if (target.includes('namaLengkap')) {
+          // Nama sekolah + kategori sama terdaftar bersamaan oleh 2 tab (composite unique di DB).
+          if (target.includes('namaLengkap') || target.includes('kategori')) {
             await cleanupFiles()
             // Sekolah dibuat request lain yang nyaris bersamaan — cari recordnya
             // supaya pemilik (nama pembina + WA cocok) bisa langsung ke status.
             const concurrent = await prisma.sekolah.findMany({
-              where: { namaLengkap },
+              where: { namaLengkap, kategori },
               include: { peserta: { select: { id: true } } },
               take: 1,
             })

@@ -179,7 +179,7 @@ model Sekolah {
   jenjang       Jenjang
   statusSekolah StatusSekolah
   namaInput     String
-  namaLengkap   String          @unique
+  namaLengkap   String
   kategori      KategoriSekolah
 
   // Pendaftaran sewa tenda tidak memiliki nomor pendaftaran sekolah.
@@ -205,8 +205,24 @@ model Sekolah {
   peserta    Peserta[]
   tendaSewa  TendaSewa[]
   pembayaran Pembayaran[]
+  pembina    Pembina[]
 
+  @@unique([namaLengkap, kategori])
   @@map("sekolah")
+}
+
+model Pembina {
+  id        String @id @default(cuid())
+  sekolahId String
+  nama      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sekolah Sekolah @relation(fields: [sekolahId], references: [id], onDelete: Cascade)
+
+  @@index([sekolahId])
+  @@map("pembina")
 }
 
 model Peserta {
