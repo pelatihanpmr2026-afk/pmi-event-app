@@ -3,10 +3,13 @@ import { prisma } from '@/lib/prisma'
 import { checkRateLimit } from '@/lib/rate-limit'
 
 /**
- * GET /api/sertifikat-pembina/cari?nama=...&sekolah=...
+ * GET /api/sertifikat-pembina/cari?q=...
  *
- * Publik (tanpa login) — pembina mencari sertifikatnya berdasarkan nama
- * pembina + nama sekolah. Di-rate-limit agar tidak bisa di-scrape massal.
+ * Publik (tanpa login) — autocomplete DAFTAR SEKOLAH saja. Nama pembina
+ * TIDAK PERNAH dikembalikan di endpoint ini agar tidak bisa di-enumerasi;
+ * nama pembina baru terlihat setelah user memilih sekolahnya
+ * (lihat GET /api/sertifikat-pembina/sekolah/[sekolahId]/pembina).
+ * Di-rate-limit agar tidak bisa di-scrape massal.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -18,7 +21,9 @@ export async function GET(req: NextRequest) {
     const nama = (searchParams.get('nama') ?? '').trim()
     const sekolah = (searchParams.get('sekolah') ?? '').trim()
 
-    // Mode autocomplete satu kolom: cocokkan nama pembina ATAU nama sekolah
+    // Mode autocomplete satu kolom: kembalikan DAFTAR SEKOLAH yang cocok
+    // (tanpa nama pembina) — cocokkan nama sekolah ATAU nama pembina,
+    // tapi yang diekspos hanya sekolahnya.
     if (q) {
       if (q.length < 2) {
         return NextResponse.json(
@@ -26,21 +31,29 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         )
       }
-      const hasil = await prisma.pembina.findMany({
+      const sekolahList = await prisma.sekolah.findMany({
         where: {
-          OR: [{ nama: { contains: q } }, { sekolah: { namaLengkap: { contains: q } } }],
+          OR: [
+            { namaLengkap: { contains: q } },
+            { pembina: { some: { nama: { contains: q } } } },
+          ],
         },
-        include: { sekolah: { select: { namaLengkap: true, kategori: true } } },
-        orderBy: [{ sekolah: { namaLengkap: 'asc' } }, { nama: 'asc' }],
-        take: 20,
+        select: {
+          id: true,
+          namaLengkap: true,
+          kategori: true,
+          _count: { select: { pembina: true } },
+        },
+        orderBy: { namaLengkap: 'asc' },
+        take: 10,
       })
       return NextResponse.json({
         success: true,
-        data: hasil.map((p) => ({
-          id: p.id,
-          namaPembina: p.nama,
-          namaSekolah: p.sekolah.namaLengkap,
-          kategori: p.sekolah.kategori,
+        data: sekolahList.map((s) => ({
+          id: s.id,
+          namaSekolah: s.namaLengkap,
+          kategori: s.kategori,
+          jumlahPembina: s._count.pembina,
         })),
       })
     }

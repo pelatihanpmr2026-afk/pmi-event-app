@@ -85,21 +85,32 @@ export default function KritikSaranPage() {
   const [items, setItems] = useState<KritikSaranItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSending, setIsSending] = useState(false)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+  const PAGE_SIZE = 10
+
+  async function muatHalaman(halaman: number) {
+    setIsLoading(true)
+    try {
+      const res = await fetch(`/api/kritik-saran?page=${halaman}&pageSize=${PAGE_SIZE}`)
+      const result = await res.json()
+      if (result.success) {
+        setItems(result.data)
+        setPage(result.pagination.page)
+        setTotalPages(result.pagination.totalPages)
+        setTotal(result.pagination.total)
+      }
+    } catch {
+      // abaikan — pesan error tampil saat kirim
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    let aktif = true
-    fetch('/api/kritik-saran')
-      .then((res) => res.json())
-      .then((result) => {
-        if (aktif && result.success) setItems(result.data)
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (aktif) setIsLoading(false)
-      })
-    return () => {
-      aktif = false
-    }
+    void muatHalaman(1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   async function handleKirim() {
@@ -125,7 +136,8 @@ export default function KritikSaranPage() {
       setNama('')
       setPesan('')
       setRating({ ratingPendaftaran: 0, ratingPerkemahan: 0, ratingAcara: 0 })
-      setItems((prev) => [result.data, ...prev].slice(0, 20))
+      // Kembali ke halaman 1 agar kiriman baru langsung terlihat
+      await muatHalaman(1)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
     } finally {
@@ -204,7 +216,7 @@ export default function KritikSaranPage() {
 
         <div className="flex flex-col gap-4">
           <p className="font-heading text-[11px] text-event-navy tracking-wide text-center">
-            KRITIK & SARAN MASUK ({items.length})
+            KRITIK & SARAN MASUK ({total})
           </p>
           {isLoading ? (
             <p className="font-body text-xs text-event-navy/50 text-center py-6">Memuat kritik & saran...</p>
@@ -214,30 +226,59 @@ export default function KritikSaranPage() {
               <p className="font-body text-xs text-event-navy/50">Belum ada kritik & saran. Jadilah yang pertama!</p>
             </div>
           ) : (
-            items.map((item) => (
-              <article key={item.id} className="bg-white border-2 border-event-navy shadow-pixel-sm p-4 flex flex-col gap-2.5">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="font-body font-bold text-xs text-event-navy truncate">
-                    {item.nama?.trim() || 'Anonim'}
+            <>
+              {items.map((item) => (
+                <article key={item.id} className="bg-white border-2 border-event-navy shadow-pixel-sm p-4 flex flex-col gap-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-body font-bold text-xs text-event-navy truncate">
+                      {item.nama?.trim() || 'Anonim'}
+                    </p>
+                    <p className="font-body text-[10px] text-event-navy/50 shrink-0">
+                      {new Date(item.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    <span className="font-body text-[10px] text-event-navy/60">
+                      Pendaftaran <BintangTampil nilai={item.ratingPendaftaran} />
+                    </span>
+                    <span className="font-body text-[10px] text-event-navy/60">
+                      Perkemahan <BintangTampil nilai={item.ratingPerkemahan} />
+                    </span>
+                    <span className="font-body text-[10px] text-event-navy/60">
+                      Acara <BintangTampil nilai={item.ratingAcara} />
+                    </span>
+                  </div>
+                  <p className="font-body text-xs text-event-navy leading-relaxed break-words">{item.pesan}</p>
+                </article>
+              ))}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <p className="font-body text-[10px] text-event-navy/50">
+                    Halaman {page} dari {totalPages}
                   </p>
-                  <p className="font-body text-[10px] text-event-navy/50 shrink-0">
-                    {new Date(item.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={page <= 1 || isLoading}
+                      onClick={() => void muatHalaman(page - 1)}
+                      className="text-xs px-3 py-1.5"
+                    >
+                      Sebelumnya
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={page >= totalPages || isLoading}
+                      onClick={() => void muatHalaman(page + 1)}
+                      className="text-xs px-3 py-1.5"
+                    >
+                      Berikutnya
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1">
-                  <span className="font-body text-[10px] text-event-navy/60">
-                    Pendaftaran <BintangTampil nilai={item.ratingPendaftaran} />
-                  </span>
-                  <span className="font-body text-[10px] text-event-navy/60">
-                    Perkemahan <BintangTampil nilai={item.ratingPerkemahan} />
-                  </span>
-                  <span className="font-body text-[10px] text-event-navy/60">
-                    Acara <BintangTampil nilai={item.ratingAcara} />
-                  </span>
-                </div>
-                <p className="font-body text-xs text-event-navy leading-relaxed break-words">{item.pesan}</p>
-              </article>
-            ))
+              )}
+            </>
           )}
         </div>
       </main>

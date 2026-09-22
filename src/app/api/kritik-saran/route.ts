@@ -3,27 +3,45 @@ import { prisma } from '@/lib/prisma'
 import { kritikSaranSchema } from '@/lib/validations/kritik-saran'
 import { checkRateLimit } from '@/lib/rate-limit'
 
-const LIST_LIMIT = 20
+const DEFAULT_PAGE_SIZE = 10
+const MAX_PAGE_SIZE = 50
 
-/** GET /api/kritik-saran — daftar terbaru untuk homepage (publik). */
-export async function GET() {
+/** GET /api/kritik-saran?page=&pageSize= — daftar terbaru untuk homepage (publik). */
+export async function GET(req: NextRequest) {
   try {
-    const items = await prisma.kritikSaran.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: LIST_LIMIT,
-      select: {
-        id: true,
-        nama: true,
-        pesan: true,
-        ratingPendaftaran: true,
-        ratingPerkemahan: true,
-        ratingAcara: true,
-        createdAt: true,
-      },
-    })
+    const { searchParams } = new URL(req.url)
+    const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1)
+    const pageSize = Math.min(
+      MAX_PAGE_SIZE,
+      Math.max(1, Number.parseInt(searchParams.get('pageSize') ?? String(DEFAULT_PAGE_SIZE), 10) || DEFAULT_PAGE_SIZE)
+    )
+
+    const [items, total] = await Promise.all([
+      prisma.kritikSaran.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          nama: true,
+          pesan: true,
+          ratingPendaftaran: true,
+          ratingPerkemahan: true,
+          ratingAcara: true,
+          createdAt: true,
+        },
+      }),
+      prisma.kritikSaran.count(),
+    ])
     return NextResponse.json({
       success: true,
       data: items.map((item) => ({ ...item, createdAt: item.createdAt.toISOString() })),
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      },
     })
   } catch (error) {
     console.error('[GET /api/kritik-saran]', error)
