@@ -54,6 +54,8 @@ const PUBLIC = new Set([
   'POST cron/cleanup-tenda', // dilindungi CRON_SECRET, bukan session admin
   'GET kritik-saran', // daftar kritik & saran untuk homepage (publik, read-only)
   'POST kritik-saran', // kirim kritik & saran + penilaian (publik, di-rate-limit)
+  'GET sertifikat-pembina/cari', // cari sertifikat pembina (publik, di-rate-limit)
+  'GET sertifikat-pembina/[id]/unduh', // unduh PDF sertifikat pembina (id cuid acak, di-rate-limit)
 ])
 
 const HANDLER_RE = /export async function (GET|POST|PATCH|PUT|DELETE)\(/g
