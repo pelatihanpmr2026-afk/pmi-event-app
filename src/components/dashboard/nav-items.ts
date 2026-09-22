@@ -1,4 +1,4 @@
-import { Users,StarIcon, ScanLine, School, Tent, ClipboardCheck, Wallet, FileSpreadsheet, UserCog, Users2, CalendarClock, History, ListChecks, FileText, UserPlus } from 'lucide-react'
+import { Users,StarIcon, ScanLine, School, Tent, ClipboardCheck, Wallet, FileSpreadsheet, UserCog, Users2, CalendarClock, History, ListChecks, FileText, UserPlus, BadgeCheck } from 'lucide-react'
 import { isPathAllowedForRole, type AdminRoleType } from '@/lib/admin-role'
 
 export const DASHBOARD_NAV_ITEMS = [
@@ -15,6 +15,7 @@ export const DASHBOARD_NAV_ITEMS = [
   { href: '/dashboard/rekap-harian', label: 'Rekap Harian', icon: CalendarClock },
   { href: '/dashboard/pengajuan', label: 'Pengajuan', icon: FileSpreadsheet },
   { href: '/dashboard/panitia', label: 'Panitia', icon: Users },
+  { href: '/dashboard/pembina', label: 'Pembina', icon: BadgeCheck },
   { href: '/dashboard/absensi', label: 'Absensi', icon: ScanLine },
   { href: '/dashboard/admin-logs', label: 'Admin Logs', icon: History },
 ] as const
