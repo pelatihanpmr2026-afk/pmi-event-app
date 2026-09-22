@@ -34,7 +34,6 @@ export function SertifikatPembinaForm() {
   // Modal edit
   const [editItem, setEditItem] = useState<BarisPembina | null>(null)
   const [editNama, setEditNama] = useState('')
-  const [editWa, setEditWa] = useState('')
   const [menyimpan, setMenyimpan] = useState(false)
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -161,7 +160,6 @@ export function SertifikatPembinaForm() {
   function bukaEdit(item: BarisPembina) {
     setEditItem(item)
     setEditNama(item.namaPembina)
-    setEditWa('')
   }
 
   async function simpanEdit() {
@@ -170,16 +168,12 @@ export function SertifikatPembinaForm() {
       toast.error('Nama baru minimal 3 karakter')
       return
     }
-    if (editWa.replace(/\D/g, '').length < 9) {
-      toast.error('Masukkan nomor WhatsApp yang valid')
-      return
-    }
     setMenyimpan(true)
     try {
       const res = await fetch(`/api/sertifikat-pembina/${editItem.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ namaBaru: editNama.trim(), noWa: editWa.trim() }),
+        body: JSON.stringify({ namaBaru: editNama.trim() }),
       })
       const result = await res.json()
       if (!res.ok) throw new Error(result?.message || 'Gagal menyimpan')
@@ -365,20 +359,6 @@ export function SertifikatPembinaForm() {
                 value={editNama}
                 onChange={(e) => setEditNama(e.target.value)}
               />
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="font-body text-xs font-medium text-gray-600">
-                No. WhatsApp terdaftar sekolah
-              </label>
-              <Input
-                placeholder="cth. 0812xxxxxxx"
-                value={editWa}
-                onChange={(e) => setEditWa(e.target.value)}
-                inputMode="tel"
-              />
-              <p className="font-body text-[11px] text-gray-400">
-                Untuk verifikasi: nomor yang dipakai saat pendaftaran sekolah ini.
-              </p>
             </div>
             <div className="flex gap-2 justify-end">
               <button

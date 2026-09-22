@@ -57,7 +57,7 @@ const PUBLIC = new Set([
   'GET sertifikat-pembina/cari', // cari daftar SEKOLAH saja, tanpa nama pembina (publik, di-rate-limit)
   'GET sertifikat-pembina/[id]/unduh', // unduh PDF sertifikat pembina (id cuid acak, di-rate-limit)
   'GET sertifikat-pembina/sekolah/[sekolahId]/pembina', // daftar pembina satu sekolah terpilih (publik, di-rate-limit)
-  'PATCH sertifikat-pembina/[id]', // koreksi nama publik, verifikasi no WA terdaftar (publik, rate-limit ketat)
+  'PATCH sertifikat-pembina/[id]', // koreksi nama publik (publik, rate-limit ketat)
 ])
 
 const HANDLER_RE = /export async function (GET|POST|PATCH|PUT|DELETE)\(/g
