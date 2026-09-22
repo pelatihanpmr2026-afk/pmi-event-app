@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { Search, Edit2, FileText, Loader2, X, Check, Plus, Trash2 } from 'lucide-react'
+import { Search, Edit2, FileText, Loader2, X, Check, Plus, Trash2, Download } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/responsive-table'
 import { toast } from 'sonner'
@@ -30,6 +30,7 @@ export function PembinaTable() {
   const [savingId, setSavingId] = useState<string | null>(null)
   const [generatingId, setGeneratingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [downloadingAll, setDownloadingAll] = useState(false)
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
@@ -156,6 +157,31 @@ export function PembinaTable() {
     setGeneratingId(id)
     window.open(`/api/pembina/${id}/sertifikat`, '_blank')
     setTimeout(() => setGeneratingId(null), 2000)
+  }
+
+  async function handleDownloadAll() {
+    setDownloadingAll(true)
+    try {
+      const res = await fetch('/api/pembina/sertifikat-all')
+      if (!res.ok) {
+        const result = await res.json()
+        throw new Error(result?.message || 'Gagal download')
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Sertifikat_Pembina_${new Date().toISOString().slice(0, 10)}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      toast.success('Sertifikat berhasil didownload')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
+    } finally {
+      setDownloadingAll(false)
+    }
   }
 
   async function handleAdd() {
@@ -333,6 +359,14 @@ export function PembinaTable() {
         <div className="flex-1">
           <Input placeholder="Cari nama sekolah..." value={search} onChange={(e) => handleSearch(e.target.value)} />
         </div>
+        <button
+          onClick={() => void handleDownloadAll()}
+          disabled={downloadingAll}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-[var(--radius-btn)] bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+        >
+          {downloadingAll ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+          Download Semua Sertifikat
+        </button>
         <button
           onClick={() => setShowAddModal(true)}
           className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-[var(--radius-btn)] bg-event-blue text-white text-sm font-medium hover:bg-event-navy transition-colors"
