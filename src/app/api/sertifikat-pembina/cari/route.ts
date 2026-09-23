@@ -1,6 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { namaSekolahKey } from '@/lib/sekolah'
+
+// Kata pengisi yang diabaikan saat pencocokan (varian penulisan status negeri/swasta)
+const TOKEN_ABAIKAN = new Set(['NEGERI', 'N', 'SWASTA', 'NEG', 'SWT'])
+
+function tokenKunci(nama: string): string[] {
+  return namaSekolahKey(nama)
+    .replace(/[^A-Z0-9\s]/gi, ' ')
+    .toUpperCase()
+    .split(/\s+/)
+    .filter((t) => t && !TOKEN_ABAIKAN.has(t))
+}
+
+/**
+ * Totok cocok jika SETIAP token query muncul utuh sebagai token nama sekolah.
+ * "smpn 1 cianjur" → [SMP,1,CIANJUR] cocok dengan "SMP NEGERI 1 CIANJUR",
+ * "SMP N 1 CIANJUR", maupun "SMPN 1 CIANJUR" karena namaSekolahKey
+ * menyetarakan SMPN/SMP N/SMP NEGERI menjadi SMP.
+ * Perbandingan per-token penuh (bukan substring) agar "1" tidak cocok dengan "10".
+ */
+function cocokSekolah(query: string, namaDb: string): boolean {
+  const tokenQuery = tokenKunci(query)
+  if (tokenQuery.length === 0) return false
+  const tokenDb = new Set(tokenKunci(namaDb))
+  return tokenQuery.every((t) => tokenDb.has(t))
+}
 
 /**
  * GET /api/sertifikat-pembina/cari?q=...
@@ -31,22 +57,28 @@ export async function GET(req: NextRequest) {
           { status: 400 }
         )
       }
-      const sekolahList = await prisma.sekolah.findMany({
-        where: {
-          OR: [
-            { namaLengkap: { contains: q } },
-            { pembina: { some: { nama: { contains: q } } } },
-          ],
-        },
+      const qLower = q.toLowerCase()
+      // Muat semua sekolah lalu cocokkan di memori: pencocokan SQL `contains`
+      // tidak mengenal varian penulisan (SMPN vs SMP NEGERI), sedangkan
+      // pencocokan token atas namaSekolahKey mengenalinya.
+      const semua = await prisma.sekolah.findMany({
         select: {
           id: true,
           namaLengkap: true,
           kategori: true,
+          pembina: { select: { nama: true } },
           _count: { select: { pembina: true } },
         },
         orderBy: { namaLengkap: 'asc' },
-        take: 10,
       })
+      const sekolahList = semua
+        .filter(
+          (s) =>
+            cocokSekolah(q, s.namaLengkap) ||
+            s.namaLengkap.toLowerCase().includes(qLower) ||
+            s.pembina.some((p) => p.nama.toLowerCase().includes(qLower))
+        )
+        .slice(0, 10)
       return NextResponse.json({
         success: true,
         data: sekolahList.map((s) => ({
