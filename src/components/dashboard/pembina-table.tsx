@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Search, Edit2, FileText, Loader2, X, Check, Plus, Trash2, Download } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/responsive-table'
 import { toast } from 'sonner'
 
@@ -13,6 +14,9 @@ interface PembinaItem {
   namaSekolah: string
   kategori: string
   sekolahId: string
+  sudahUnduh: boolean
+  diunduhPada: string | null
+  jumlahUnduhan: number
 }
 
 interface SekolahOption {
@@ -274,6 +278,23 @@ export function PembinaTable() {
       ),
     },
     {
+      key: 'statusUnduh',
+      header: 'Status Unduh',
+      align: 'center',
+      render: (p) => (
+        <Badge
+          variant={p.sudahUnduh ? 'success' : 'warning'}
+          title={
+            p.sudahUnduh && p.diunduhPada
+              ? `Terakhir diunduh ${new Date(p.diunduhPada).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })} · ${p.jumlahUnduhan}x`
+              : 'Belum pernah diunduh dari halaman publik'
+          }
+        >
+          {p.sudahUnduh ? `Sudah${p.jumlahUnduhan > 1 ? ` (${p.jumlahUnduhan}x)` : ''}` : 'Belum'}
+        </Badge>
+      ),
+    },
+    {
       key: 'aksi',
       header: 'Aksi',
       align: 'center',
@@ -331,6 +352,11 @@ export function PembinaTable() {
             </div>
           )}
           <p className="font-body text-[11px] text-gray-500 mt-0.5">{row.namaSekolah} <span className="text-[9px] text-gray-400">({row.kategori})</span></p>
+          <div className="mt-1.5">
+            <Badge variant={row.sudahUnduh ? 'success' : 'warning'}>
+              {row.sudahUnduh ? `Sudah unduh${row.jumlahUnduhan > 1 ? ` (${row.jumlahUnduhan}x)` : ''}` : 'Belum unduh'}
+            </Badge>
+          </div>
         </div>
       </div>
       <div className="flex gap-2">

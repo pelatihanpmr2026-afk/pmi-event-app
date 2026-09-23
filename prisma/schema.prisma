@@ -216,6 +216,11 @@ model Pembina {
   sekolahId String
   nama      String
 
+  // Tracking unduhan sertifikat dari halaman publik /sertifikat-pembina
+  sudahUnduh    Boolean   @default(false)
+  diunduhPada   DateTime?
+  jumlahUnduhan Int       @default(0)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

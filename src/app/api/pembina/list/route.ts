@@ -39,6 +39,9 @@ export async function GET(req: NextRequest) {
       namaSekolah: p.sekolah.namaLengkap,
       kategori: p.sekolah.kategori,
       sekolahId: p.sekolah.id,
+      sudahUnduh: p.sudahUnduh,
+      diunduhPada: p.diunduhPada?.toISOString() ?? null,
+      jumlahUnduhan: p.jumlahUnduhan,
     }))
 
     return NextResponse.json({

@@ -30,6 +30,21 @@ export async function GET(
       namaSekolah: pembina.sekolah.namaLengkap,
     })
 
+    // Tandai sudah diunduh dari halaman publik — best-effort, kegagalan
+    // tracking tidak boleh menggagalkan unduhan.
+    try {
+      await prisma.pembina.update({
+        where: { id },
+        data: {
+          sudahUnduh: true,
+          diunduhPada: new Date(),
+          jumlahUnduhan: { increment: 1 },
+        },
+      })
+    } catch (trackError) {
+      console.error('[GET /api/sertifikat-pembina/:id/unduh] Gagal tracking unduhan:', trackError)
+    }
+
     const safeName = pembina.sekolah.namaLengkap.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '') || 'Sekolah'
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
