@@ -7,11 +7,17 @@ import { namaSekolahKey } from '@/lib/sekolah'
 const TOKEN_ABAIKAN = new Set(['NEGERI', 'N', 'SWASTA', 'NEG', 'SWT'])
 
 function tokenKunci(nama: string): string[] {
-  return namaSekolahKey(nama)
-    .replace(/[^A-Z0-9\s]/gi, ' ')
-    .toUpperCase()
-    .split(/\s+/)
-    .filter((t) => t && !TOKEN_ABAIKAN.has(t))
+  return (
+    namaSekolahKey(nama)
+      // Varian akhiran S (sekolah swasta) hanya untuk pencarian, TIDAK untuk
+      // deteksi duplikat: "SMAS"→SMA agar ketemu saat ketik "sma", tapi
+      // SMAN 1 dan SMAS 1 tetap dianggap sekolah berbeda.
+      .replace(/\b(SMP|SMA|SMK|MTS|MA)S\b/g, '$1')
+      .replace(/[^A-Z0-9\s]/gi, ' ')
+      .toUpperCase()
+      .split(/\s+/)
+      .filter((t) => t && !TOKEN_ABAIKAN.has(t))
+  )
 }
 
 /**
@@ -78,7 +84,7 @@ export async function GET(req: NextRequest) {
             s.namaLengkap.toLowerCase().includes(qLower) ||
             s.pembina.some((p) => p.nama.toLowerCase().includes(qLower))
         )
-        .slice(0, 10)
+        .slice(0, 50)
       return NextResponse.json({
         success: true,
         data: sekolahList.map((s) => ({

@@ -300,7 +300,7 @@ export function SertifikatPembinaForm() {
 
         {dropdownTerbuka && saran.length > 0 && (
           <div className="absolute z-20 left-0 right-0 mt-1 max-h-72 overflow-y-auto border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-lg bg-white">
-            {saran.slice(0, 8).map((s) => (
+            {saran.slice(0, 15).map((s) => (
               <button
                 key={s.id}
                 onMouseDown={(e) => {
@@ -318,6 +318,11 @@ export function SertifikatPembinaForm() {
                 </span>
               </button>
             ))}
+            {saran.length > 15 && (
+              <p className="px-4 py-2 font-body text-[11px] text-gray-400 text-center bg-gray-50 sticky bottom-0">
+                {saran.length} sekolah cocok — ketik lebih lengkap bila sekolah Anda belum terlihat.
+              </p>
+            )}
           </div>
         )}
       </div>
