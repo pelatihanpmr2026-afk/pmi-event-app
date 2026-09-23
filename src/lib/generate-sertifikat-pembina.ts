@@ -24,14 +24,11 @@ interface SertifikatParams {
   }
 }
 
-function titleCase(value: string) {
-  return value.toLocaleLowerCase('id-ID').replace(/(^|[\s/-])[a-zà-ÿ]/g, (letter) => letter.toLocaleUpperCase('id-ID'))
-}
-
 /** Teks final persis seperti yang digambar di PDF — dipakai untuk subset font batch. */
 export function formatSertifikatTexts(namaPembina: string, namaSekolah: string) {
   return {
-    pembinaText: titleCase(namaPembina.trim()),
+    // Nama pembina WAJIB sama persis dengan data (tanpa ubah huruf besar/kecil)
+    pembinaText: namaPembina.trim(),
     sekolahText: namaSekolah.trim().toLocaleUpperCase('id-ID'),
   }
 }
@@ -62,7 +59,7 @@ export async function generateSertifikatPembinaPdf({ namaPembina, namaSekolah, a
   const black = rgb(0, 0, 0)
   const centerX = PAGE_WIDTH / 2
 
-  // <Nama_Pembina> — Title Case, bold, tengah
+  // <Nama_Pembina> — persis seperti data, bold, tengah
   const { pembinaText, sekolahText } = formatSertifikatTexts(namaPembina, namaSekolah)
   const pembinaFit = fitText(boldFont, pembinaText, TEXT_MAX_WIDTH, 34)
   const pembinaWidth = boldFont.widthOfTextAtSize(pembinaFit.text, pembinaFit.size)
