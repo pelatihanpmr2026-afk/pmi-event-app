@@ -54,7 +54,7 @@ const PUBLIC = new Set([
   'POST cron/cleanup-tenda', // dilindungi CRON_SECRET, bukan session admin
   'GET kritik-saran', // daftar kritik & saran untuk homepage (publik, read-only)
   'POST kritik-saran', // kirim kritik & saran + penilaian (publik, di-rate-limit)
-  'GET sertifikat-pembina/cari', // cari daftar SEKOLAH saja, tanpa nama pembina (publik, di-rate-limit)
+  'GET sertifikat-pembina/sekolah', // seluruh daftar sekolah sekaligus untuk pencarian instan (publik, di-rate-limit)
   'GET sertifikat-pembina/[id]/unduh', // unduh PDF sertifikat pembina (id cuid acak, di-rate-limit)
   'GET sertifikat-pembina/sekolah/[sekolahId]/pembina', // daftar pembina satu sekolah terpilih (publik, di-rate-limit)
   'PATCH sertifikat-pembina/[id]', // koreksi nama publik (publik, rate-limit ketat)

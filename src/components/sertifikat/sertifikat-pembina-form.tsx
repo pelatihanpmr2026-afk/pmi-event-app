@@ -1,17 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Search, FileDown, Loader2, Pencil, X, School } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { ResponsiveTable, type ResponsiveTableColumn } from '@/components/ui/responsive-table'
 import { toast } from 'sonner'
-
-interface SekolahSaran {
-  id: string
-  namaSekolah: string
-  kategori: string
-  jumlahPembina: number
-}
+import { cariSekolah, type SekolahCari } from '@/lib/cari-sekolah'
 
 interface BarisPembina {
   id: string
@@ -21,11 +15,13 @@ interface BarisPembina {
   kategori: string
 }
 
+type FilterKategori = 'SEMUA' | 'WIRA' | 'MADYA'
+
 export function SertifikatPembinaForm() {
+  const [semuaSekolah, setSemuaSekolah] = useState<SekolahCari[]>([])
+  const [memuatDaftar, setMemuatDaftar] = useState(true)
   const [query, setQuery] = useState('')
-  const [saran, setSaran] = useState<SekolahSaran[]>([])
-  const [dropdownTerbuka, setDropdownTerbuka] = useState(false)
-  const [mencariSaran, setMencariSaran] = useState(false)
+  const [filterKategori, setFilterKategori] = useState<FilterKategori>('SEMUA')
   const [sekolahTerpilih, setSekolahTerpilih] = useState<{ id: string; namaSekolah: string; kategori: string } | null>(null)
   const [tabel, setTabel] = useState<BarisPembina[]>([])
   const [memuatTabel, setMemuatTabel] = useState(false)
@@ -36,44 +32,32 @@ export function SertifikatPembinaForm() {
   const [editNama, setEditNama] = useState('')
   const [menyimpan, setMenyimpan] = useState(false)
 
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const seqRef = useRef(0)
-
-  async function fetchSaran(q: string, seq: number) {
-    setMencariSaran(true)
-    try {
-      const res = await fetch(`/api/sertifikat-pembina/cari?q=${encodeURIComponent(q)}`)
-      const result = await res.json()
-      if (seq !== seqRef.current) return
-      if (res.ok) {
-        setSaran(result.data)
-        setDropdownTerbuka(true)
-      }
-    } catch {
-      // diam — dropdown hanya saran
-    } finally {
-      if (seq === seqRef.current) setMencariSaran(false)
-    }
-  }
-
-  function handleUbah(value: string) {
-    setQuery(value)
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (value.trim().length < 2) {
-      setSaran([])
-      setDropdownTerbuka(false)
-      setMencariSaran(false)
-      return
-    }
-    const seq = ++seqRef.current
-    timerRef.current = setTimeout(() => void fetchSaran(value.trim(), seq), 400)
-  }
-
+  // Muat SELURUH daftar sekolah sekali — pencarian jalan instan di memori
   useEffect(() => {
+    let aktif = true
+    fetch('/api/sertifikat-pembina/sekolah')
+      .then((res) => res.json())
+      .then((result) => {
+        if (aktif && result.success) setSemuaSekolah(result.data)
+        else if (aktif) toast.error('Gagal memuat daftar sekolah')
+      })
+      .catch(() => {
+        if (aktif) toast.error('Gagal memuat daftar sekolah')
+      })
+      .finally(() => {
+        if (aktif) setMemuatDaftar(false)
+      })
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
+      aktif = false
     }
   }, [])
+
+  // Filter instan: kategori + fuzzy query, ranking relevansi
+  const daftarTampil = useMemo(() => {
+    const perKategori =
+      filterKategori === 'SEMUA' ? semuaSekolah : semuaSekolah.filter((s) => s.kategori === filterKategori)
+    return cariSekolah(query, perKategori)
+  }, [query, filterKategori, semuaSekolah])
 
   async function muatPembina(sekolahId: string, namaSekolah: string, kategori: string) {
     setMemuatTabel(true)
@@ -82,13 +66,15 @@ export function SertifikatPembinaForm() {
       const result = await res.json()
       if (!res.ok) throw new Error(result?.message || 'Gagal memuat data')
       setSekolahTerpilih({ id: sekolahId, namaSekolah, kategori })
-      setTabel(result.data.pembina.map((p: { id: string; namaPembina: string }, i: number) => ({
-        id: p.id,
-        no: i + 1,
-        namaPembina: p.namaPembina,
-        namaSekolah: result.data.namaSekolah,
-        kategori: result.data.kategori,
-      })))
+      setTabel(
+        result.data.pembina.map((p: { id: string; namaPembina: string }, i: number) => ({
+          id: p.id,
+          no: i + 1,
+          namaPembina: p.namaPembina,
+          namaSekolah: result.data.namaSekolah,
+          kategori: result.data.kategori,
+        }))
+      )
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
     } finally {
@@ -96,40 +82,8 @@ export function SertifikatPembinaForm() {
     }
   }
 
-  function pilihSekolah(s: SekolahSaran) {
-    setQuery(s.namaSekolah)
-    setDropdownTerbuka(false)
+  function pilihSekolah(s: SekolahCari) {
     void muatPembina(s.id, s.namaSekolah, s.kategori)
-  }
-
-  async function handleCari() {
-    if (query.trim().length < 2) {
-      toast.error('Masukkan minimal 2 karakter untuk mencari')
-      return
-    }
-    if (timerRef.current) clearTimeout(timerRef.current)
-    setDropdownTerbuka(false)
-    setMencariSaran(true)
-    try {
-      const res = await fetch(`/api/sertifikat-pembina/cari?q=${encodeURIComponent(query.trim())}`)
-      const result = await res.json()
-      if (!res.ok) throw new Error(result?.message || 'Gagal mencari')
-      const list: SekolahSaran[] = result.data
-      if (list.length === 0) {
-        toast.info('Sekolah tidak ditemukan. Coba kata kunci lain.')
-      } else if (list.length === 1) {
-        setQuery(list[0].namaSekolah)
-        await muatPembina(list[0].id, list[0].namaSekolah, list[0].kategori)
-      } else {
-        setSaran(list)
-        setDropdownTerbuka(true)
-        toast.info(`${list.length} sekolah cocok — pilih sekolah Anda dari daftar.`)
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Terjadi kesalahan')
-    } finally {
-      setMencariSaran(false)
-    }
   }
 
   async function handleUnduh(item: BarisPembina) {
@@ -263,51 +217,52 @@ export function SertifikatPembinaForm() {
 
   return (
     <div className="w-full max-w-2xl mx-auto flex flex-col gap-4">
-      <div className="relative">
-        <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] bg-white p-5 flex flex-col gap-3">
-          <label className="font-body text-xs font-medium text-gray-600">
-            Cari sekolah Anda
-          </label>
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Input
-                placeholder="cth. SMAN 1 Cianjur"
-                value={query}
-                onChange={(e) => handleUbah(e.target.value)}
-                onFocus={() => {
-                  if (saran.length > 0) setDropdownTerbuka(true)
-                }}
-                onBlur={() => setTimeout(() => setDropdownTerbuka(false), 150)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') void handleCari()
-                  if (e.key === 'Escape') setDropdownTerbuka(false)
-                }}
-              />
-            </div>
+      <div className="border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-[var(--shadow-soft)] bg-white p-5 flex flex-col gap-3">
+        <label className="font-body text-xs font-medium text-gray-600">
+          Langkah 1 — Temukan sekolah Anda
+        </label>
+        <Input
+          placeholder="Ketik nama sekolah… cth. smpn 1 cianjur"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <div className="flex items-center gap-2">
+          {(['SEMUA', 'WIRA', 'MADYA'] as FilterKategori[]).map((k) => (
             <button
-              onClick={() => void handleCari()}
-              disabled={mencariSaran}
-              className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-[var(--radius-btn)] bg-event-blue text-white text-sm font-medium hover:bg-event-navy transition-colors disabled:opacity-50"
+              key={k}
+              onClick={() => setFilterKategori(k)}
+              className={`px-3.5 py-1.5 rounded-full font-body text-xs font-medium transition-colors ${
+                filterKategori === k
+                  ? 'bg-event-blue text-white'
+                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              }`}
             >
-              {mencariSaran ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-              Cari
+              {k === 'SEMUA' ? 'Semua' : k}
             </button>
-          </div>
-          <p className="font-body text-[11px] text-gray-400">
-            Daftar hanya menampilkan nama sekolah. Daftar pembina muncul setelah Anda memilih sekolah.
-          </p>
+          ))}
+          <span className="ml-auto font-body text-[11px] text-gray-400">
+            {memuatDaftar ? 'Memuat…' : `${daftarTampil.length} sekolah`}
+          </span>
         </div>
-
-        {dropdownTerbuka && saran.length > 0 && (
-          <div className="absolute z-20 left-0 right-0 mt-1 max-h-72 overflow-y-auto border border-[var(--color-border)] rounded-[var(--radius-card)] shadow-lg bg-white">
-            {saran.slice(0, 15).map((s) => (
+        <div className="max-h-80 overflow-y-auto border border-gray-100 rounded-[var(--radius-card)] divide-y divide-gray-100">
+          {memuatDaftar ? (
+            <p className="font-body text-xs text-gray-400 text-center py-8">Memuat daftar sekolah…</p>
+          ) : daftarTampil.length === 0 ? (
+            <div className="py-8 flex flex-col items-center gap-2">
+              <Search size={24} className="text-gray-300" />
+              <p className="font-body text-xs text-gray-400 text-center px-4">
+                Tidak ditemukan. Coba kata kunci lain atau periksa ejaan
+                (mis. &ldquo;cianjur&rdquo; bukan &ldquo;cipanjur&rdquo;).
+              </p>
+            </div>
+          ) : (
+            daftarTampil.map((s) => (
               <button
                 key={s.id}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  pilihSekolah(s)
-                }}
-                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 border-b border-gray-100 last:border-0 flex items-center gap-2.5"
+                onClick={() => pilihSekolah(s)}
+                className={`w-full text-left px-4 py-2.5 hover:bg-blue-50/60 flex items-center gap-2.5 transition-colors ${
+                  sekolahTerpilih?.id === s.id ? 'bg-blue-50/60' : ''
+                }`}
               >
                 <School size={16} className="text-gray-300 shrink-0" />
                 <span className="flex flex-col gap-0.5 min-w-0">
@@ -317,32 +272,40 @@ export function SertifikatPembinaForm() {
                   </span>
                 </span>
               </button>
-            ))}
-            {saran.length > 15 && (
-              <p className="px-4 py-2 font-body text-[11px] text-gray-400 text-center bg-gray-50 sticky bottom-0">
-                {saran.length} sekolah cocok — ketik lebih lengkap bila sekolah Anda belum terlihat.
-              </p>
-            )}
-          </div>
-        )}
+            ))
+          )}
+        </div>
+        <p className="font-body text-[11px] text-gray-400">
+          Daftar hanya menampilkan nama sekolah. Daftar pembina muncul setelah Anda memilih sekolah.
+          Salah ketik 1–2 huruf masih ditoleransi.
+        </p>
       </div>
 
-      {sekolahTerpilih && (
-        <p className="font-body text-xs text-gray-500 text-center -mb-1">
-          Menampilkan pembina: <span className="font-semibold text-event-navy">{sekolahTerpilih.namaSekolah}</span>
+      <div className="flex flex-col gap-2">
+        <p className="font-body text-xs font-medium text-gray-600">
+          Langkah 2 — Unduh sertifikat
+          {sekolahTerpilih && (
+            <>
+              {' untuk '}
+              <span className="font-semibold text-event-navy">{sekolahTerpilih.namaSekolah}</span>
+            </>
+          )}
         </p>
-      )}
-
-      {memuatTabel ? (
-        <p className="font-body text-sm text-gray-400 text-center py-8">Memuat data...</p>
-      ) : (
-        <ResponsiveTable
-          columns={columns}
-          data={tabel}
-          emptyMessage="Belum ada hasil — cari dan pilih sekolah Anda di atas."
-          renderMobileCard={renderMobileCard}
-        />
-      )}
+        {memuatTabel ? (
+          <p className="font-body text-sm text-gray-400 text-center py-8">Memuat data pembina…</p>
+        ) : (
+          <ResponsiveTable
+            columns={columns}
+            data={tabel}
+            emptyMessage={
+              sekolahTerpilih
+                ? 'Sekolah ini belum memiliki data pembina.'
+                : 'Pilih sekolah Anda pada daftar di atas.'
+            }
+            renderMobileCard={renderMobileCard}
+          />
+        )}
+      </div>
 
       {editItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">

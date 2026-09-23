@@ -299,6 +299,17 @@ export async function POST(req: NextRequest) {
                 },
               })
 
+          // Sinkronkan tabel Pembina agar sertifikat pembina selalu tersedia:
+          // buat baris Pembina bila nama ini belum ada di sekolah tersebut.
+          const pembinaSama = await tx.pembina.findFirst({
+            where: { sekolahId: sekolah.id, nama: dataSekolah.namaPembina },
+          })
+          if (!pembinaSama) {
+            await tx.pembina.create({
+              data: { sekolahId: sekolah.id, nama: dataSekolah.namaPembina },
+            })
+          }
+
           await tx.peserta.createMany({
             data: [
               ...pesertaList.map((p, i) => ({

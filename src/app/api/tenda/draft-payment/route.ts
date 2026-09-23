@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       await lockDanValidasiStokTenda(tx, 'draft', pilihan, reservationId)
       const sekolah = await tx.sekolah.create({ data: { jenjang: 'SMA' as Jenjang, statusSekolah: 'SWASTA' as StatusSekolah, namaInput: namaLengkap, namaLengkap, kategori: sekolahData.data.kategori, nomorPendaftaran: null, tahunPendaftaran: null, kodePendaftaran: null, namaPembina: sekolahData.data.namaPembina, noWhatsappPembina: sekolahData.data.noWhatsappPembina, estimasiPesertaPendamping: estimasi } as unknown as Prisma.SekolahCreateInput })
+      await tx.pembina.create({ data: { sekolahId: sekolah.id, nama: sekolahData.data.namaPembina } })
       await tx.tendaSewa.createMany({ data: pilihan.map((p) => ({ sekolahId: sekolah.id, tendaJenisId: p.tendaJenisId, jumlah: p.jumlah, hargaSatuanSaatSewa: jenis.find((t) => t.id === p.tendaJenisId)!.harga })) })
       await tx.pembayaran.create({ data: { sekolahId: sekolah.id, tipe: 'TENDA', batchKe: 1, jumlahBiaya: pilihan.reduce((total, p) => total + jenis.find((t) => t.id === p.tendaJenisId)!.harga * p.jumlah, 0), statusPembayaran: 'MENUNGGU_KONFIRMASI', buktiTransferUrl, dibayarPada, qrToken, kwitansiUrl } })
       await tx.reservasiTenda.delete({ where: { id: reservationId } })
